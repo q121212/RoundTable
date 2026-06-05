@@ -1,6 +1,7 @@
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 
@@ -20,6 +21,7 @@ from .security import hash_token, new_token
 
 PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
 TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
+GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 
 
@@ -43,6 +45,32 @@ def validate_priority(value: str) -> str:
     if value not in PRIORITIES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid priority")
     return value
+
+
+def normalize_github_repo(value: str) -> str:
+    raw = value.strip()
+    if not raw:
+        return ""
+    if raw.startswith("git@github.com:"):
+        raw = raw.removeprefix("git@github.com:")
+    elif "://" in raw:
+        parsed = urlparse(raw)
+        if parsed.netloc.lower() not in {"github.com", "www.github.com"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GitHub repository must be owner/repo or a github.com URL.",
+            )
+        raw = parsed.path.strip("/")
+    raw = raw.removesuffix(".git").strip("/")
+    parts = raw.split("/")
+    if len(parts) >= 2:
+        raw = "%s/%s" % (parts[0], parts[1])
+    if not GITHUB_REPO_RE.match(raw):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub repository must be owner/repo or a github.com URL.",
+        )
+    return raw
 
 
 def upsert_user(
@@ -180,7 +208,7 @@ def create_project(
                 (key, name, description, created_by, github_repo_full_name, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (key, name, description.strip(), user["id"], repo.strip() or None, now),
+            (key, name, description.strip(), user["id"], normalize_github_repo(repo) or None, now),
         )
         project_id = int(cur.lastrowid)
         conn.execute(

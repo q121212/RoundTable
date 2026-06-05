@@ -21,6 +21,14 @@ def test_project_prefixed_ticket_sequence(temp_db):
     assert board_for_project("CRM", user)["columns"]["Backlog"][0]["key"] == "CRM-2"
 
 
+def test_project_accepts_github_repo_url(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+
+    project = create_project(user, "web", "Website", repo="https://github.com/acme/site.git")
+
+    assert project["github_repo_full_name"] == "acme/site"
+
+
 def test_close_ticket_logs_action(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "OPS", "Operations")
@@ -45,4 +53,3 @@ def test_assignment_notification_outbox(temp_db):
     assert row is not None
     assert row["user_id"] == assignee["id"]
     assert row["channel"] == "email"
-

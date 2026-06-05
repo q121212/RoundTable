@@ -41,6 +41,7 @@ from .store import (
     list_mcp_tokens,
     list_projects,
     notification_preferences,
+    normalize_github_repo,
     project_members,
     reopen_ticket,
     require_project_access,
@@ -221,7 +222,7 @@ async def api_project_github(request: Request, project_key: str) -> RedirectResp
             WHERE id = ?
             """,
             (
-                str(form.get("repo") or "").strip() or None,
+                normalize_github_repo(str(form.get("repo") or "")) or None,
                 str(form.get("installation_id") or "").strip() or None,
                 project["id"],
             ),

@@ -10,19 +10,37 @@
 
 <section class="panel">
   <h2 data-i18n="github.repo_links">Repository links</h2>
+  <div class="notice">
+    <strong data-i18n="github.how_title">How to connect GitHub</strong>
+    <p class="muted" data-i18n="github.how_copy">Paste a repository as owner/repo or a full GitHub URL. Add the installation id only when you want RoundTable to create autolinks through your GitHub App.</p>
+    <p class="muted">Webhook URL: <code>{{ base_url }}/integrations/github/webhook</code></p>
+  </div>
   <div class="table-list">
     {% for project in projects %}
       <form class="table-row repo-row" method="post" action="/api/projects/{{ project.key }}/github">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <span><strong>{{ project.key }}</strong><br><span class="muted">{{ project.name }}</span></span>
-        <input name="repo" placeholder="owner/repo" value="{{ project.github_repo_full_name or '' }}">
-        <input name="installation_id" placeholder="installation id" value="{{ project.github_installation_id or '' }}">
+        <label class="field-shell">
+          <span class="label-row">
+            <span data-i18n="field.github_repo">GitHub repo</span>
+            <span class="field-badge" data-i18n="field.optional">Optional</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.github_repo" data-tooltip="Use owner/repo, https://github.com/owner/repo, or git@github.com:owner/repo.git.">?</button>
+          </span>
+          <input name="repo" placeholder="owner/repo or https://github.com/owner/repo" value="{{ project.github_repo_full_name or '' }}" data-i18n-placeholder="placeholder.github_repo">
+        </label>
+        <label class="field-shell">
+          <span class="label-row">
+            <span data-i18n="field.installation_id">Installation id</span>
+            <span class="field-badge" data-i18n="field.optional">Optional</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.installation_id" data-tooltip="Numeric GitHub App installation id. Needed for automatic autolink setup; webhooks can still link tickets without it.">?</button>
+          </span>
+          <input name="installation_id" placeholder="installation id" value="{{ project.github_installation_id or '' }}" data-i18n-placeholder="placeholder.installation_id">
+        </label>
         <button class="secondary" type="submit" data-i18n="action.save">Save</button>
       </form>
     {% else %}
       <p class="muted" data-i18n="github.create_project_first">Create a project first.</p>
     {% endfor %}
   </div>
-  <p class="muted">Webhook URL: <code>{{ base_url }}/integrations/github/webhook</code></p>
 </section>
 {% endblock %}

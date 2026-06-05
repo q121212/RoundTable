@@ -283,6 +283,110 @@ button,
   font-weight: 700;
 }
 
+.field-shell {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 24px;
+  min-width: 0;
+  position: relative;
+}
+
+.field-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.field-badge.required {
+  border-color: color-mix(in srgb, var(--coral) 40%, var(--line));
+  color: var(--coral);
+}
+
+.help-dot {
+  position: relative;
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.help-dot::after {
+  content: attr(data-tooltip);
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 60;
+  width: min(280px, calc(100vw - 32px));
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  white-space: normal;
+}
+
+.help-dot::before {
+  content: "";
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  z-index: 61;
+  border: 6px solid transparent;
+  border-top-color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.help-dot:hover::after,
+.help-dot:hover::before,
+.help-dot:focus-visible::after,
+.help-dot:focus-visible::before,
+.help-dot.tooltip-open::after,
+.help-dot.tooltip-open::before {
+  display: block;
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.help-dot:hover::before,
+.help-dot:focus-visible::before,
+.help-dot.tooltip-open::before {
+  transform: translateX(-50%);
+}
+
 .split-layout {
   display: grid;
   grid-template-columns: minmax(280px, 380px) 1fr;
@@ -358,6 +462,22 @@ button,
   margin-bottom: 14px;
 }
 
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.section-heading h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.section-heading p {
+  margin: 0;
+}
+
 .ticket-create-form,
 .compact-form {
   display: grid;
@@ -416,12 +536,59 @@ button,
   padding: 12px;
   display: grid;
   gap: 10px;
+  touch-action: pan-y;
+}
+
+.ticket-card-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.drag-handle {
+  min-width: 52px;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  color: var(--muted);
   cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.ticket-placeholder {
+  min-height: 74px;
+  border: 1px dashed var(--green);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
+.ticket-drag-preview {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0.92;
+  transform: rotate(1deg);
+  box-shadow: var(--shadow);
+}
+
+.drag-source {
+  display: none;
+}
+
+.is-dragging-ticket {
+  user-select: none;
 }
 
 .ticket-card-main {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .ticket-card strong,
@@ -474,6 +641,18 @@ button,
 .head-actions {
   display: flex;
   gap: 10px;
+}
+
+.workflow-actions {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.workflow-actions p {
+  margin: 0;
 }
 
 .meta-list {
@@ -646,6 +825,15 @@ code {
 
   .ticket-card {
     cursor: default;
+  }
+
+  .ticket-card-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .drag-handle {
+    min-width: 58px;
+    min-height: 44px;
   }
 
   .mobile-move {

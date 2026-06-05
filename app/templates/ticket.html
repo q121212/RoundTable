@@ -6,19 +6,6 @@
     <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
     <h1><span class="ticket-key">{{ ticket.key }}</span> {{ ticket.title }}</h1>
   </div>
-  <div class="head-actions">
-    {% if ticket.status == "Closed" %}
-      <form method="post" action="/api/tickets/{{ ticket.key }}/reopen">
-        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <button class="secondary" type="submit" data-i18n="action.reopen">Reopen</button>
-      </form>
-    {% else %}
-      <form method="post" action="/api/tickets/{{ ticket.key }}/close">
-        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <button class="danger" type="submit" data-i18n="action.close">Close</button>
-      </form>
-    {% endif %}
-  </div>
 </section>
 
 <section class="ticket-layout">
@@ -26,16 +13,28 @@
     <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
       <label>
-        <span data-i18n="field.title">Title</span>
+        <span class="label-row">
+          <span data-i18n="field.title">Title</span>
+          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
+        </span>
         <input name="title" value="{{ ticket.title }}" required>
       </label>
       <label>
-        <span data-i18n="field.description">Description</span>
+        <span class="label-row">
+          <span data-i18n="field.description">Description</span>
+          <span class="field-badge" data-i18n="field.optional">Optional</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
+        </span>
         <textarea name="description" rows="8">{{ ticket.description }}</textarea>
       </label>
       <div class="form-row">
         <label>
-          <span data-i18n="field.status">Status</span>
+          <span class="label-row">
+            <span data-i18n="field.status">Status</span>
+            <span class="field-badge required" data-i18n="field.required">Required</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">?</button>
+          </span>
           <select name="status">
             {% for status in statuses %}
               <option value="{{ status }}" {% if status == ticket.status %}selected{% endif %} data-i18n="status.{{ status }}">{{ status }}</option>
@@ -43,7 +42,11 @@
           </select>
         </label>
         <label>
-          <span data-i18n="field.priority">Priority</span>
+          <span class="label-row">
+            <span data-i18n="field.priority">Priority</span>
+            <span class="field-badge required" data-i18n="field.required">Required</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
+          </span>
           <select name="priority">
             {% for priority in priorities %}
               <option value="{{ priority }}" {% if priority == ticket.priority %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
@@ -51,7 +54,11 @@
           </select>
         </label>
         <label>
-          <span data-i18n="field.assignee">Assignee</span>
+          <span class="label-row">
+            <span data-i18n="field.assignee">Assignee</span>
+            <span class="field-badge" data-i18n="field.optional">Optional</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
+          </span>
           <select name="assignee_id">
             <option value="" data-i18n="ticket.unassigned">Unassigned</option>
             {% for member in members %}
@@ -73,6 +80,20 @@
         <dt data-i18n="field.assignee">Assignee</dt><dd>{{ ticket.assignee_login or "Unassigned" }}</dd>
         <dt data-i18n="field.reporter">Reporter</dt><dd>{{ ticket.reporter_login or "Unknown" }}</dd>
       </dl>
+      <div class="workflow-actions">
+        <p class="muted" data-i18n="ticket.workflow_help">These actions change ticket state; they do not close this page.</p>
+        {% if ticket.status == "Closed" %}
+          <form method="post" action="/api/tickets/{{ ticket.key }}/reopen">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <button class="secondary wide" type="submit" data-i18n="action.reopen_ticket">Reopen ticket</button>
+          </form>
+        {% else %}
+          <form method="post" action="/api/tickets/{{ ticket.key }}/close">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <button class="danger wide" type="submit" data-i18n="action.mark_closed">Mark ticket closed</button>
+          </form>
+        {% endif %}
+      </div>
       <form method="post" action="/api/tickets/{{ ticket.key }}/watch">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <input type="hidden" name="watch" value="true">
@@ -99,7 +120,14 @@
     <h2 data-i18n="ticket.comments">Comments</h2>
     <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}/comments">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-      <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment"></textarea>
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.comment">Comment</span>
+          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.comment" data-tooltip="Visible update for everyone watching the ticket.">?</button>
+        </span>
+        <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment"></textarea>
+      </label>
       <button class="secondary" type="submit" data-i18n="action.comment">Comment</button>
     </form>
     <div class="comment-list">

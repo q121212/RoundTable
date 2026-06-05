@@ -17,6 +17,10 @@
 <section class="split-layout">
   <div class="panel">
     <h2 data-i18n="notifications.channels">Channels</h2>
+    <div class="notice">
+      <strong data-i18n="notifications.how_title">When notifications are sent</strong>
+      <p class="muted" data-i18n="notifications.how_copy">RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.</p>
+    </div>
     <form class="stacked-form" method="post" action="/api/me/notification-preferences">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
       <label class="check-row">
@@ -40,9 +44,13 @@
       <p>Linked to chat <code>{{ telegram_link.chat_id }}</code></p>
       <form method="post" action="/api/me/telegram/unlink">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <button class="danger" type="submit">Unlink Telegram</button>
+        <button class="danger" type="submit" data-i18n="notifications.telegram_unlink">Unlink Telegram</button>
       </form>
     {% else %}
+      <div class="notice">
+        <strong data-i18n="notifications.telegram_title">How to link a phone</strong>
+        <p class="muted" data-i18n="notifications.telegram_copy">Generate a token, open your configured Telegram bot, and send /start plus that token. The bot webhook must point to /integrations/telegram/webhook.</p>
+      </div>
       <p class="muted" data-i18n="notifications.telegram_help">Generate a one-time token, then send it to the configured Telegram bot.</p>
       <form method="post" action="/api/me/telegram/link">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">

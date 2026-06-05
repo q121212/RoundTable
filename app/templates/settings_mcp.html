@@ -17,15 +17,23 @@
 <section class="split-layout">
   <div class="panel">
     <h2 data-i18n="mcp.create">Create token</h2>
+    <div class="notice">
+      <strong data-i18n="mcp.how_title">How MCP tokens work</strong>
+      <p class="muted" data-i18n="mcp.how_copy">Create a token here, copy it once, then use it in your MCP client as an Authorization: Bearer token.</p>
+    </div>
     <form class="stacked-form" method="post" action="/settings/mcp/tokens">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
       <label>
-        <span data-i18n="field.name">Name</span>
+        <span class="label-row">
+          <span data-i18n="field.name">Name</span>
+          <span class="field-badge" data-i18n="field.optional">Optional</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.mcp_token_name" data-tooltip="A label to remember where this token is used, for example Codex laptop.">?</button>
+        </span>
         <input name="name" placeholder="Codex on laptop">
       </label>
       <button class="primary" type="submit" data-i18n="mcp.create_token">Create MCP token</button>
     </form>
-    <p class="muted">Endpoint: <code>{{ base_url }}/mcp</code></p>
+    <p class="muted"><span data-i18n="mcp.endpoint">Endpoint:</span> <code>{{ base_url }}/mcp</code></p>
   </div>
   <div class="panel">
     <h2 data-i18n="mcp.tokens">Tokens</h2>
