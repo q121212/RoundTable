@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}RoundTable{% endblock %}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">RoundTable</a>
+      <nav class="topnav">
+        {% if user %}
+          <a href="/projects" data-i18n="nav.projects">Projects</a>
+          <a href="/settings/mcp">MCP</a>
+          <a href="/settings/notifications" data-i18n="nav.notifications">Notifications</a>
+          <a href="/integrations/github">GitHub</a>
+          <form class="inline" method="post" action="/logout">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <button class="ghost" type="submit" data-i18n="nav.logout">Log out</button>
+          </form>
+        {% endif %}
+        <div class="quick-prefs" aria-label="Display settings">
+          <button class="ghost tiny" type="button" data-lang-option="en" aria-pressed="true">EN</button>
+          <button class="ghost tiny" type="button" data-lang-option="ru" aria-pressed="false">RU</button>
+          <button class="ghost tiny" type="button" data-theme-toggle data-i18n="theme.dark">Dark</button>
+        </div>
+      </nav>
+    </header>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

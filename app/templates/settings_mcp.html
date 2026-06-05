@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}MCP - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow" data-i18n="mcp.eyebrow">Automation</p>
+    <h1 data-i18n="mcp.title">MCP access</h1>
+  </div>
+</section>
+
+{% if created_token %}
+  <div class="notice success">
+    <span data-i18n="mcp.created">New token created. Copy it now:</span> <code>{{ created_token }}</code>
+  </div>
+{% endif %}
+
+<section class="split-layout">
+  <div class="panel">
+    <h2 data-i18n="mcp.create">Create token</h2>
+    <form class="stacked-form" method="post" action="/settings/mcp/tokens">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label>
+        <span data-i18n="field.name">Name</span>
+        <input name="name" placeholder="Codex on laptop">
+      </label>
+      <button class="primary" type="submit" data-i18n="mcp.create_token">Create MCP token</button>
+    </form>
+    <p class="muted">Endpoint: <code>{{ base_url }}/mcp</code></p>
+  </div>
+  <div class="panel">
+    <h2 data-i18n="mcp.tokens">Tokens</h2>
+    <div class="table-list">
+      {% for token in tokens %}
+        <div class="table-row">
+          <span><strong>{{ token.name }}</strong><br><span class="muted">{{ token.prefix }}...</span></span>
+          <span>{{ token.revoked_at or token.last_used_at or "never used" }}</span>
+          {% if not token.revoked_at %}
+            <form method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
+              <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+              <button class="ghost" type="submit" data-i18n="mcp.revoke">Revoke</button>
+            </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="muted" data-i18n="mcp.empty">No tokens yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

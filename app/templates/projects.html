@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Projects - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow" data-i18n="projects.eyebrow">Workspace</p>
+    <h1 data-i18n="projects.title">Projects</h1>
+  </div>
+</section>
+
+<section class="split-layout">
+  <div class="panel">
+    <h2 data-i18n="projects.create">Create project</h2>
+    <form class="stacked-form" method="post" action="/api/projects">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label>
+        <span data-i18n="field.key">Key</span>
+        <input name="key" maxlength="10" required placeholder="CRM">
+      </label>
+      <label>
+        <span data-i18n="field.name">Name</span>
+        <input name="name" required placeholder="Customer CRM">
+      </label>
+      <label>
+        <span data-i18n="field.github_repo">GitHub repo</span>
+        <input name="repo" placeholder="owner/repo">
+      </label>
+      <label>
+        <span data-i18n="field.description">Description</span>
+        <textarea name="description" rows="4" placeholder="What this project is for" data-i18n-placeholder="placeholder.project_description"></textarea>
+      </label>
+      <button class="primary" type="submit" data-i18n="projects.create">Create project</button>
+    </form>
+  </div>
+
+  <div class="list-panel">
+    {% if projects %}
+      <div class="project-grid">
+        {% for project in projects %}
+          <a class="project-card" href="/p/{{ project.key }}/board">
+            <span class="ticket-key">{{ project.key }}</span>
+            <strong>{{ project.name }}</strong>
+            <span class="muted">{{ project.ticket_count }} tickets</span>
+            {% if project.github_repo_full_name %}
+              <span class="repo-pill">{{ project.github_repo_full_name }}</span>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h2 data-i18n="projects.empty_title">No projects yet</h2>
+        <p data-i18n="projects.empty_copy">Create the first project and RoundTable will start ticket keys from KEY-1.</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

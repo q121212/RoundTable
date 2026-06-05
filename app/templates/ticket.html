@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ ticket.key }} - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
+    <h1><span class="ticket-key">{{ ticket.key }}</span> {{ ticket.title }}</h1>
+  </div>
+  <div class="head-actions">
+    {% if ticket.status == "Closed" %}
+      <form method="post" action="/api/tickets/{{ ticket.key }}/reopen">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <button class="secondary" type="submit" data-i18n="action.reopen">Reopen</button>
+      </form>
+    {% else %}
+      <form method="post" action="/api/tickets/{{ ticket.key }}/close">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <button class="danger" type="submit" data-i18n="action.close">Close</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="ticket-layout">
+  <div class="panel">
+    <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label>
+        <span data-i18n="field.title">Title</span>
+        <input name="title" value="{{ ticket.title }}" required>
+      </label>
+      <label>
+        <span data-i18n="field.description">Description</span>
+        <textarea name="description" rows="8">{{ ticket.description }}</textarea>
+      </label>
+      <div class="form-row">
+        <label>
+          <span data-i18n="field.status">Status</span>
+          <select name="status">
+            {% for status in statuses %}
+              <option value="{{ status }}" {% if status == ticket.status %}selected{% endif %} data-i18n="status.{{ status }}">{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span data-i18n="field.priority">Priority</span>
+          <select name="priority">
+            {% for priority in priorities %}
+              <option value="{{ priority }}" {% if priority == ticket.priority %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span data-i18n="field.assignee">Assignee</span>
+          <select name="assignee_id">
+            <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+            {% for member in members %}
+              <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.login }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <button class="primary" type="submit" data-i18n="ticket.save">Save ticket</button>
+    </form>
+  </div>
+
+  <aside class="side-panel">
+    <div class="panel">
+      <h2 data-i18n="ticket.details">Details</h2>
+      <dl class="meta-list">
+        <dt data-i18n="field.status">Status</dt><dd data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</dd>
+        <dt data-i18n="field.priority">Priority</dt><dd data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</dd>
+        <dt data-i18n="field.assignee">Assignee</dt><dd>{{ ticket.assignee_login or "Unassigned" }}</dd>
+        <dt data-i18n="field.reporter">Reporter</dt><dd>{{ ticket.reporter_login or "Unknown" }}</dd>
+      </dl>
+      <form method="post" action="/api/tickets/{{ ticket.key }}/watch">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <input type="hidden" name="watch" value="true">
+        <button class="secondary wide" type="submit" data-i18n="ticket.watch">Watch ticket</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h2 data-i18n="github.links">GitHub links</h2>
+      {% if links %}
+        <ul class="link-list">
+          {% for link in links %}
+            <li><a href="{{ link.url or '#' }}">{{ link.ref_type }} {{ link.ref_name }}</a><span>{{ link.state }}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted"><span data-i18n="github.use_key_prefix">Use</span> {{ ticket.key }} <span data-i18n="github.use_key_suffix">in branches, commits, or PRs to link code.</span></p>
+      {% endif %}
+    </div>
+  </aside>
+</section>
+
+<section class="ticket-layout">
+  <div class="panel">
+    <h2 data-i18n="ticket.comments">Comments</h2>
+    <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}/comments">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment"></textarea>
+      <button class="secondary" type="submit" data-i18n="action.comment">Comment</button>
+    </form>
+    <div class="comment-list">
+      {% for comment in comments %}
+        <article class="comment">
+          <strong>{{ comment.user_login or "Unknown" }}</strong>
+          <p>{{ comment.body }}</p>
+          <time>{{ comment.created_at }}</time>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+  <aside class="side-panel">
+    <div class="panel">
+      <h2 data-i18n="ticket.activity">Activity</h2>
+      <ol class="activity-list">
+        {% for action in actions %}
+          <li><strong>{{ action.actor_login or "System" }}</strong> {{ action.action }} <time>{{ action.created_at }}</time></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </aside>
+</section>
+{% endblock %}

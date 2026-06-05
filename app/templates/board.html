@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ project.key }} board - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head board-head">
+  <div>
+    <p class="eyebrow">{{ project.key }}</p>
+    <h1>{{ project.name }}</h1>
+    {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
+  </div>
+  <a class="secondary" href="/integrations/github" data-i18n="github.settings">GitHub settings</a>
+</section>
+
+<section class="ticket-create panel">
+  <form class="ticket-create-form" method="post" action="/api/tickets">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+    <input type="hidden" name="project_key" value="{{ project.key }}">
+    <input name="title" required placeholder="New ticket title" data-i18n-placeholder="placeholder.ticket_title">
+    <select name="priority" aria-label="Priority">
+      {% for priority in priorities %}
+        <option value="{{ priority }}" {% if priority == "Medium" %}selected{% endif %}>{{ priority }}</option>
+      {% endfor %}
+    </select>
+    <select name="assignee_id" aria-label="Assignee">
+      <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+      {% for member in members %}
+        <option value="{{ member.id }}">{{ member.login }}</option>
+      {% endfor %}
+    </select>
+    <button class="primary" type="submit" data-i18n="action.create">Create</button>
+  </form>
+</section>
+
+<div class="mobile-status-tabs" role="tablist" aria-label="Statuses">
+  <button class="status-tab active" data-status-filter="all" type="button" data-i18n="status.all">All</button>
+  {% for status in statuses %}
+    <button class="status-tab" data-status-filter="{{ status }}" type="button" data-i18n="status.{{ status }}">{{ status }}</button>
+  {% endfor %}
+</div>
+
+<section class="board" data-csrf="{{ user.csrf_token }}">
+  {% for status in statuses %}
+    <div class="board-column" data-status="{{ status }}">
+      <header class="column-head">
+        <h2 data-i18n="status.{{ status }}">{{ status }}</h2>
+        <span>{{ columns[status]|length }}</span>
+      </header>
+      <div class="dropzone" data-status="{{ status }}">
+        {% for ticket in columns[status] %}
+          <article class="ticket-card priority-{{ ticket.priority|lower }}" draggable="true" data-ticket-key="{{ ticket.key }}">
+            <a class="ticket-card-main" href="/t/{{ ticket.key }}">
+              <span class="ticket-key">{{ ticket.key }}</span>
+              <strong>{{ ticket.title }}</strong>
+              <span class="muted">{{ ticket.assignee_login or "Unassigned" }} · <span data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span></span>
+            </a>
+            <form class="mobile-move" method="post" action="/api/tickets/{{ ticket.key }}">
+              <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+              <select name="status">
+                {% for target in statuses %}
+                  <option value="{{ target }}" {% if target == ticket.status %}selected{% endif %} data-i18n="status.{{ target }}">{{ target }}</option>
+                {% endfor %}
+              </select>
+              <button class="ghost" type="submit" data-i18n="action.move">Move</button>
+            </form>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+<section class="panel admin-panel">
+  <h2 data-i18n="projects.access">Project access</h2>
+  <form class="compact-form" method="post" action="/api/projects/{{ project.key }}/members">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+    <input name="login" placeholder="Existing user login" required data-i18n-placeholder="placeholder.existing_login">
+    <select name="role">
+      <option value="member">member</option>
+      <option value="viewer">viewer</option>
+      <option value="admin">admin</option>
+    </select>
+    <button class="secondary" type="submit" data-i18n="projects.add_member">Add member</button>
+  </form>
+</section>
+
+<div class="bottom-action">
+  <a class="primary" href="#top" onclick="document.querySelector('[name=title]').focus(); return false;" data-i18n="ticket.new">New ticket</a>
+</div>
+{% endblock %}

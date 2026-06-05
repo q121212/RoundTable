@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Log in - RoundTable{% endblock %}
+{% block content %}
+<section class="auth-shell">
+  <div class="auth-panel">
+    <p class="eyebrow" data-i18n="login.eyebrow">Local ticket tracker</p>
+    <h1 data-i18n="login.title">Sign in to RoundTable</h1>
+    <p class="muted" data-i18n="login.copy">Use GitHub OAuth in production. Local login is available only when enabled by configuration.</p>
+    {% if github_enabled %}
+      <a class="primary wide" href="/auth/github/start" data-i18n="login.github">Continue with GitHub</a>
+    {% else %}
+      <div class="notice" data-i18n="login.github_missing">GitHub OAuth is not configured yet.</div>
+    {% endif %}
+    {% if allow_dev_login %}
+      <form class="stacked-form" method="post" action="/auth/dev">
+        <label>
+          <span data-i18n="field.github_login">GitHub login</span>
+          <input name="login" autocomplete="username" required placeholder="octocat">
+        </label>
+        <label>
+          <span data-i18n="field.email">Email</span>
+          <input name="email" type="email" placeholder="you@example.com">
+        </label>
+        <button class="secondary wide" type="submit" data-i18n="login.local">Use local login</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

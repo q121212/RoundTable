@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Notifications - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow" data-i18n="notifications.eyebrow">Personal settings</p>
+    <h1 data-i18n="notifications.title">Notifications</h1>
+  </div>
+</section>
+
+{% if telegram_token %}
+  <div class="notice success">
+    <span data-i18n="notifications.telegram_send">Send this to your Telegram bot:</span> <code>/start {{ telegram_token }}</code>
+  </div>
+{% endif %}
+
+<section class="split-layout">
+  <div class="panel">
+    <h2 data-i18n="notifications.channels">Channels</h2>
+    <form class="stacked-form" method="post" action="/api/me/notification-preferences">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label class="check-row">
+        <input type="checkbox" name="email_enabled" value="true" {% if prefs.email_enabled %}checked{% endif %}>
+        <span data-i18n="field.email">Email</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" name="telegram_enabled" value="true" {% if prefs.telegram_enabled %}checked{% endif %}>
+        <span>Telegram</span>
+      </label>
+      <button class="primary" type="submit" data-i18n="notifications.save">Save preferences</button>
+    </form>
+    <form class="compact-form" method="post" action="/api/me/notifications/test">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <button class="secondary" type="submit" data-i18n="notifications.test">Send test</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h2>Telegram</h2>
+    {% if telegram_link %}
+      <p>Linked to chat <code>{{ telegram_link.chat_id }}</code></p>
+      <form method="post" action="/api/me/telegram/unlink">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <button class="danger" type="submit">Unlink Telegram</button>
+      </form>
+    {% else %}
+      <p class="muted" data-i18n="notifications.telegram_help">Generate a one-time token, then send it to the configured Telegram bot.</p>
+      <form method="post" action="/api/me/telegram/link">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <button class="secondary" type="submit" data-i18n="notifications.telegram_generate">Generate link token</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

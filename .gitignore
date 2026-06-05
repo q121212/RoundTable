@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.log
+data/*.pid
+
+.DS_Store
+

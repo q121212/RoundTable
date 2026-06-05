@@ -1,0 +1,32 @@
+[project]
+name = "roundtable"
+version = "0.1.0"
+description = "A local Jira-like ticket tracker with GitHub, MCP, and notifications."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+    "itsdangerous>=2.2.0",
+    "markdown>=3.6",
+    "pyjwt[crypto]>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+

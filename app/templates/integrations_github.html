@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}GitHub - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow" data-i18n="github.integration">Integration</p>
+    <h1>GitHub</h1>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 data-i18n="github.repo_links">Repository links</h2>
+  <div class="table-list">
+    {% for project in projects %}
+      <form class="table-row repo-row" method="post" action="/api/projects/{{ project.key }}/github">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <span><strong>{{ project.key }}</strong><br><span class="muted">{{ project.name }}</span></span>
+        <input name="repo" placeholder="owner/repo" value="{{ project.github_repo_full_name or '' }}">
+        <input name="installation_id" placeholder="installation id" value="{{ project.github_installation_id or '' }}">
+        <button class="secondary" type="submit" data-i18n="action.save">Save</button>
+      </form>
+    {% else %}
+      <p class="muted" data-i18n="github.create_project_first">Create a project first.</p>
+    {% endfor %}
+  </div>
+  <p class="muted">Webhook URL: <code>{{ base_url }}/integrations/github/webhook</code></p>
+</section>
+{% endblock %}
