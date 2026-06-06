@@ -1053,7 +1053,6 @@
       return;
     }
     applyTicketUpdate(card, ticket);
-    flashSaved(card);
   }
 
   function setupBoardLiveEvents() {
