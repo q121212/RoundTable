@@ -47,6 +47,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   letter-spacing: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -196,8 +198,9 @@ button,
 
 .page {
   width: min(1440px, 100%);
+  flex: 1 0 auto;
   margin: 0 auto;
-  padding: 24px clamp(14px, 3vw, 32px) 88px;
+  padding: 24px clamp(14px, 3vw, 32px) 32px;
 }
 
 .page-head {
@@ -246,6 +249,15 @@ button,
 :root[data-theme="dark"] .notice.success {
   background: #1d3828;
   border-color: #315c42;
+}
+
+.notice.warning {
+  background: #fff2df;
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+
+:root[data-theme="dark"] .notice.warning {
+  background: #3d2f1c;
 }
 
 .auth-shell {
@@ -499,9 +511,8 @@ button,
 
 .ticket-create-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  align-items: end;
 }
 
 .quick-create-main,
@@ -511,8 +522,64 @@ button,
 }
 
 .quick-create-side {
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: minmax(170px, 220px) minmax(240px, 1fr) auto;
   align-items: end;
+}
+
+.quick-create-button {
+  min-width: 150px;
+  justify-self: end;
+}
+
+.assignee-picker {
+  position: relative;
+}
+
+.assignee-picker-button,
+.assignee-option {
+  width: 100%;
+  min-height: 44px;
+  justify-content: flex-start;
+  gap: 8px;
+  text-transform: none;
+  font-weight: 800;
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.assignee-picker-button {
+  padding: 9px 12px;
+}
+
+.assignee-picker-menu {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  display: none;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.assignee-picker.is-open .assignee-picker-menu {
+  display: grid;
+}
+
+.assignee-option {
+  border: 0;
+  min-height: 38px;
+  padding: 7px 8px;
+}
+
+.assignee-option:hover,
+.assignee-option.is-current {
+  background: color-mix(in srgb, var(--green) 11%, transparent);
 }
 
 .board {
@@ -772,7 +839,8 @@ time {
 }
 
 code {
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
   background: color-mix(in srgb, var(--surface-strong) 80%, var(--line));
   padding: 2px 5px;
   border-radius: 5px;
@@ -802,8 +870,14 @@ code {
 
   .quick-create-side,
   .member-row,
-  .danger-confirm-form {
+  .danger-confirm-form,
+  .copy-card {
     grid-template-columns: 1fr;
+  }
+
+  .quick-create-button {
+    width: 100%;
+    justify-self: stretch;
   }
 
   .form-row {
@@ -1138,7 +1212,9 @@ button,
 }
 
 .ticket-title-edit {
+  justify-self: start;
   justify-content: flex-start;
+  max-width: 100%;
   min-width: 0;
   min-height: 30px;
   padding: 0;
@@ -1574,8 +1650,8 @@ a.ticket-key:hover {
   .secondary,
   .danger,
   .ghost {
-    min-height: 48px;
-    padding: 11px 13px;
+    min-height: 52px;
+    padding: 12px 15px;
   }
 
   input,
@@ -1603,8 +1679,8 @@ a.ticket-key:hover {
   }
 
   .topnav > a[data-board-link] {
-    min-width: 44px;
-    width: 44px;
+    min-width: 48px;
+    width: 48px;
     padding-inline: 0;
     font-size: 0;
   }
@@ -1614,8 +1690,8 @@ a.ticket-key:hover {
   }
 
   .app-menu > summary {
-    min-width: 44px;
-    width: 44px;
+    min-width: 48px;
+    width: 48px;
     padding-inline: 0;
     font-size: 0;
   }
@@ -1631,8 +1707,8 @@ a.ticket-key:hover {
 
   .menu-popover a,
   .menu-popover .inline button {
-    min-height: 46px;
-    font-size: 0.98rem;
+    min-height: 54px;
+    font-size: 1rem;
   }
 
   .quick-prefs {
@@ -1641,15 +1717,15 @@ a.ticket-key:hover {
   }
 
   .quick-prefs .tiny {
-    min-width: 46px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0 8px;
     font-size: 0.82rem;
   }
 
   .quick-prefs .icon-pref {
-    width: 42px;
-    min-width: 42px;
+    width: 48px;
+    min-width: 48px;
     padding: 0;
   }
 
@@ -1704,8 +1780,8 @@ a.ticket-key:hover {
   }
 
   .status-tab {
-    min-height: 42px;
-    padding: 8px 11px;
+    min-height: 46px;
+    padding: 9px 13px;
   }
 
   .board {
@@ -1738,7 +1814,7 @@ a.ticket-key:hover {
   }
 
   .ticket-title-edit {
-    min-height: 38px;
+    min-height: 42px;
   }
 
   .ticket-title {
@@ -1752,9 +1828,9 @@ a.ticket-key:hover {
   }
 
   .ticket-open-link {
-    width: 42px;
-    min-width: 42px;
-    min-height: 42px;
+    width: 46px;
+    min-width: 46px;
+    min-height: 46px;
   }
 
   .ticket-card-chips {
@@ -1762,23 +1838,41 @@ a.ticket-key:hover {
   }
 
   .chip {
-    min-height: 34px;
-    padding: 5px 8px;
-    font-size: 0.78rem;
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
   }
 
   .chip-desc,
   .chip-comment {
-    width: 36px;
-    min-width: 36px;
-    padding: 5px;
+    width: 42px;
+    min-width: 42px;
+    padding: 7px;
   }
 
   .drag-handle,
   .icon-only {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .popover-menu {
+    min-width: 190px;
+    padding: 7px;
+    gap: 3px;
+  }
+
+  .popover-option {
+    min-height: 46px;
+    padding: 10px 12px;
+    font-size: 0.98rem;
+  }
+
+  .assignee-option {
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 0.98rem;
   }
 
   .ticket-card-footer {
@@ -1813,6 +1907,12 @@ a.ticket-key:hover {
 .member-role-form .secondary,
 .member-row .ghost {
   min-height: 36px;
+}
+
+.member-row button:disabled,
+.member-role-form select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .danger-confirm-form {
@@ -1857,7 +1957,7 @@ a.ticket-key:hover {
 
 .copy-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(240px, 1fr) auto;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
@@ -1868,7 +1968,11 @@ a.ticket-key:hover {
 }
 
 .copy-card code {
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 button.is-copied {
@@ -1886,6 +1990,14 @@ button.is-copied {
 .footer-mark {
   display: block;
   border-radius: 5px;
+  transition: transform 0.6s ease;
+}
+
+.brand:hover .brand-mark,
+.brand:focus-visible .brand-mark,
+.footer-brand:hover .footer-mark,
+.footer-brand:focus-visible .footer-mark {
+  transform: rotate(180deg);
 }
 
 .prefs-divider {
@@ -1914,12 +2026,4 @@ button.is-copied {
   gap: 7px;
   color: var(--ink);
   font-weight: 700;
-}
-
-.footer-mark {
-  transition: transform 0.6s ease;
-}
-
-.footer-brand:hover .footer-mark {
-  transform: rotate(180deg);
 }

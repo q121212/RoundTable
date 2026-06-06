@@ -92,14 +92,14 @@
       "notifications.eyebrow": "Personal settings",
       "notifications.how_copy": "RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.",
       "notifications.how_title": "When notifications are sent",
-      "notifications.email_note": "Email is optional and often unavailable from GitHub profiles, so Telegram is the primary channel for now.",
       "notifications.save": "Save preferences",
-      "notifications.telegram_copy": "Generate a token, open your configured Telegram bot, and send /start plus that token. The bot webhook must point to /integrations/telegram/webhook.",
+      "notifications.telegram_copy": "Generate a token, open your configured Telegram bot, and send /start plus that token.",
       "notifications.telegram_generate": "Generate link token",
       "notifications.telegram_help": "Generate a one-time token, then send it to the configured Telegram bot.",
       "notifications.telegram_send": "Send this to your Telegram bot:",
       "notifications.telegram_title": "How to link a phone",
       "notifications.telegram_unlink": "Unlink Telegram",
+      "notifications.telegram_webhook": "Bot webhook endpoint:",
       "notifications.test": "Send test",
       "notifications.title": "Notifications",
       "placeholder.comment": "Add an update",
@@ -131,6 +131,9 @@
       "projects.member_hint": "You can open projects where an admin has added your GitHub login. Project creation is limited to workspace admins.",
       "projects.members": "Members",
       "projects.no_members": "No members yet.",
+      "projects.last_admin_badge": "only admin",
+      "projects.last_admin_copy": "Add another project admin before removing or demoting the current one.",
+      "projects.last_admin_title": "Project needs an admin",
       "projects.remove_member": "Remove",
       "projects.save_details": "Save project",
       "projects.settings": "Project settings",
@@ -261,14 +264,14 @@
       "notifications.eyebrow": "Личные настройки",
       "notifications.how_copy": "RoundTable уведомляет исполнителей, авторов и наблюдателей при назначении, смене статуса, комментариях, закрытии и переоткрытии.",
       "notifications.how_title": "Когда приходят уведомления",
-      "notifications.email_note": "Email необязателен и часто скрыт в GitHub-профиле, поэтому пока основной канал - Telegram.",
       "notifications.save": "Сохранить настройки",
-      "notifications.telegram_copy": "Создайте токен, откройте настроенного Telegram-бота и отправьте /start плюс этот токен. Webhook бота должен указывать на /integrations/telegram/webhook.",
+      "notifications.telegram_copy": "Создайте токен, откройте настроенного Telegram-бота и отправьте /start плюс этот токен.",
       "notifications.telegram_generate": "Создать токен привязки",
       "notifications.telegram_help": "Создайте одноразовый токен и отправьте его настроенному Telegram-боту.",
       "notifications.telegram_send": "Отправьте это вашему Telegram-боту:",
       "notifications.telegram_title": "Как привязать телефон",
       "notifications.telegram_unlink": "Отвязать Telegram",
+      "notifications.telegram_webhook": "Webhook endpoint бота:",
       "notifications.test": "Отправить тест",
       "notifications.title": "Уведомления",
       "placeholder.comment": "Добавить обновление",
@@ -300,6 +303,9 @@
       "projects.member_hint": "Вы можете открывать проекты, куда админ добавил ваш GitHub логин. Создание проектов доступно только workspace admin.",
       "projects.members": "Участники",
       "projects.no_members": "Участников пока нет.",
+      "projects.last_admin_badge": "единственный админ",
+      "projects.last_admin_copy": "Добавьте ещё одного администратора проекта, прежде чем удалять или понижать текущего.",
+      "projects.last_admin_title": "Проекту нужен администратор",
       "projects.remove_member": "Удалить",
       "projects.save_details": "Сохранить проект",
       "projects.settings": "Настройки проекта",
@@ -1104,6 +1110,43 @@
     });
   }
 
+  function setupAssigneePickers() {
+    document.querySelectorAll("[data-assignee-picker]").forEach((picker) => {
+      const current = picker.querySelector("[data-assignee-current]");
+      const input = picker.closest("form")?.querySelector('input[name="assignee_id"]');
+      if (!current || !input) return;
+      current.addEventListener("click", () => {
+        document.querySelectorAll(".assignee-picker.is-open").forEach((openPicker) => {
+          if (openPicker !== picker) openPicker.classList.remove("is-open");
+        });
+        picker.classList.toggle("is-open");
+      });
+      picker.querySelectorAll(".assignee-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          input.value = option.dataset.assigneeValue || "";
+          picker.querySelectorAll(".assignee-option.is-current").forEach((item) => item.classList.remove("is-current"));
+          option.classList.add("is-current");
+          renderAvatar(current.querySelector(".avatar-dot"), option.dataset.assigneeAvatar || "", option.dataset.assigneeLogin || "");
+          const label = current.querySelector("span:last-child");
+          if (label) {
+            if (input.value) {
+              label.removeAttribute("data-i18n");
+              label.textContent = option.dataset.assigneeName || option.textContent.trim();
+            } else {
+              label.dataset.i18n = "ticket.unassigned";
+              label.textContent = translate("ticket.unassigned", currentLang()) || "Unassigned";
+            }
+          }
+          picker.classList.remove("is-open");
+        });
+      });
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("[data-assignee-picker]")) return;
+      document.querySelectorAll(".assignee-picker.is-open").forEach((picker) => picker.classList.remove("is-open"));
+    });
+  }
+
   function setupMenus() {
     document.addEventListener("click", (event) => {
       document.querySelectorAll("details.app-menu[open]").forEach((menu) => {
@@ -1165,6 +1208,7 @@
     setupLocalTimes();
     setupActionLabels();
     setupMemberRoleForms();
+    setupAssigneePickers();
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();

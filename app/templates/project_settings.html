@@ -13,6 +13,12 @@
 </section>
 
 <section class="split-layout">
+  {% if error == "last_admin" %}
+    <div class="notice warning wide-panel">
+      <strong data-i18n="projects.last_admin_title">Project needs an admin</strong>
+      <p class="muted" data-i18n="projects.last_admin_copy">Add another project admin before removing or demoting the current one.</p>
+    </div>
+  {% endif %}
   <div class="panel">
     <h2 data-i18n="projects.details">Project details</h2>
     <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/settings">
@@ -73,6 +79,7 @@
     <h2 data-i18n="projects.members">Members</h2>
     <div class="table-list">
       {% for member in members %}
+        {% set is_last_admin = member.project_role == "admin" and admin_count <= 1 %}
         <div class="table-row member-row">
           <span class="profile-line">
             <span class="avatar-dot" aria-hidden="true">
@@ -89,16 +96,20 @@
           </span>
           <form class="member-role-form" method="post" action="/api/projects/{{ project.key }}/members/{{ member.id }}">
             <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <select name="role" aria-label="Role">
+            <select name="role" aria-label="Role" {% if is_last_admin %}disabled{% endif %}>
               <option value="member" {% if member.project_role == "member" %}selected{% endif %}>member</option>
               <option value="viewer" {% if member.project_role == "viewer" %}selected{% endif %}>viewer</option>
               <option value="admin" {% if member.project_role == "admin" %}selected{% endif %}>admin</option>
             </select>
-            <button class="secondary" type="submit" data-icon="save" data-i18n="action.save">Save</button>
+            {% if is_last_admin %}
+              <span class="field-badge" data-i18n="projects.last_admin_badge">only admin</span>
+            {% else %}
+              <button class="secondary" type="submit" data-icon="save" data-i18n="action.save">Save</button>
+            {% endif %}
           </form>
           <form method="post" action="/api/projects/{{ project.key }}/members/{{ member.id }}/remove">
             <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <button class="ghost" type="submit" data-icon="user-minus" data-i18n="projects.remove_member">Remove</button>
+            <button class="ghost" type="submit" data-icon="user-minus" data-i18n="projects.remove_member" {% if is_last_admin %}disabled aria-disabled="true" title="Add another admin first"{% endif %}>Remove</button>
           </form>
         </div>
       {% else %}

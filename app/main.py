@@ -282,15 +282,16 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
 
 
 @app.get("/p/{project_key}/settings", response_class=HTMLResponse)
-async def project_settings_page(request: Request, project_key: str) -> HTMLResponse:
+async def project_settings_page(request: Request, project_key: str, error: str = "") -> HTMLResponse:
     user = require_page_user(request)
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
     members = project_members(int(project["id"]))
+    admin_count = sum(1 for member in members if member.get("project_role") == "admin")
     return render(
         request,
         "project_settings.html",
-        {"project": project, "members": members, "can_delete": True},
+        {"project": project, "members": members, "admin_count": admin_count, "can_delete": True, "error": error},
     )
 
 
@@ -332,7 +333,12 @@ async def api_update_member(request: Request, project_key: str, member_id: int) 
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
     form = await request.form()
-    update_project_member(int(project["id"]), member_id, str(form.get("role") or "member"))
+    try:
+        update_project_member(int(project["id"]), member_id, str(form.get("role") or "member"))
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_400_BAD_REQUEST:
+            return redirect("/p/%s/settings?error=last_admin" % project["key"])
+        raise
     return redirect("/p/%s/settings" % project["key"])
 
 
@@ -341,7 +347,12 @@ async def api_remove_member(request: Request, project_key: str, member_id: int) 
     user = await validate_csrf_request(request)
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
-    remove_project_member(int(project["id"]), member_id)
+    try:
+        remove_project_member(int(project["id"]), member_id)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_400_BAD_REQUEST:
+            return redirect("/p/%s/settings?error=last_admin" % project["key"])
+        raise
     return redirect("/p/%s/settings" % project["key"])
 
 

@@ -20,7 +20,6 @@
     <div class="notice">
       <strong data-i18n="notifications.how_title">When notifications are sent</strong>
       <p class="muted" data-i18n="notifications.how_copy">RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.</p>
-      <p class="muted" data-i18n="notifications.email_note">Email is optional and often unavailable from GitHub profiles, so Telegram is the primary channel for now.</p>
     </div>
     <form class="stacked-form" method="post" action="/api/me/notification-preferences">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
@@ -46,7 +45,8 @@
     {% else %}
       <div class="notice">
         <strong data-i18n="notifications.telegram_title">How to link a phone</strong>
-        <p class="muted" data-i18n="notifications.telegram_copy">Generate a token, open your configured Telegram bot, and send /start plus that token. The bot webhook must point to /integrations/telegram/webhook.</p>
+        <p class="muted" data-i18n="notifications.telegram_copy">Generate a token, open your configured Telegram bot, and send /start plus that token.</p>
+        <p class="muted"><span data-i18n="notifications.telegram_webhook">Bot webhook endpoint:</span> <code>{{ base_url }}/integrations/telegram/webhook</code></p>
       </div>
       <p class="muted" data-i18n="notifications.telegram_help">Generate a one-time token, then send it to the configured Telegram bot.</p>
       <form method="post" action="/api/me/telegram/link">

@@ -25,7 +25,7 @@
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
       <input type="hidden" name="project_key" value="{{ project.key }}">
       <div class="quick-create-main">
-        <label class="field-shell">
+        <label class="field-shell quick-priority">
           <span class="label-row">
             <span data-i18n="field.title">Title</span>
             <span class="required-mark" aria-hidden="true">*</span>
@@ -53,19 +53,38 @@
             {% endfor %}
           </select>
         </label>
-        <label class="field-shell">
+        <div class="field-shell quick-assignee">
           <span class="label-row">
             <span data-i18n="field.assignee">Assignee</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
           </span>
-          <select name="assignee_id" aria-label="Assignee">
-            <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+          <input type="hidden" name="assignee_id" value="">
+          <div class="assignee-picker" data-assignee-picker>
+            <button class="assignee-picker-button" type="button" data-assignee-current aria-label="Assignee">
+              <span class="avatar-dot" aria-hidden="true">?</span>
+              <span data-i18n="ticket.unassigned">Unassigned</span>
+            </button>
+            <div class="assignee-picker-menu">
+              <button class="assignee-option is-current" type="button" data-assignee-value="" data-assignee-name="Unassigned">
+                <span class="avatar-dot" aria-hidden="true">?</span>
+                <span data-i18n="ticket.unassigned">Unassigned</span>
+              </button>
             {% for member in members %}
-              <option value="{{ member.id }}">{{ member.name or member.login }}</option>
+              <button class="assignee-option" type="button" data-assignee-value="{{ member.id }}" data-assignee-name="{{ member.name or member.login }}" data-assignee-avatar="{{ member.avatar_url or '' }}" data-assignee-login="{{ member.login }}">
+                <span class="avatar-dot" aria-hidden="true">
+                  {% if member.avatar_url %}
+                    <img src="{{ member.avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                  {% else %}
+                    {{ (member.login or "?")[:1]|upper }}
+                  {% endif %}
+                </span>
+                <span>{{ member.name or member.login }}</span>
+              </button>
             {% endfor %}
-          </select>
-        </label>
-        <button class="primary" type="submit" data-icon="plus" data-i18n="action.create">Create</button>
+            </div>
+          </div>
+        </div>
+        <button class="primary quick-create-button" type="submit" data-icon="plus" data-i18n="action.create">Create</button>
       </div>
     </form>
     </div>
