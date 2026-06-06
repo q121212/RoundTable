@@ -18,6 +18,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
+# Local-only convenience login:
+# edit .env and set ALLOW_DEV_LOGIN=true if GitHub OAuth is not configured yet
 uvicorn app.main:app --reload
 ```
 
@@ -32,6 +34,28 @@ docker compose up --build
 ```
 
 SQLite data lives in `./data/roundtable.db`.
+
+## Deploy
+
+`deploy.sh` supports the current server layout at `/srv/RoundTable`.
+
+```bash
+DEPLOY_HOST=adv_msk02_root ./deploy.sh
+```
+
+By default it uses `DEPLOY_MODE=auto`: if `/srv/RoundTable/.git` exists on the
+server, it deploys with `git pull`; otherwise it syncs the local working tree
+with `rsync` while preserving `.env`, `.venv`, and `data/`.
+
+Before exposing RoundTable publicly, deploy with:
+
+```bash
+DEPLOY_PUBLIC=true DEPLOY_HOST=adv_msk02_root ./deploy.sh
+```
+
+Public deploy mode requires `BASE_URL=https://...`, `ALLOW_DEV_LOGIN=false`, and
+`SESSION_COOKIE_SECURE=true` in the server `.env`. Keep uvicorn bound to
+`127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
 
 ## Features
 
@@ -170,7 +194,7 @@ Important values:
 BASE_URL=http://localhost:8000
 DATABASE_PATH=./data/roundtable.db
 SECRET_KEY=change-me-long-random-string
-ALLOW_DEV_LOGIN=true
+ALLOW_DEV_LOGIN=false
 ADMIN_GITHUB_LOGINS=your-github-login
 
 GITHUB_CLIENT_ID=
@@ -248,4 +272,3 @@ Out of scope for the MVP:
 - SMS notifications
 - complex enterprise permission model
 - multi-tenant SaaS hosting
-

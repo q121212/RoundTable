@@ -47,6 +47,7 @@ from .store import (
     project_members,
     reopen_ticket,
     require_project_access,
+    require_project_admin,
     revoke_mcp_token,
     set_watch,
     unlink_telegram,
@@ -102,8 +103,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
-        # htmx + lucide are loaded from unpkg; app.js is local.
-        "script-src 'self' https://unpkg.com",
+        "script-src 'self'",
         # inline style attributes are used for drag previews and avatars.
         "style-src 'self' 'unsafe-inline'",
         # avatars come from GitHub/arbitrary https hosts.
@@ -274,15 +274,12 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
 async def project_settings_page(request: Request, project_key: str) -> HTMLResponse:
     user = require_page_user(request)
     project = get_project_by_key(project_key)
-    require_project_access(user, int(project["id"]), write=True)
+    require_project_admin(user, int(project["id"]))
     members = project_members(int(project["id"]))
-    can_delete = user.get("role") == "admin" or any(
-        member["id"] == user["id"] and member.get("project_role") == "admin" for member in members
-    )
     return render(
         request,
         "project_settings.html",
-        {"project": project, "members": members, "can_delete": can_delete},
+        {"project": project, "members": members, "can_delete": True},
     )
 
 
@@ -297,7 +294,7 @@ async def api_delete_project(request: Request, project_key: str) -> RedirectResp
 async def api_add_member(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
     project = get_project_by_key(project_key)
-    require_project_access(user, int(project["id"]), write=True)
+    require_project_admin(user, int(project["id"]))
     form = await request.form()
     add_project_member(int(project["id"]), str(form.get("login") or ""), str(form.get("role") or "member"))
     return redirect(str(request.headers.get("referer") or "/p/%s/settings" % project["key"]))
@@ -307,7 +304,7 @@ async def api_add_member(request: Request, project_key: str) -> RedirectResponse
 async def api_project_github(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
     project = get_project_by_key(project_key)
-    require_project_access(user, int(project["id"]), write=True)
+    require_project_admin(user, int(project["id"]))
     form = await request.form()
     with get_conn() as conn:
         conn.execute(

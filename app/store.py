@@ -247,7 +247,11 @@ def project_members(project_id: int) -> List[Dict[str, Any]]:
         return rows_to_dicts(
             conn.execute(
                 """
-                SELECT users.*, project_members.role AS project_role
+                SELECT users.id,
+                       users.login,
+                       users.name,
+                       users.avatar_url,
+                       project_members.role AS project_role
                 FROM project_members
                 JOIN users ON users.id = project_members.user_id
                 WHERE project_members.project_id = ?
@@ -255,6 +259,23 @@ def project_members(project_id: int) -> List[Dict[str, Any]]:
                 """,
                 (project_id,),
             ).fetchall()
+        )
+
+
+def require_project_member_conn(conn: Any, project_id: int, user_id: int) -> None:
+    row = conn.execute(
+        """
+        SELECT users.id
+        FROM users
+        JOIN project_members ON project_members.user_id = users.id
+        WHERE users.id = ? AND project_members.project_id = ?
+        """,
+        (user_id, project_id),
+    ).fetchone()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Assignee must be a project member.",
         )
 
 
@@ -295,6 +316,8 @@ def create_ticket(
         if not project:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
         require_project_access(user, int(project["id"]), write=True)
+        if assignee_id:
+            require_project_member_conn(conn, int(project["id"]), assignee_id)
         number = int(project["next_ticket_number"])
         ticket_key = "%s-%s" % (project["key"], number)
         conn.execute(
@@ -566,6 +589,8 @@ def update_ticket(
             if priority != ticket["priority"]:
                 changes.append(("priority", ticket["priority"], priority))
         if assignee_touched and assignee_id != ticket["assignee_id"]:
+            if assignee_id:
+                require_project_member_conn(conn, int(ticket["project_id"]), assignee_id)
             changes.append(("assignee_id", ticket["assignee_id"], assignee_id))
 
         if not changes:

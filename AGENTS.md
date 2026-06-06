@@ -59,16 +59,13 @@ deploy.sh, deploy/   deployment (see below)
   state changes are appended to `action_log`.
 - **Board edits:** keep cards compact (the board's value is fitting many tickets).
   Status changes by drag (pointer events) or inline `[data-inline-field]` → `PATCH
-  /api/tickets/{key}`. Quick comment `[data-inline-comment]` → `POST .../comments`.
+  /api/tickets/{key}`. Quick comments are handled through the compact comment chip
+  popover → `POST .../comments`.
 - **Notifications** go through the SQLite outbox + background worker; Telegram is a
   **per-user bot DM** (each user links their own chat). There is no shared channel.
 
 ## Gotchas (learned the hard way)
 
-- **Build `FormData` before disabling inputs.** Disabled fields are dropped from
-  `FormData`, which silently sends an empty body. (Bit the quick-comment handler.)
-- `update_ticket`'s no-op path returns a bare ticket row **without** the assignee join
-  fields; the join fields only come from the change path.
 - Static files are cached by the browser; hard-reload when verifying JS/CSS changes.
 
 ## Run / test / lint
@@ -77,6 +74,7 @@ deploy.sh, deploy/   deployment (see below)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env
+perl -0pi -e 's/ALLOW_DEV_LOGIN=false/ALLOW_DEV_LOGIN=true/' .env  # local dev only
 uvicorn app.main:app --reload          # http://localhost:8000  (ALLOW_DEV_LOGIN=true)
 
 pytest -q
@@ -89,7 +87,11 @@ fixture (`tests/conftest.py`).
 
 ## Deploy
 
-`./deploy.sh` does SSH → `git pull` → venv `pip install` → `systemctl restart` →
-healthcheck. Configure via `.env.deploy` (gitignored) or flags; `DEPLOY_HOST` is
-required. Server runs under systemd — template in `deploy/roundtable.service`. The app
-sets up its own schema on boot, so there is no separate migration step.
+`./deploy.sh` does SSH → `git pull` or local `rsync` (`DEPLOY_MODE=auto`) → venv
+`pip install` → `systemctl restart` → healthcheck. Configure via `.env.deploy`
+(gitignored) or flags; `DEPLOY_HOST` is required. The default server path is
+`/srv/RoundTable`. Server runs under systemd — template in
+`deploy/roundtable.service`. Use `DEPLOY_PUBLIC=true` for internet-facing deploys;
+it fails unless the server `.env` has `BASE_URL=https://...`,
+`ALLOW_DEV_LOGIN=false`, and `SESSION_COOKIE_SECURE=true`. The app sets up its own
+schema on boot, so there is no separate migration step.

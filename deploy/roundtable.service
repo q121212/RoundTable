@@ -2,8 +2,9 @@
 # Then:  sudo systemctl daemon-reload && sudo systemctl enable --now roundtable
 #
 # First-time server setup (once):
-#   sudo mkdir -p /opt/roundtable && sudo chown $USER /opt/roundtable
-#   git clone <repo> /opt/roundtable && cd /opt/roundtable
+#   sudo useradd --system --home /srv/RoundTable --shell /sbin/nologin roundtable
+#   sudo mkdir -p /srv/RoundTable && sudo chown roundtable:roundtable /srv/RoundTable
+#   git clone <repo> /srv/RoundTable && cd /srv/RoundTable
 #   python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 #   cp .env.example .env   # then edit secrets
 #
@@ -14,9 +15,10 @@ After=network.target
 [Service]
 Type=simple
 User=roundtable
-WorkingDirectory=/opt/roundtable
-EnvironmentFile=/opt/roundtable/.env
-ExecStart=/opt/roundtable/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8380
+Group=roundtable
+WorkingDirectory=/srv/RoundTable
+EnvironmentFile=/srv/RoundTable/.env
+ExecStart=/srv/RoundTable/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8380
 Restart=on-failure
 RestartSec=3
 

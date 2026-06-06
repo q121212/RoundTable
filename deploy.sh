@@ -2,7 +2,10 @@
 #
 # Simple one-command deploy for RoundTable (SSH + systemd + venv).
 #
-#   on the server:  git pull -> venv pip install -> restart service -> healthcheck
+#   auto mode:
+#     - if the server path is a git checkout: git pull
+#     - otherwise: rsync this local working tree to the server
+#   then: venv pip install -> restart service -> healthcheck
 #
 # The app runs schema setup itself on startup (init_db), so there is no separate
 # migration step. SQLite data lives under ./data and is left untouched.
@@ -11,15 +14,18 @@
 # or pass flags. Required: DEPLOY_HOST.
 #
 #   DEPLOY_HOST        ssh target, e.g. deploy@example.com   (required)
-#   DEPLOY_PATH        app dir on server        (default: /opt/roundtable)
+#   DEPLOY_PATH        app dir on server        (default: /srv/RoundTable)
 #   DEPLOY_BRANCH      git branch to deploy     (default: main)
 #   DEPLOY_SERVICE     systemd unit name        (default: roundtable)
 #   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8380/login)
 #   DEPLOY_PYTHON      python on server         (default: python3)
+#   DEPLOY_MODE        auto | git | rsync       (default: auto)
+#   DEPLOY_PUBLIC      true requires safe public .env settings
 #
 # Usage:
 #   ./deploy.sh                          # uses env / .env.deploy
-#   ./deploy.sh --host deploy@host --path /srv/roundtable --branch main
+#   ./deploy.sh --host adv_msk02_root --path /srv/RoundTable --mode auto
+#   DEPLOY_PUBLIC=true ./deploy.sh --host adv_msk02_root
 #
 set -euo pipefail
 
@@ -27,11 +33,13 @@ cd "$(dirname "$0")"
 [ -f .env.deploy ] && set -a && . ./.env.deploy && set +a
 
 HOST="${DEPLOY_HOST:-}"
-APP_DIR="${DEPLOY_PATH:-/opt/roundtable}"
+APP_DIR="${DEPLOY_PATH:-/srv/RoundTable}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 SERVICE="${DEPLOY_SERVICE:-roundtable}"
 HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8380/login}"
 PY="${DEPLOY_PYTHON:-python3}"
+MODE="${DEPLOY_MODE:-auto}"
+PUBLIC="${DEPLOY_PUBLIC:-false}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +48,8 @@ while [ $# -gt 0 ]; do
     --branch)  BRANCH="$2"; shift 2 ;;
     --service) SERVICE="$2"; shift 2 ;;
     --health)  HEALTH_URL="$2"; shift 2 ;;
+    --mode)    MODE="$2"; shift 2 ;;
+    --public)  PUBLIC=true; shift ;;
     -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
@@ -50,17 +60,106 @@ if [ -z "$HOST" ]; then
   exit 2
 fi
 
-echo "==> Deploying '$BRANCH' to $HOST:$APP_DIR (service: $SERVICE)"
+if [ "$MODE" != "auto" ] && [ "$MODE" != "git" ] && [ "$MODE" != "rsync" ]; then
+  echo "error: DEPLOY_MODE must be auto, git, or rsync (got '$MODE')" >&2
+  exit 2
+fi
+
+echo "==> Deploying to $HOST:$APP_DIR (service: $SERVICE, mode: $MODE)"
+
+remote_has_git=false
+if ssh "$HOST" "test -d '$APP_DIR/.git'"; then
+  remote_has_git=true
+fi
+
+effective_mode="$MODE"
+if [ "$effective_mode" = "auto" ]; then
+  if [ "$remote_has_git" = true ]; then
+    effective_mode=git
+  else
+    effective_mode=rsync
+  fi
+fi
+
+echo "==> Effective mode: $effective_mode"
+
+if [ "$effective_mode" = "git" ] && [ "$remote_has_git" != true ]; then
+  echo "error: $APP_DIR is not a git checkout on $HOST; use --mode rsync or --mode auto" >&2
+  exit 2
+fi
+
+if [ "$effective_mode" = "rsync" ]; then
+  if ! command -v rsync >/dev/null 2>&1; then
+    echo "error: rsync is required for rsync deploy mode" >&2
+    exit 2
+  fi
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "==> Local revision: $(git rev-parse --short HEAD)$(git diff --quiet || echo '+dirty')"
+  fi
+  echo "==> Syncing local working tree to server"
+  ssh "$HOST" "mkdir -p '$APP_DIR'"
+  rsync -az --delete \
+    --exclude '.git/' \
+    --exclude '.venv/' \
+    --exclude '.env' \
+    --exclude '.env.deploy' \
+    --exclude '.pytest_cache/' \
+    --exclude '.ruff_cache/' \
+    --exclude '__pycache__/' \
+    --exclude '*.pyc' \
+    --exclude '.DS_Store' \
+    --exclude 'data/' \
+    ./ "$HOST:$APP_DIR/"
+fi
 
 # Remote build/restart. Local vars are expanded here, then run on the server.
-ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' bash -s" <<'REMOTE'
+ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' MODE='$effective_mode' PUBLIC='$PUBLIC' bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$APP_DIR"
 
-echo "--> git fetch & fast-forward"
-git fetch --all --prune
-git checkout "$BRANCH"
-git pull --ff-only origin "$BRANCH"
+if [ "$MODE" = "git" ]; then
+  echo "--> git fetch & fast-forward"
+  git fetch --all --prune
+  git checkout "$BRANCH"
+  git pull --ff-only origin "$BRANCH"
+fi
+
+if [ ! -f .env ]; then
+  echo "error: $APP_DIR/.env is missing; create it from .env.example and edit secrets" >&2
+  exit 1
+fi
+
+env_get() {
+  awk -F= -v key="$1" '$1 == key {print substr($0, index($0, "=") + 1); exit}' .env
+}
+
+BASE_URL="$(env_get BASE_URL)"
+ALLOW_DEV_LOGIN="$(env_get ALLOW_DEV_LOGIN)"
+SESSION_COOKIE_SECURE="$(env_get SESSION_COOKIE_SECURE)"
+
+echo "--> deployment env summary"
+echo "    BASE_URL=${BASE_URL:-<unset>}"
+echo "    ALLOW_DEV_LOGIN=${ALLOW_DEV_LOGIN:-<unset>}"
+echo "    SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-<auto>}"
+
+if [ "${ALLOW_DEV_LOGIN,,}" = "true" ]; then
+  echo "warning: ALLOW_DEV_LOGIN=true. This is only safe for a private SSH/local preview." >&2
+fi
+
+if [ "${PUBLIC,,}" = "true" ]; then
+  case "$BASE_URL" in
+    https://*) ;;
+    *) echo "error: DEPLOY_PUBLIC=true requires BASE_URL=https://..." >&2; exit 1 ;;
+  esac
+  if [ "${ALLOW_DEV_LOGIN,,}" = "true" ]; then
+    echo "error: DEPLOY_PUBLIC=true requires ALLOW_DEV_LOGIN=false" >&2
+    exit 1
+  fi
+  if [ "${SESSION_COOKIE_SECURE,,}" != "true" ]; then
+    echo "error: DEPLOY_PUBLIC=true requires SESSION_COOKIE_SECURE=true" >&2
+    exit 1
+  fi
+fi
 
 echo "--> python deps"
 if [ ! -d .venv ]; then "$PY" -m venv .venv; fi
