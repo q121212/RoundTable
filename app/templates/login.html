@@ -3,9 +3,9 @@
 {% block content %}
 <section class="auth-shell">
   <div class="auth-panel">
-    <p class="eyebrow" data-i18n="login.eyebrow">Local ticket tracker</p>
-    <h1 data-i18n="login.title">Sign in to RoundTable</h1>
-    <p class="muted" data-i18n="login.copy">Use GitHub OAuth in production. Local login is available only when enabled by configuration.</p>
+    <p class="eyebrow" data-i18n="login.eyebrow">Team workspace</p>
+    <h1 data-i18n="login.title">Welcome to RoundTable</h1>
+    <p class="muted" data-i18n="login.copy">Sign in with GitHub. Your projects will appear after an admin adds you to them.</p>
     {% if github_enabled %}
       <a class="primary wide" href="/auth/github/start" data-i18n="login.github">Continue with GitHub</a>
     {% else %}
