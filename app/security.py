@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import Cookie, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
+from .config import settings
 from .db import get_conn, row_to_dict, utcnow
 
 
@@ -78,7 +79,7 @@ def login_response(user_id: int, url: str = "/") -> RedirectResponse:
         SESSION_COOKIE,
         session["token"],
         httponly=True,
-        secure=False,
+        secure=settings.session_cookie_secure,
         samesite="lax",
         max_age=30 * 24 * 60 * 60,
     )

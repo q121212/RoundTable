@@ -2,6 +2,15 @@ import os
 from dataclasses import dataclass
 from typing import List
 
+# Load a local .env if present so the documented `cp .env.example .env` workflow
+# actually applies. Existing process env (e.g. systemd EnvironmentFile) wins.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 
 def _bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -20,7 +29,15 @@ class Settings:
     base_url: str = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
     database_path: str = os.getenv("DATABASE_PATH", "./data/roundtable.db")
     secret_key: str = os.getenv("SECRET_KEY", "dev-roundtable-secret-change-me")
-    allow_dev_login: bool = _bool("ALLOW_DEV_LOGIN", True)
+    # Secure-by-default: dev login is an auth bypass (any login becomes admin),
+    # so it must be opted into explicitly. Local dev keeps it on via .env.
+    allow_dev_login: bool = _bool("ALLOW_DEV_LOGIN", False)
+    # Send the session cookie only over HTTPS. Defaults to on when BASE_URL is
+    # https (i.e. a real deployment); off for local http dev. Override if needed.
+    session_cookie_secure: bool = _bool(
+        "SESSION_COOKIE_SECURE",
+        os.getenv("BASE_URL", "http://localhost:8000").lower().startswith("https"),
+    )
     admin_github_logins: List[str] = None  # type: ignore[assignment]
 
     github_client_id: str = os.getenv("GITHUB_CLIENT_ID", "")

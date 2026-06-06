@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import secrets
 from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
@@ -54,9 +55,31 @@ from .store import (
 )
 
 
+logger = logging.getLogger("roundtable")
+
+
+def warn_insecure_config() -> None:
+    """Loud warnings for config that is dangerous on a public deployment."""
+    is_https = settings.base_url.lower().startswith("https")
+    if settings.allow_dev_login:
+        logger.warning(
+            "ALLOW_DEV_LOGIN is ON: anyone can sign in as any user (and becomes admin "
+            "when no ADMIN_GITHUB_LOGINS are set). Turn it OFF for any internet-facing deploy."
+        )
+        if is_https:
+            logger.warning(
+                "ALLOW_DEV_LOGIN is ON together with an https BASE_URL (%s) — this looks "
+                "like production. Disable dev login.",
+                settings.base_url,
+            )
+    if is_https and not settings.session_cookie_secure:
+        logger.warning("BASE_URL is https but SESSION_COOKIE_SECURE is off; session cookies may leak.")
+
+
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     init_db()
+    warn_insecure_config()
     fastapi_app.state.notification_stop = asyncio.Event()
     fastapi_app.state.notification_task = asyncio.create_task(
         notification_worker(fastapi_app.state.notification_stop)
@@ -73,6 +96,37 @@ async def lifespan(fastapi_app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+CONTENT_SECURITY_POLICY = "; ".join(
+    [
+        "default-src 'self'",
+        # htmx + lucide are loaded from unpkg; app.js is local.
+        "script-src 'self' https://unpkg.com",
+        # inline style attributes are used for drag previews and avatars.
+        "style-src 'self' 'unsafe-inline'",
+        # avatars come from GitHub/arbitrary https hosts.
+        "img-src 'self' https: data:",
+        "connect-src 'self'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ]
+)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+    if settings.session_cookie_secure:
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
 
 
 def page_user(request: Request) -> Optional[Dict[str, Any]]:
@@ -100,6 +154,12 @@ def render(
         "priorities": PRIORITIES,
     }
     data.update(context or {})
+    project_key = None
+    if isinstance(data.get("project"), dict):
+        project_key = data["project"].get("key")
+    if not project_key and isinstance(data.get("ticket"), dict):
+        project_key = data["ticket"].get("project_key")
+    data["current_project_url"] = "/p/%s/board" % project_key if project_key else ""
     return templates.TemplateResponse(template, data, status_code=status_code)
 
 
@@ -144,7 +204,14 @@ async def auth_github_start() -> RedirectResponse:
         }
     )
     response = RedirectResponse("https://github.com/login/oauth/authorize?%s" % params)
-    response.set_cookie("github_oauth_state", state_token, httponly=True, samesite="lax", max_age=600)
+    response.set_cookie(
+        "github_oauth_state",
+        state_token,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite="lax",
+        max_age=600,
+    )
     return response
 
 
@@ -198,6 +265,15 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
     return render(request, "board.html", {**board, "members": members})
 
 
+@app.get("/p/{project_key}/settings", response_class=HTMLResponse)
+async def project_settings_page(request: Request, project_key: str) -> HTMLResponse:
+    user = require_page_user(request)
+    project = get_project_by_key(project_key)
+    require_project_access(user, int(project["id"]), write=True)
+    members = project_members(int(project["id"]))
+    return render(request, "project_settings.html", {"project": project, "members": members})
+
+
 @app.post("/api/projects/{project_key}/members")
 async def api_add_member(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
@@ -205,7 +281,7 @@ async def api_add_member(request: Request, project_key: str) -> RedirectResponse
     require_project_access(user, int(project["id"]), write=True)
     form = await request.form()
     add_project_member(int(project["id"]), str(form.get("login") or ""), str(form.get("role") or "member"))
-    return redirect("/p/%s/board" % project["key"])
+    return redirect(str(request.headers.get("referer") or "/p/%s/settings" % project["key"]))
 
 
 @app.post("/api/projects/{project_key}/github")
@@ -270,6 +346,24 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched=assignee_present,
     )
+    return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
+
+
+@app.post("/api/tickets/{ticket_key}/quick-update")
+async def api_quick_update_ticket(request: Request, ticket_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    update_ticket(
+        user,
+        ticket_key,
+        status_value=str(form.get("status")) if "status" in form else None,
+        priority=str(form.get("priority")) if "priority" in form else None,
+        assignee_id=parse_optional_int(form.get("assignee_id")),
+        assignee_touched="assignee_id" in form,
+    )
+    comment = str(form.get("comment") or "").strip()
+    if comment:
+        add_comment(user, ticket_key, comment)
     return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
 
 
