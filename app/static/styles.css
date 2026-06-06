@@ -1190,73 +1190,157 @@ a.ticket-key:hover {
   object-fit: cover;
 }
 
-.ticket-quick-edit {
-  border-top: 1px solid var(--line);
-  padding-top: 6px;
-}
-
-.ticket-quick-edit > summary {
+/* Variant A: chip editing with floating popovers */
+.ticket-card-chips {
   display: flex;
-  width: fit-content;
-  min-height: 28px;
-  margin-left: auto;
-  padding: 4px 7px;
-  border-radius: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--muted);
-  font-size: 0.78rem;
-  cursor: pointer;
-  list-style: none;
-}
-
-.ticket-quick-edit > summary::-webkit-details-marker {
-  display: none;
-}
-
-.ticket-quick-edit > summary:hover,
-.ticket-quick-edit[open] > summary {
-  background: color-mix(in srgb, var(--green) 10%, transparent);
-  color: var(--green-dark);
-}
-
-.ticket-quick-edit form {
-  display: grid;
-  gap: 8px;
-  padding-top: 8px;
-}
-
-.quick-edit-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.quick-edit-grid label {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.quick-edit-grid select,
-.ticket-quick-edit textarea {
-  min-height: 38px;
-  padding: 8px 9px;
-  font-size: 0.88rem;
+.chip-edit:hover,
+.chip-edit:focus-visible {
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+  color: var(--ink);
 }
 
-.quick-comment {
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
+.chip .chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.quick-comment textarea {
-  min-height: 36px;
+.chip-assignee .chip-label {
+  max-width: 104px;
 }
 
-.quick-comment button {
-  justify-self: end;
+.chip-assignee .avatar-dot {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  font-size: 0.62rem;
+}
+
+.chip-status .chip-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status-backlog .chip-status .chip-dot { background: #8ba98a; }
+.status-todo .chip-status .chip-dot { background: var(--sky); }
+.status-in-progress .chip-status .chip-dot { background: var(--amber); }
+.status-review .chip-status .chip-dot { background: #9b7cc0; }
+.status-done .chip-status .chip-dot { background: var(--green); }
+.status-closed .chip-status .chip-dot { background: var(--muted); }
+
+.chip-priority.priority-chip-high {
+  color: #8a5d1f;
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+
+.chip-priority.priority-chip-urgent {
+  color: var(--coral);
+  border-color: color-mix(in srgb, var(--coral) 45%, var(--line));
+}
+
+.chip-comment {
+  width: 26px;
+  min-width: 26px;
+  padding: 2px;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.chip-comment .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ticket-card-top .drag-handle {
+  cursor: grab;
+}
+
+.ticket-card-top .drag-handle .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.popover-menu {
+  z-index: 90;
+  min-width: 150px;
+  max-width: min(240px, calc(100vw - 16px));
+  max-height: min(320px, 60vh);
+  overflow: auto;
+  padding: 5px;
+  display: grid;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.popover-option {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+.popover-option:hover,
+.popover-option:focus-visible {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
+.popover-option.is-current {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green-dark);
+  font-weight: 700;
+}
+
+.popover-comment {
+  min-width: 232px;
+  gap: 8px;
+  padding: 9px;
+}
+
+.popover-comment textarea {
+  min-height: 62px;
+  font-size: 0.86rem;
+}
+
+.popover-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.popover-actions .tiny {
+  min-height: 30px;
 }
 
 .member-row {

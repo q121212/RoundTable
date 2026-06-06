@@ -539,61 +539,177 @@
     return response.json();
   }
 
-  function setupInlineTicketControls() {
-    document.querySelectorAll("[data-inline-field]").forEach((control) => {
-      control.dataset.lastValue = control.value;
-      control.addEventListener("change", async () => {
-        const card = control.closest(".ticket-card");
-        const field = control.dataset.inlineField;
-        const previousValue = control.dataset.lastValue || "";
-        const payload = {};
-        payload[field] = field === "assignee_id" ? (control.value ? Number(control.value) : null) : control.value;
-        control.disabled = true;
-        card.classList.add("is-saving");
-        try {
-          const ticket = await patchTicket(control.dataset.ticketKey, payload);
-          control.dataset.lastValue = control.value;
-          applyTicketUpdate(card, ticket);
-          flashSaved(card);
-        } catch (error) {
-          control.value = previousValue;
-          window.alert(error.message || "Could not update ticket");
-        } finally {
-          control.disabled = false;
-          card.classList.remove("is-saving");
+  let activePopover = null;
+  let activeChip = null;
+
+  function setupChipEditors() {
+    document.querySelectorAll(".board").forEach((board) => {
+      board.addEventListener("click", (event) => {
+        const chip = event.target.closest(".chip-edit");
+        if (!chip || !board.contains(chip)) return;
+        event.preventDefault();
+        if (activePopover && activeChip === chip) {
+          closePopover();
+          return;
         }
+        openPopover(chip);
       });
     });
+  }
 
-    document.querySelectorAll("[data-inline-comment]").forEach((form) => {
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const input = form.querySelector("[name=body]");
-        const body = input.value.trim();
-        if (!body) return;
-        const card = form.closest(".ticket-card");
-        const button = form.querySelector("button");
-        const formData = new FormData(form);
-        input.disabled = true;
-        button.disabled = true;
-        card.classList.add("is-saving");
-        try {
-          const response = await fetch(form.action, {
-            method: "POST",
-            headers: { "x-csrf-token": form.querySelector("[name=csrf_token]").value },
-            body: formData,
-          });
-          if (!response.ok) throw new Error(await response.text());
-          input.value = "";
-          flashSaved(card);
-        } catch (error) {
-          window.alert(error.message || "Could not add comment");
-        } finally {
-          input.disabled = false;
-          button.disabled = false;
-          card.classList.remove("is-saving");
-        }
-      });
+  function boardData(key, fallback) {
+    const board = document.querySelector(".board");
+    if (!board || !board.dataset[key]) return fallback;
+    try {
+      return JSON.parse(board.dataset[key]);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function openPopover(chip) {
+    closePopover();
+    const card = chip.closest(".ticket-card");
+    const field = chip.dataset.edit;
+    const pop = document.createElement("div");
+    pop.className = "popover-menu";
+    if (field === "comment") {
+      buildCommentPopover(pop, card);
+    } else {
+      buildOptionsPopover(pop, field, card, chip);
+    }
+    document.body.appendChild(pop);
+    positionPopover(pop, chip);
+    activePopover = pop;
+    activeChip = chip;
+    chip.setAttribute("aria-expanded", "true");
+    window.setTimeout(() => {
+      document.addEventListener("pointerdown", onOutsidePointer, true);
+      document.addEventListener("keydown", onPopoverKey, true);
+      window.addEventListener("scroll", closePopover, true);
+      window.addEventListener("resize", closePopover);
+      const focusable = pop.querySelector("textarea, .popover-option");
+      if (focusable) focusable.focus();
+    }, 0);
+  }
+
+  function closePopover() {
+    if (activeChip) activeChip.setAttribute("aria-expanded", "false");
+    if (activePopover) activePopover.remove();
+    activePopover = null;
+    activeChip = null;
+    document.removeEventListener("pointerdown", onOutsidePointer, true);
+    document.removeEventListener("keydown", onPopoverKey, true);
+    window.removeEventListener("scroll", closePopover, true);
+    window.removeEventListener("resize", closePopover);
+  }
+
+  function onOutsidePointer(event) {
+    if (activePopover && !activePopover.contains(event.target) && event.target !== activeChip && !activeChip.contains(event.target)) {
+      closePopover();
+    }
+  }
+
+  function onPopoverKey(event) {
+    if (event.key === "Escape") closePopover();
+  }
+
+  function positionPopover(pop, chip) {
+    const rect = chip.getBoundingClientRect();
+    pop.style.position = "fixed";
+    pop.style.top = `${rect.bottom + 6}px`;
+    let left = rect.left;
+    const width = pop.offsetWidth;
+    if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
+    if (left < 8) left = 8;
+    pop.style.left = `${left}px`;
+    const height = pop.offsetHeight;
+    if (rect.bottom + 6 + height > window.innerHeight - 8) {
+      pop.style.top = `${Math.max(8, rect.top - 6 - height)}px`;
+    }
+  }
+
+  function buildOptionsPopover(pop, field, card, chip) {
+    const current = chip.dataset.value || "";
+    let options = [];
+    if (field === "status") {
+      options = boardData("statuses", []).map((s) => ({ value: s, label: translate(`status.${s}`, currentLang()) || s }));
+    } else if (field === "priority") {
+      options = boardData("priorities", []).map((p) => ({ value: p, label: translate(`priority.${p}`, currentLang()) || p }));
+    } else if (field === "assignee_id") {
+      options = [{ value: "", label: translate("ticket.unassigned", currentLang()) || "Unassigned" }];
+      boardData("members", []).forEach((m) => options.push({ value: String(m.id), label: m.name || m.login }));
+    }
+    options.forEach((opt) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "popover-option";
+      if (String(opt.value) === String(current)) button.classList.add("is-current");
+      button.textContent = opt.label;
+      button.addEventListener("click", () => applyFieldChange(card, field, opt.value));
+      pop.appendChild(button);
+    });
+  }
+
+  async function applyFieldChange(card, field, value) {
+    const payload = {};
+    payload[field] = field === "assignee_id" ? (value ? Number(value) : null) : value;
+    closePopover();
+    card.classList.add("is-saving");
+    try {
+      const ticket = await patchTicket(card.dataset.ticketKey, payload);
+      applyTicketUpdate(card, ticket);
+      flashSaved(card);
+    } catch (error) {
+      window.alert(error.message || "Could not update ticket");
+    } finally {
+      card.classList.remove("is-saving");
+    }
+  }
+
+  function buildCommentPopover(pop, card) {
+    pop.classList.add("popover-comment");
+    const textarea = document.createElement("textarea");
+    textarea.rows = 3;
+    textarea.placeholder = translate("placeholder.quick_comment", currentLang()) || "Optional comment";
+    const actions = document.createElement("div");
+    actions.className = "popover-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary tiny";
+    button.textContent = translate("action.comment", currentLang()) || "Comment";
+    actions.appendChild(button);
+    pop.appendChild(textarea);
+    pop.appendChild(actions);
+    const submit = async () => {
+      const body = textarea.value.trim();
+      if (!body) return;
+      const board = document.querySelector(".board");
+      button.disabled = true;
+      textarea.disabled = true;
+      const formData = new FormData();
+      formData.append("body", body);
+      card.classList.add("is-saving");
+      try {
+        const response = await fetch(`/api/tickets/${card.dataset.ticketKey}/comments`, {
+          method: "POST",
+          headers: { "x-csrf-token": board ? board.dataset.csrf : "" },
+          body: formData,
+        });
+        if (!response.ok) throw new Error(await response.text());
+        closePopover();
+        flashSaved(card);
+      } catch (error) {
+        window.alert(error.message || "Could not add comment");
+        button.disabled = false;
+        textarea.disabled = false;
+      } finally {
+        card.classList.remove("is-saving");
+      }
+    };
+    button.addEventListener("click", submit);
+    textarea.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit();
     });
   }
 
@@ -602,30 +718,28 @@
     card.dataset.ticketKey = ticket.key;
     updateCardClasses(card, ticket);
     moveCardToStatus(card, ticket.status);
-    updateSelect(card, "status", ticket.status);
-    updateSelect(card, "priority", ticket.priority);
-    updateSelect(card, "assignee_id", ticket.assignee_id ? String(ticket.assignee_id) : "");
-    updateAssignee(card, ticket);
-    updatePriorityChip(card, ticket);
+    setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
+    setChipValue(card, "priority", ticket.priority, translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority);
+    updateAssigneeChip(card, ticket);
     refreshColumnCounts();
   }
 
-  function updatePriorityChip(card, ticket) {
-    const top = card.querySelector(".ticket-card-top");
-    if (!top) return;
-    let chip = top.querySelector(".priority-chip");
-    const elevated = ticket.priority === "Urgent" || ticket.priority === "High";
-    if (!elevated) {
-      if (chip) chip.remove();
-      return;
+  function setChipValue(card, field, value, label) {
+    const chip = card.querySelector(`.chip-edit[data-edit="${field}"]`);
+    if (!chip) return;
+    chip.dataset.value = value || "";
+    const labelEl = chip.querySelector(".chip-label");
+    if (labelEl) {
+      labelEl.dataset.i18n = field === "status" ? `status.${value}` : `priority.${value}`;
+      labelEl.textContent = label;
     }
-    if (!chip) {
-      chip = document.createElement("span");
-      top.appendChild(chip);
+    if (field === "priority") {
+      chip.className = chip.className
+        .split(/\s+/)
+        .filter((name) => name && !name.startsWith("priority-chip-"))
+        .join(" ");
+      chip.classList.add(`priority-chip-${String(value).toLowerCase()}`);
     }
-    chip.className = `priority-chip priority-chip-${ticket.priority.toLowerCase()}`;
-    chip.dataset.i18n = `priority.${ticket.priority}`;
-    chip.textContent = translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority;
   }
 
   function updateCardClasses(card, ticket) {
@@ -641,19 +755,12 @@
     if (zone && !zone.contains(card)) zone.appendChild(card);
   }
 
-  function updateSelect(card, field, value) {
-    const select = card.querySelector(`[data-inline-field="${field}"]`);
-    if (!select) return;
-    select.value = value || "";
-    select.dataset.lastValue = select.value;
-  }
-
-  function updateAssignee(card, ticket) {
-    const chip = card.querySelector(".assignee-chip");
+  function updateAssigneeChip(card, ticket) {
+    const chip = card.querySelector('.chip-edit[data-edit="assignee_id"]');
     if (!chip) return;
-    const avatar = chip.querySelector(".avatar-dot");
+    chip.dataset.value = ticket.assignee_id ? String(ticket.assignee_id) : "";
+    renderAvatar(chip.querySelector(".avatar-dot"), ticket.assignee_avatar_url, ticket.assignee_login);
     const label = chip.querySelector(".assignee-label");
-    renderAvatar(avatar, ticket.assignee_avatar_url, ticket.assignee_login);
     if (label) {
       if (ticket.assignee_login) {
         label.removeAttribute("data-i18n");
@@ -741,7 +848,7 @@
     setupLastBoardLinks();
     setupPreferences();
     setupBoardDnD();
-    setupInlineTicketControls();
+    setupChipEditors();
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();

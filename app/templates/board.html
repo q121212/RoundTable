@@ -74,7 +74,7 @@
   {% endfor %}
 </div>
 
-<section class="board" data-csrf="{{ user.csrf_token }}">
+<section class="board" data-csrf="{{ user.csrf_token }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-members='{{ members | tojson }}'>
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
@@ -86,13 +86,18 @@
           <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}">
             <div class="ticket-card-top">
               <a class="ticket-key" href="/t/{{ ticket.key }}">{{ ticket.key }}</a>
-              {% if ticket.priority in ["Urgent", "High"] %}
-                <span class="priority-chip priority-chip-{{ ticket.priority|lower }}" data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
-              {% endif %}
+              <span class="drag-handle" data-icon="grip-vertical" role="button" tabindex="0" data-i18n-aria="action.drag" aria-label="Move ticket"></span>
             </div>
             <a class="ticket-title-link" href="/t/{{ ticket.key }}"><span class="ticket-title">{{ ticket.title }}</span></a>
-            <div class="ticket-card-footer">
-              <span class="assignee-chip">
+            <div class="ticket-card-chips">
+              <button type="button" class="chip chip-edit chip-status" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true">
+                <span class="chip-dot" aria-hidden="true"></span>
+                <span class="chip-label" data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</span>
+              </button>
+              <button type="button" class="chip chip-edit chip-priority priority-chip-{{ ticket.priority|lower }}" data-edit="priority" data-value="{{ ticket.priority }}" aria-haspopup="true">
+                <span class="chip-label" data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
+              </button>
+              <button type="button" class="chip chip-edit chip-assignee" data-edit="assignee_id" data-value="{{ ticket.assignee_id or '' }}" aria-haspopup="true">
                 <span class="avatar-dot" aria-hidden="true">
                   {% if ticket.assignee_avatar_url %}
                     <img src="{{ ticket.assignee_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
@@ -101,47 +106,13 @@
                   {% endif %}
                 </span>
                 {% if ticket.assignee_login %}
-                  <span class="assignee-label">{{ ticket.assignee_name or ticket.assignee_login }}</span>
+                  <span class="chip-label assignee-label">{{ ticket.assignee_name or ticket.assignee_login }}</span>
                 {% else %}
-                  <span class="assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
+                  <span class="chip-label assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
                 {% endif %}
-              </span>
+              </button>
+              <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment"></button>
             </div>
-            <details class="ticket-quick-edit">
-              <summary data-icon="sliders-horizontal" data-i18n="ticket.quick_edit">Quick edit</summary>
-              <div class="quick-edit-grid">
-                <label>
-                  <span data-i18n="field.status">Status</span>
-                  <select data-inline-field="status" data-ticket-key="{{ ticket.key }}" aria-label="Status">
-                    {% for target in statuses %}
-                      <option value="{{ target }}" {% if target == ticket.status %}selected{% endif %} data-i18n="status.{{ target }}">{{ target }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-                <label>
-                  <span data-i18n="field.priority">Priority</span>
-                  <select data-inline-field="priority" data-ticket-key="{{ ticket.key }}" aria-label="Priority">
-                    {% for priority in priorities %}
-                      <option value="{{ priority }}" {% if priority == ticket.priority %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-                <label>
-                  <span data-i18n="field.assignee">Assignee</span>
-                  <select data-inline-field="assignee_id" data-ticket-key="{{ ticket.key }}" aria-label="Assignee">
-                    <option value="" data-i18n="ticket.unassigned">Unassigned</option>
-                    {% for member in members %}
-                      <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.login }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-              </div>
-              <form class="quick-comment" method="post" action="/api/tickets/{{ ticket.key }}/comments" data-inline-comment>
-                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                <textarea name="body" rows="2" placeholder="Optional comment" data-i18n-placeholder="placeholder.quick_comment"></textarea>
-                <button class="secondary tiny" type="submit" data-icon="message-square-plus" data-i18n="action.comment">Comment</button>
-              </form>
-            </details>
           </article>
         {% endfor %}
       </div>
