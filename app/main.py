@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -612,8 +612,12 @@ async def telegram_webhook(request: Request) -> JSONResponse:
 
 
 @app.post("/mcp")
-async def mcp_endpoint(request: Request) -> JSONResponse:
-    return JSONResponse(await handle_mcp(request))
+async def mcp_endpoint(request: Request) -> Response:
+    result = await handle_mcp(request)
+    if result is None:
+        # JSON-RPC notifications get an empty 202 (no response body).
+        return Response(status_code=status.HTTP_202_ACCEPTED)
+    return JSONResponse(result)
 
 
 def parse_optional_int(value: Any) -> Optional[int]:

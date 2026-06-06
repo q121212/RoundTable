@@ -1052,12 +1052,12 @@ def create_mcp_token(user: Dict[str, Any], name: str) -> Dict[str, str]:
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO mcp_tokens (user_id, name, token_hash, prefix, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO mcp_tokens (user_id, name, token_hash, prefix, suffix, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (user["id"], clean_name, hash_token(token), token[:10], now),
+            (user["id"], clean_name, hash_token(token), token[:10], token[-4:], now),
         )
-    return {"token": token, "prefix": token[:10], "name": clean_name}
+    return {"token": token, "prefix": token[:10], "suffix": token[-4:], "name": clean_name}
 
 
 def list_mcp_tokens(user_id: int) -> List[Dict[str, Any]]:
@@ -1065,7 +1065,7 @@ def list_mcp_tokens(user_id: int) -> List[Dict[str, Any]]:
         return rows_to_dicts(
             conn.execute(
                 """
-                SELECT id, name, prefix, last_used_at, revoked_at, created_at
+                SELECT id, name, prefix, suffix, last_used_at, revoked_at, created_at
                 FROM mcp_tokens
                 WHERE user_id = ?
                 ORDER BY created_at DESC

@@ -56,3 +56,25 @@ def test_mcp_lists_projects_with_token(temp_db):
     payload = response.json()
     assert payload["result"]["content"][0]["type"] == "text"
     assert "WEB" in payload["result"]["content"][0]["text"]
+
+
+def test_mcp_token_exposes_prefix_and_suffix(temp_db):
+    user = upsert_user("alice")
+    created = create_mcp_token(user, "laptop")
+    assert created["token"].startswith(created["prefix"])
+    assert created["token"].endswith(created["suffix"])
+
+
+def test_mcp_notification_returns_no_body(temp_db):
+    user = upsert_user("alice")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+    )
+
+    assert response.status_code == 202
+    assert response.content == b""

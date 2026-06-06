@@ -41,18 +41,22 @@ def authenticate_bearer(request: Request) -> Dict[str, Any]:
         return user
 
 
-async def handle_mcp(request: Request) -> Dict[str, Any]:
+async def handle_mcp(request: Request) -> Optional[Any]:
     user = authenticate_bearer(request)
     payload = await request.json()
     if isinstance(payload, list):
-        return [dispatch_rpc(item, user) for item in payload]  # type: ignore[return-value]
+        responses = [item for item in (dispatch_rpc(entry, user) for entry in payload) if item is not None]
+        return responses or None
     return dispatch_rpc(payload, user)
 
 
-def dispatch_rpc(payload: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+def dispatch_rpc(payload: Dict[str, Any], user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     request_id = payload.get("id")
     method = payload.get("method")
     params = payload.get("params") or {}
+    # JSON-RPC notifications (e.g. notifications/initialized) carry no id and get no response.
+    if method and method.startswith("notifications/"):
+        return None
     try:
         if method == "initialize":
             result = {
@@ -60,6 +64,8 @@ def dispatch_rpc(payload: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any
                 "capabilities": {"tools": {}, "resources": {}},
                 "serverInfo": {"name": "RoundTable", "version": "0.1.0"},
             }
+        elif method == "ping":
+            result = {}
         elif method == "tools/list":
             result = {"tools": tool_specs()}
         elif method == "tools/call":

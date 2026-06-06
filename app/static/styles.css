@@ -1828,3 +1828,23 @@ a.ticket-key:hover {
   background: var(--green);
   color: #fff;
 }
+
+.copy-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.copy-field code {
+  overflow-wrap: anywhere;
+}
+
+.notice .copy-field {
+  margin: 8px 0;
+}
+
+button.is-copied {
+  background: var(--green);
+  color: #fff;
+}

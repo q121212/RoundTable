@@ -10,7 +10,12 @@
 
 {% if created_token %}
   <div class="notice success">
-    <span data-i18n="mcp.created">New token created. Copy it now:</span> <code>{{ created_token }}</code>
+    <strong data-i18n="mcp.created">New token created — copy it now, it is shown only once.</strong>
+    <div class="copy-field">
+      <code>{{ created_token }}</code>
+      <button class="secondary tiny" type="button" data-copy-text="Bearer {{ created_token }}" data-icon="copy" data-i18n="mcp.copy_bearer">Copy as Bearer</button>
+    </div>
+    <p class="muted"><span data-i18n="mcp.auth_header">Use it as the HTTP header</span>: <code>Authorization: Bearer {{ created_token }}</code></p>
   </div>
 {% endif %}
 
@@ -20,6 +25,7 @@
     <div class="notice">
       <strong data-i18n="mcp.how_title">How MCP tokens work</strong>
       <p class="muted" data-i18n="mcp.how_copy">Create a token here, copy it once, then use it in your MCP client as an Authorization: Bearer token.</p>
+      <p class="muted" data-i18n="mcp.personal_note">Tokens are personal: a token acts as you, with your own project permissions. Each teammate creates their own.</p>
     </div>
     <form class="stacked-form" method="post" action="/settings/mcp/tokens">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
@@ -32,14 +38,17 @@
       </label>
       <button class="primary" type="submit" data-icon="key-round" data-i18n="mcp.create_token">Create MCP token</button>
     </form>
-    <p class="muted"><span data-i18n="mcp.endpoint">Endpoint:</span> <code>{{ base_url }}/mcp</code></p>
+    <p class="muted copy-field">
+      <span data-i18n="mcp.endpoint">Endpoint:</span> <code>{{ base_url }}/mcp</code>
+      <button class="ghost tiny" type="button" data-copy-text="{{ base_url }}/mcp" data-icon="copy" aria-label="Copy endpoint" data-i18n-aria="mcp.copy_endpoint"></button>
+    </p>
   </div>
   <div class="panel">
     <h2 data-i18n="mcp.tokens">Tokens</h2>
     <div class="table-list">
       {% for token in tokens %}
         <div class="table-row">
-          <span><strong>{{ token.name }}</strong><br><span class="muted">{{ token.prefix }}...</span></span>
+          <span><strong>{{ token.name }}</strong><br><span class="muted">{{ token.prefix }}…{{ token.suffix or "" }}</span></span>
           <span>{{ token.revoked_at or token.last_used_at or "never used" }}</span>
           {% if not token.revoked_at %}
             <form method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">

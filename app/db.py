@@ -220,6 +220,14 @@ def init_db() -> None:
                 ON notification_outbox(status, next_attempt_at);
             """
         )
+        # Additive, idempotent column migrations for existing databases.
+        _add_column_if_missing(conn, "mcp_tokens", "suffix", "TEXT")
+
+
+def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    existing = [row["name"] for row in conn.execute("PRAGMA table_info(%s)" % table)]
+    if column not in existing:
+        conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, decl))
 
 
 def json_dumps(value: Any) -> str:
