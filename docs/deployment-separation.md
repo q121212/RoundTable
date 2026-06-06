@@ -24,7 +24,9 @@ Never commit here:
 
 ## Private Ops Repo
 
-Recommended private repo name: `RoundTable-Ops`.
+Our private ops repo is `git@github.com:q121212/RoundTable-Ops.git`.
+It is the canonical place for deployment notes about the `adv_msk02_root`
+server, nginx publication choices, and operator runbooks. Keep it private.
 
 Suggested layout:
 

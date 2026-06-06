@@ -97,6 +97,7 @@ it fails unless the server `.env` has `BASE_URL=https://...`,
 schema on boot, so there is no separate migration step.
 
 Keep this repo reusable/public. Real server inventory, `.env` values, nginx
-configs with domains, and operational runbooks belong in a private ops repo
-(for example `RoundTable-Ops`) or on the server. Use `DEPLOY_ENV_FILE` to source
-private deploy settings from outside this repo. See `docs/deployment-separation.md`.
+configs with domains, and operational runbooks belong in the private ops repo
+`git@github.com:q121212/RoundTable-Ops.git` or on the server. Use
+`DEPLOY_ENV_FILE` to source private deploy settings from outside this repo. See
+`docs/deployment-separation.md`.
