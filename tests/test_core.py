@@ -1,9 +1,14 @@
+import pytest
+from fastapi import HTTPException
+
 from app.db import get_conn, row_to_dict
 from app.store import (
+    add_project_member,
     board_for_project,
     close_ticket,
     create_project,
     create_ticket,
+    delete_project,
     get_ticket_bundle,
     upsert_user,
 )
@@ -53,3 +58,38 @@ def test_assignment_notification_outbox(temp_db):
     assert row is not None
     assert row["user_id"] == assignee["id"]
     assert row["channel"] == "email"
+
+
+def test_delete_project_cascades(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "GT", "GigaTool")
+    ticket = create_ticket(user, "GT", "Some ticket")
+
+    delete_project(user, "GT")
+
+    with get_conn() as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'GT'").fetchone()["c"] == 0
+        assert (
+            conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (ticket["key"],)).fetchone()["c"]
+            == 0
+        )
+
+
+def test_delete_project_requires_admin(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "OPS", "Operations")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+
+    with pytest.raises(HTTPException) as exc:
+        delete_project(member, "OPS")
+    assert exc.value.status_code == 403
+
+    delete_project(owner, "OPS")
+    with get_conn() as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'OPS'").fetchone()["c"] == 0

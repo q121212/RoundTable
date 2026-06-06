@@ -67,4 +67,15 @@
     </div>
   </div>
 </section>
+
+{% if can_delete %}
+<section class="panel danger-zone">
+  <h2 data-i18n="projects.danger">Danger zone</h2>
+  <p class="muted" data-i18n="projects.delete_help">Deleting a project permanently removes all of its tickets, comments, and history. This cannot be undone.</p>
+  <form method="post" action="/api/projects/{{ project.key }}/delete" data-confirm="projects.delete_confirm">
+    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+    <button class="danger" type="submit" data-icon="trash-2" data-i18n="projects.delete">Delete project</button>
+  </form>
+</section>
+{% endif %}
 {% endblock %}

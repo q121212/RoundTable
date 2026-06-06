@@ -36,6 +36,7 @@ from .store import (
     create_telegram_link_token,
     create_test_notification,
     create_ticket,
+    delete_project,
     get_project_by_key,
     get_telegram_link,
     get_ticket_bundle,
@@ -275,7 +276,21 @@ async def project_settings_page(request: Request, project_key: str) -> HTMLRespo
     project = get_project_by_key(project_key)
     require_project_access(user, int(project["id"]), write=True)
     members = project_members(int(project["id"]))
-    return render(request, "project_settings.html", {"project": project, "members": members})
+    can_delete = user.get("role") == "admin" or any(
+        member["id"] == user["id"] and member.get("project_role") == "admin" for member in members
+    )
+    return render(
+        request,
+        "project_settings.html",
+        {"project": project, "members": members, "can_delete": can_delete},
+    )
+
+
+@app.post("/api/projects/{project_key}/delete")
+async def api_delete_project(request: Request, project_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    delete_project(user, project_key)
+    return redirect("/projects")
 
 
 @app.post("/api/projects/{project_key}/members")

@@ -163,6 +163,26 @@ def require_project_access(user: Dict[str, Any], project_id: int, write: bool = 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Write access denied")
 
 
+def require_project_admin(user: Dict[str, Any], project_id: int) -> None:
+    if user.get("role") == "admin":
+        return
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT role FROM project_members WHERE project_id = ? AND user_id = ?",
+            (project_id, user["id"]),
+        ).fetchone()
+    if not row or row["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project admin required")
+
+
+def delete_project(user: Dict[str, Any], project_key: str) -> None:
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    with get_conn() as conn:
+        # foreign_keys=ON cascades tickets, members, comments, action_log, links.
+        conn.execute("DELETE FROM projects WHERE id = ?", (project["id"],))
+
+
 def list_projects(user: Dict[str, Any]) -> List[Dict[str, Any]]:
     with get_conn() as conn:
         if user.get("role") == "admin":
