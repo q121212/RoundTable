@@ -125,6 +125,26 @@ def test_delete_project_requires_admin(temp_db):
         assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'OPS'").fetchone()["c"] == 0
 
 
+def test_member_cannot_create_project(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    member = upsert_user("bob", email="bob@example.com")
+    session = create_session(int(member["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.post(
+        "/api/projects",
+        data={"csrf_token": session["csrf"], "key": "NOPE", "name": "Nope"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 403
+
+
 def test_member_cannot_manage_project_members_via_api(temp_db):
     from app.config import settings
 

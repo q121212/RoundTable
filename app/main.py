@@ -22,6 +22,7 @@ from .security import (
     get_user_by_session,
     login_response,
     new_token,
+    require_admin,
     validate_csrf_request,
     verify_hmac_signature,
 )
@@ -245,12 +246,17 @@ async def logout(request: Request) -> RedirectResponse:
 @app.get("/projects", response_class=HTMLResponse)
 async def projects_page(request: Request) -> HTMLResponse:
     user = require_page_user(request)
-    return render(request, "projects.html", {"projects": list_projects(user)})
+    return render(
+        request,
+        "projects.html",
+        {"projects": list_projects(user), "can_create_project": user.get("role") == "admin"},
+    )
 
 
 @app.post("/api/projects")
 async def api_create_project(request: Request) -> RedirectResponse:
     user = await validate_csrf_request(request)
+    require_admin(user)
     form = await request.form()
     project = create_project(
         user,
