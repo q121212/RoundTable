@@ -160,7 +160,11 @@ def render(
     if not project_key and isinstance(data.get("ticket"), dict):
         project_key = data["ticket"].get("project_key")
     data["current_project_url"] = "/p/%s/board" % project_key if project_key else ""
-    return templates.TemplateResponse(template, data, status_code=status_code)
+    # Modern Starlette signature (request, name, context); works across the
+    # version range we target and avoids the deprecated (name, context) form.
+    return templates.TemplateResponse(
+        request=request, name=template, context=data, status_code=status_code
+    )
 
 
 def redirect(url: str) -> RedirectResponse:
