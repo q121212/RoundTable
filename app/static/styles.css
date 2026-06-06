@@ -407,6 +407,12 @@ button,
   align-items: start;
 }
 
+/* MCP page: the left "Create token" panel holds the form + full endpoint URL
+   and needs room, while the token list on the right is short. */
+.split-layout.split-mcp {
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 340px);
+}
+
 .panel {
   padding: 18px;
 }
@@ -864,6 +870,7 @@ code {
   }
 
   .split-layout,
+  .split-layout.split-mcp,
   .ticket-layout {
     grid-template-columns: 1fr;
   }
