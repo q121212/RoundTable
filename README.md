@@ -40,7 +40,7 @@ SQLite data lives in `./data/roundtable.db`.
 `deploy.sh` supports the current server layout at `/srv/RoundTable`.
 
 ```bash
-DEPLOY_HOST=adv_msk02_root ./deploy.sh
+DEPLOY_HOST=deploy@example.com ./deploy.sh
 ```
 
 By default it uses `DEPLOY_MODE=auto`: if `/srv/RoundTable/.git` exists on the
@@ -50,12 +50,17 @@ with `rsync` while preserving `.env`, `.venv`, and `data/`.
 Before exposing RoundTable publicly, deploy with:
 
 ```bash
-DEPLOY_PUBLIC=true DEPLOY_HOST=adv_msk02_root ./deploy.sh
+DEPLOY_PUBLIC=true DEPLOY_HOST=deploy@example.com ./deploy.sh
 ```
 
 Public deploy mode requires `BASE_URL=https://...`, `ALLOW_DEV_LOGIN=false`, and
 `SESSION_COOKIE_SECURE=true` in the server `.env`. Keep uvicorn bound to
 `127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
+
+For public repo vs private server configuration separation, see
+[docs/deployment-separation.md](docs/deployment-separation.md). In short: keep
+RoundTable reusable and public, keep real server env/nginx/runbooks in a private
+ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 
 ## Features
 

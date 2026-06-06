@@ -10,8 +10,9 @@
 # The app runs schema setup itself on startup (init_db), so there is no separate
 # migration step. SQLite data lives under ./data and is left untouched.
 #
-# Config: set values via env or a gitignored .env.deploy next to this script,
-# or pass flags. Required: DEPLOY_HOST.
+# Config: set values via env, a gitignored .env.deploy next to this script, an
+# external DEPLOY_ENV_FILE from a private ops repo, or pass flags. Required:
+# DEPLOY_HOST.
 #
 #   DEPLOY_HOST        ssh target, e.g. deploy@example.com   (required)
 #   DEPLOY_PATH        app dir on server        (default: /srv/RoundTable)
@@ -21,16 +22,29 @@
 #   DEPLOY_PYTHON      python on server         (default: python3)
 #   DEPLOY_MODE        auto | git | rsync       (default: auto)
 #   DEPLOY_PUBLIC      true requires safe public .env settings
+#   DEPLOY_ENV_FILE    optional private deploy env file to source
 #
 # Usage:
 #   ./deploy.sh                          # uses env / .env.deploy
-#   ./deploy.sh --host adv_msk02_root --path /srv/RoundTable --mode auto
-#   DEPLOY_PUBLIC=true ./deploy.sh --host adv_msk02_root
+#   ./deploy.sh --host deploy@example.com --path /srv/RoundTable --mode auto
+#   DEPLOY_PUBLIC=true ./deploy.sh --host deploy@example.com
 #
 set -euo pipefail
 
 cd "$(dirname "$0")"
-[ -f .env.deploy ] && set -a && . ./.env.deploy && set +a
+if [ -n "${DEPLOY_ENV_FILE:-}" ]; then
+  if [ ! -f "$DEPLOY_ENV_FILE" ]; then
+    echo "error: DEPLOY_ENV_FILE does not exist: $DEPLOY_ENV_FILE" >&2
+    exit 2
+  fi
+  set -a
+  . "$DEPLOY_ENV_FILE"
+  set +a
+elif [ -f .env.deploy ]; then
+  set -a
+  . ./.env.deploy
+  set +a
+fi
 
 HOST="${DEPLOY_HOST:-}"
 APP_DIR="${DEPLOY_PATH:-/srv/RoundTable}"

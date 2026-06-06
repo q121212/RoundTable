@@ -95,3 +95,8 @@ fixture (`tests/conftest.py`).
 it fails unless the server `.env` has `BASE_URL=https://...`,
 `ALLOW_DEV_LOGIN=false`, and `SESSION_COOKIE_SECURE=true`. The app sets up its own
 schema on boot, so there is no separate migration step.
+
+Keep this repo reusable/public. Real server inventory, `.env` values, nginx
+configs with domains, and operational runbooks belong in a private ops repo
+(for example `RoundTable-Ops`) or on the server. Use `DEPLOY_ENV_FILE` to source
+private deploy settings from outside this repo. See `docs/deployment-separation.md`.
