@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from app.db import get_conn, row_to_dict
@@ -78,6 +80,37 @@ def test_mcp_notification_returns_no_body(temp_db):
 
     assert response.status_code == 202
     assert response.content == b""
+
+
+def test_mcp_streams_sse_when_accept_event_stream(temp_db):
+    user = upsert_user("alice")
+    create_project(user, "WEB", "Website")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={
+            "Authorization": "Bearer %s" % token,
+            "Accept": "application/json, text/event-stream",
+        },
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_projects"}},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    body = response.text
+    assert body.startswith("event: message\ndata: ")
+    data_line = body.split("data: ", 1)[1].strip()
+    payload = json.loads(data_line)
+    assert "WEB" in payload["result"]["content"][0]["text"]
+
+
+def test_mcp_get_returns_405(temp_db):
+    client = TestClient(app)
+    response = client.get("/mcp")
+    assert response.status_code == 405
+    assert response.headers.get("allow") == "POST"
 
 
 def test_telegram_webhook_secret_is_checked_when_configured(temp_db):

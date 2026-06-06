@@ -684,7 +684,30 @@ async def mcp_endpoint(request: Request) -> Response:
     if result is None:
         # JSON-RPC notifications get an empty 202 (no response body).
         return Response(status_code=status.HTTP_202_ACCEPTED)
+    # Streamable HTTP transport: when the client advertises text/event-stream,
+    # frame the single JSON-RPC reply as one SSE event so SSE-style MCP clients
+    # parse it. Otherwise fall back to a plain JSON body.
+    accept = request.headers.get("accept", "")
+    if "text/event-stream" in accept:
+        body = "event: message\ndata: %s\n\n" % json.dumps(result)
+
+        async def event_stream():
+            yield body
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
     return JSONResponse(result)
+
+
+@app.get("/mcp")
+async def mcp_endpoint_get() -> Response:
+    # We have no server-initiated messages, so the optional GET SSE stream of
+    # the Streamable HTTP transport is not offered. 405 is the spec-compliant
+    # answer and tells clients to use POST only.
+    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers={"Allow": "POST"})
 
 
 def parse_optional_int(value: Any) -> Optional[int]:
