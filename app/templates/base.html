@@ -4,13 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}RoundTable{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/styles.css">
     <script defer src="/static/vendor/lucide.min.js"></script>
     <script defer src="/static/app.js"></script>
   </head>
   <body data-current-project-url="{{ current_project_url }}">
     <header class="topbar">
-      <a class="brand" href="/" data-home-link>RoundTable</a>
+      <a class="brand" href="/" data-home-link><img class="brand-mark" src="/static/favicon.svg" alt="" width="22" height="22">RoundTable</a>
       <nav class="topnav">
         {% if user %}
           <a href="/projects" data-board-link data-icon="columns-3" data-i18n="nav.board">Board</a>
@@ -30,6 +31,7 @@
         {% endif %}
         <div class="quick-prefs" aria-label="Display settings">
           <button class="ghost tiny" type="button" data-icon="languages" data-lang-toggle aria-label="Switch language">EN</button>
+          <span class="prefs-divider" aria-hidden="true"></span>
           <button class="ghost tiny icon-pref" type="button" data-icon="moon" data-theme-toggle aria-label="Switch theme"></button>
         </div>
       </nav>
@@ -37,5 +39,12 @@
     <main class="page">
       {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer">
+      <a class="footer-brand" href="/" data-home-link>
+        <img class="footer-mark" src="/static/favicon.svg" alt="" width="18" height="18">
+        <span>RoundTable</span>
+      </a>
+      <span class="muted" data-i18n="footer.tagline">A round table for your tickets.</span>
+    </footer>
   </body>
 </html>

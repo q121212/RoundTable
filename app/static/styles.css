@@ -1848,3 +1848,51 @@ button.is-copied {
   background: var(--green);
   color: #fff;
 }
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-mark,
+.footer-mark {
+  display: block;
+  border-radius: 5px;
+}
+
+.prefs-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 1px;
+  background: var(--line);
+}
+
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 20px 16px 28px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.footer-mark {
+  transition: transform 0.6s ease;
+}
+
+.footer-brand:hover .footer-mark {
+  transform: rotate(180deg);
+}
