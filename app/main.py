@@ -51,6 +51,7 @@ from .store import (
     require_project_admin,
     revoke_mcp_token,
     set_watch,
+    sync_configured_admin_roles,
     unlink_telegram,
     update_notification_preferences,
     update_ticket,
@@ -82,6 +83,7 @@ def warn_insecure_config() -> None:
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     init_db()
+    sync_configured_admin_roles()
     warn_insecure_config()
     fastapi_app.state.notification_stop = asyncio.Event()
     fastapi_app.state.notification_task = asyncio.create_task(

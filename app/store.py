@@ -91,7 +91,8 @@ def upsert_user(
         existing = conn.execute("SELECT * FROM users WHERE login = ?", (login,)).fetchone()
         if existing:
             user = row_to_dict(existing) or {}
-            role = user["role"] if user["role"] == "admin" else role
+            if user["role"] == "admin" and not settings.admin_github_logins:
+                role = "admin"
             conn.execute(
                 """
                 UPDATE users
@@ -116,6 +117,26 @@ def upsert_user(
             user_id = int(cur.lastrowid)
         ensure_notification_preferences(conn, user_id)
         return row_to_dict(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()) or {}
+
+
+def sync_configured_admin_roles() -> None:
+    """Keep global admins aligned with ADMIN_GITHUB_LOGINS when it is configured."""
+    if not settings.admin_github_logins:
+        return
+    placeholders = ",".join("?" for _ in settings.admin_github_logins)
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET role = CASE
+                WHEN login IN (%s) THEN 'admin'
+                ELSE 'member'
+            END
+            WHERE role = 'admin' OR login IN (%s)
+            """
+            % (placeholders, placeholders),
+            tuple(settings.admin_github_logins) * 2,
+        )
 
 
 def ensure_notification_preferences(conn: Any, user_id: int) -> None:

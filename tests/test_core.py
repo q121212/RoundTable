@@ -14,6 +14,7 @@ from app.store import (
     delete_project,
     get_ticket_bundle,
     project_members,
+    sync_configured_admin_roles,
     update_ticket,
     upsert_user,
 )
@@ -143,6 +144,31 @@ def test_member_cannot_create_project(temp_db):
     )
 
     assert response.status_code == 403
+
+
+def test_configured_admins_override_stale_dev_admins(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", True)
+    object.__setattr__(settings, "admin_github_logins", [])
+
+    stale_admin = upsert_user("admin")
+    assert stale_admin["role"] == "admin"
+
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    alice = upsert_user("alice")
+    admin_again = upsert_user("admin")
+    sync_configured_admin_roles()
+
+    assert alice["role"] == "admin"
+    assert admin_again["role"] == "member"
+    with get_conn() as conn:
+        rows = {
+            row["login"]: row["role"]
+            for row in conn.execute("SELECT login, role FROM users ORDER BY login").fetchall()
+        }
+    assert rows == {"admin": "member", "alice": "admin"}
 
 
 def test_member_cannot_manage_project_members_via_api(temp_db):
