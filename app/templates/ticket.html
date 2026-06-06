@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ ticket.key }} - RoundTable{% endblock %}
 {% block content %}
-<section class="page-head">
+<section class="page-head" data-ticket-page data-ticket-key="{{ ticket.key }}" data-events-url="/events/projects/{{ ticket.project_key }}">
   <div>
     <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
     <h1 class="ticket-page-title">
@@ -185,9 +185,9 @@
   <aside class="side-panel">
     <div class="panel">
       <h2 data-i18n="ticket.activity">Activity</h2>
-      <ol class="activity-list">
+      <ol class="activity-list" data-activity-list>
         {% for action in actions %}
-          <li>
+          <li data-action-id="{{ action.id }}">
             <span class="profile-line activity-actor">
               <span class="avatar-dot" aria-hidden="true">
                 {% if action.actor_avatar_url %}
@@ -200,7 +200,9 @@
             </span>
             <span data-action-label="{{ action.action }}">{{ action.action }}</span>
             {% if action.field %}
-              <span class="muted">· {{ action.field }}</span>
+              <span class="activity-detail muted" data-action-field="{{ action.field }}" data-old-value="{{ action.old_value or '' }}" data-new-value="{{ action.new_value or '' }}">
+                · {{ action.old_value or action.field }}{% if action.new_value %} → {{ action.new_value }}{% endif %}
+              </span>
             {% endif %}
             <time data-local-time="{{ action.created_at }}">{{ action.created_at }}</time>
           </li>

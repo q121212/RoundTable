@@ -46,7 +46,11 @@
       <div class="notice">
         <strong data-i18n="notifications.telegram_title">How to link a phone</strong>
         <p class="muted" data-i18n="notifications.telegram_copy">Generate a token, open your configured Telegram bot, and send /start plus that token.</p>
-        <p class="muted"><span data-i18n="notifications.telegram_webhook">Bot webhook endpoint:</span> <code>{{ base_url }}/integrations/telegram/webhook</code></p>
+        <div class="copy-card">
+          <span class="muted" data-i18n="notifications.telegram_webhook">Bot webhook endpoint:</span>
+          <code>{{ base_url }}/integrations/telegram/webhook</code>
+          <button class="secondary tiny" type="button" data-copy-text="{{ base_url }}/integrations/telegram/webhook" data-icon="copy" data-i18n="mcp.copy_endpoint">Copy endpoint</button>
+        </div>
       </div>
       <p class="muted" data-i18n="notifications.telegram_help">Generate a one-time token, then send it to the configured Telegram bot.</p>
       <form method="post" action="/api/me/telegram/link">

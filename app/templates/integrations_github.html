@@ -14,7 +14,11 @@
     <strong data-i18n="github.how_title">How to connect GitHub</strong>
     <p class="muted" data-i18n="github.how_copy">Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.</p>
     <p class="muted" data-i18n="github.installation_note">Installation id is optional and only needed for advanced GitHub App actions such as creating repository autolinks automatically. You can leave it empty.</p>
-    <p class="muted">Webhook URL: <code>{{ base_url }}/integrations/github/webhook</code></p>
+    <div class="copy-card">
+      <span class="muted">Webhook URL:</span>
+      <code>{{ base_url }}/integrations/github/webhook</code>
+      <button class="secondary tiny" type="button" data-copy-text="{{ base_url }}/integrations/github/webhook" data-icon="copy" data-i18n="mcp.copy_endpoint">Copy endpoint</button>
+    </div>
   </div>
   <div class="table-list">
     {% for project in projects %}

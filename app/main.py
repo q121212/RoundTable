@@ -179,13 +179,18 @@ def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
-async def publish_ticket_event(ticket: Dict[str, Any], event_name: str = "ticket_changed") -> None:
+async def publish_ticket_event(
+    ticket: Dict[str, Any], event_name: str = "ticket_changed"
+) -> Optional[Dict[str, Any]]:
     if not ticket:
-        return
+        return None
+    bundle = get_ticket_bundle(str(ticket["key"]))
+    action = bundle["actions"][0] if bundle.get("actions") else None
     await project_events.publish(
         str(ticket["project_key"]),
-        {"event": event_name, "ticket": ticket},
+        {"event": event_name, "ticket": ticket, "action": action},
     )
+    return action
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -495,8 +500,8 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         assignee_id=payload.get("assignee_id"),
         assignee_touched="assignee_id" in payload,
     )
-    await publish_ticket_event(ticket)
-    return JSONResponse(ticket)
+    action = await publish_ticket_event(ticket)
+    return JSONResponse({**ticket, "_action": action})
 
 
 @app.post("/api/tickets/{ticket_key}/comments")

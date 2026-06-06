@@ -781,6 +781,10 @@ button,
   display: inline-flex;
 }
 
+.activity-detail:empty {
+  display: none;
+}
+
 .link-list li {
   display: grid;
   gap: 4px;
@@ -1958,7 +1962,7 @@ a.ticket-key:hover {
 
 .copy-card {
   display: grid;
-  grid-template-columns: auto minmax(240px, 1fr) auto;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
@@ -1968,8 +1972,14 @@ a.ticket-key:hover {
   background: var(--paper-soft);
 }
 
+.copy-card .muted {
+  white-space: nowrap;
+}
+
 .copy-card code {
+  display: block;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1979,6 +1989,21 @@ a.ticket-key:hover {
 button.is-copied {
   background: var(--green);
   color: #fff;
+}
+
+@media (max-width: 900px) {
+  .copy-card {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .copy-card .muted {
+    white-space: normal;
+  }
+
+  .copy-card button {
+    justify-self: stretch;
+  }
 }
 
 .brand {

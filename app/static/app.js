@@ -389,6 +389,7 @@
     updateThemeButton();
     setupLocalTimes();
     setupActionLabels();
+    setupActionDetails();
     renderIcons();
   }
 
@@ -1056,13 +1057,14 @@
   }
 
   function setupBoardLiveEvents() {
-    const board = document.querySelector(".board[data-events-url]");
-    if (!board || !window.EventSource) return;
-    const source = new EventSource(board.dataset.eventsUrl);
+    const liveRoot = document.querySelector(".board[data-events-url], [data-ticket-page][data-events-url]");
+    if (!liveRoot || !window.EventSource) return;
+    const source = new EventSource(liveRoot.dataset.eventsUrl);
     const handleTicketEvent = (event) => {
       try {
         const payload = JSON.parse(event.data || "{}");
         applyLiveTicket(payload.ticket);
+        applyLiveTicketPage(payload);
       } catch (error) {
         // Ignore malformed live events; the next reload/resync will recover.
       }
@@ -1071,6 +1073,64 @@
     source.addEventListener("ticket_changed", handleTicketEvent);
     source.addEventListener("ticket_commented", handleTicketEvent);
     window.addEventListener("beforeunload", () => source.close());
+  }
+
+  function applyLiveTicketPage(payload) {
+    const page = document.querySelector("[data-ticket-page]");
+    const ticket = payload && payload.ticket;
+    if (!page || !ticket || page.dataset.ticketKey !== ticket.key) return;
+    const title = document.querySelector("[data-ticket-page-title]");
+    if (title) title.textContent = ticket.title || "";
+    const form = document.querySelector("[data-ticket-autosave]");
+    if (form && document.activeElement && !form.contains(document.activeElement)) {
+      setFormValue(form, "title", ticket.title || "");
+      setFormValue(form, "description", ticket.description || "");
+      setFormValue(form, "status", ticket.status || "");
+      setFormValue(form, "priority", ticket.priority || "");
+      setFormValue(form, "assignee_id", ticket.assignee_id ? String(ticket.assignee_id) : "");
+    }
+    prependActivity(payload.action);
+  }
+
+  function setFormValue(form, field, value) {
+    const control = form.elements[field];
+    if (control && control.value !== value) control.value = value;
+  }
+
+  function prependActivity(action) {
+    if (!action || !action.id) return;
+    const list = document.querySelector("[data-activity-list]");
+    if (!list || list.querySelector(`[data-action-id="${cssEscape(action.id)}"]`)) return;
+    const item = document.createElement("li");
+    item.dataset.actionId = action.id;
+    const actorLine = document.createElement("span");
+    actorLine.className = "profile-line activity-actor";
+    const avatar = document.createElement("span");
+    avatar.className = "avatar-dot";
+    avatar.setAttribute("aria-hidden", "true");
+    const actor = document.createElement("strong");
+    actor.textContent = action.actor_name || action.actor_login || "System";
+    actorLine.append(avatar, actor);
+    renderAvatar(avatar, action.actor_avatar_url || "", action.actor_login || "");
+
+    const label = document.createElement("span");
+    label.dataset.actionLabel = action.action || "";
+    label.textContent = action.action || "";
+
+    const detail = document.createElement("span");
+    detail.className = "activity-detail muted";
+    detail.dataset.actionField = action.field || "";
+    detail.dataset.oldValue = action.old_value || "";
+    detail.dataset.newValue = action.new_value || "";
+
+    const time = document.createElement("time");
+    time.dataset.localTime = action.created_at || "";
+    time.textContent = action.created_at || "";
+    item.append(actorLine, label, detail, time);
+    list.prepend(item);
+    setupActionLabels();
+    setupActionDetails();
+    setupLocalTimes();
   }
 
   function setupTicketAutosave() {
@@ -1107,6 +1167,7 @@
           const title = document.querySelector("[data-ticket-page-title]");
           if (title) title.textContent = ticket.title || payload.title;
         }
+        prependActivity(ticket._action);
         setStatus("ticket.autosave_saved");
       } catch (error) {
         setStatus("ticket.autosave_error");
@@ -1185,6 +1246,33 @@
       const value = translate(key, currentLang());
       if (value) element.textContent = value;
       element.dataset.i18n = key;
+    });
+  }
+
+  function actionValueLabel(field, value) {
+    if (!value) return "";
+    if (field === "status") return translate(`status.${value}`, currentLang()) || value;
+    if (field === "priority") return translate(`priority.${value}`, currentLang()) || value;
+    if (field === "title") return value;
+    if (field === "description") return "";
+    if (field === "assignee_id") return "";
+    return value;
+  }
+
+  function setupActionDetails() {
+    document.querySelectorAll("[data-action-field]").forEach((element) => {
+      const field = element.dataset.actionField || "";
+      const oldLabel = actionValueLabel(field, element.dataset.oldValue || "");
+      const newLabel = actionValueLabel(field, element.dataset.newValue || "");
+      if (oldLabel && newLabel) {
+        element.textContent = `· ${oldLabel} → ${newLabel}`;
+      } else if (newLabel) {
+        element.textContent = `· ${newLabel}`;
+      } else if (field === "description" || field === "assignee_id") {
+        element.textContent = "";
+      } else {
+        element.textContent = "";
+      }
     });
   }
 
@@ -1294,6 +1382,7 @@
     setupCopyButtons();
     setupLocalTimes();
     setupActionLabels();
+    setupActionDetails();
     setupMemberRoleForms();
     setupAssigneePickers();
     setupOpenCreate();
