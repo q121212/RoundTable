@@ -196,12 +196,39 @@ def require_project_admin(user: Dict[str, Any], project_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project admin required")
 
 
-def delete_project(user: Dict[str, Any], project_key: str) -> None:
+def delete_project(user: Dict[str, Any], project_key: str, confirmation: str = "") -> None:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
+    expected = "%s/%s" % (project["key"], project["name"])
+    if confirmation.strip() not in {project["key"], expected}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Type the project key to confirm deletion.",
+        )
     with get_conn() as conn:
         # foreign_keys=ON cascades tickets, members, comments, action_log, links.
         conn.execute("DELETE FROM projects WHERE id = ?", (project["id"],))
+
+
+def update_project_settings(
+    user: Dict[str, Any], project_key: str, name: str, description: str = "", repo: str = ""
+) -> Dict[str, Any]:
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name is required")
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE projects
+            SET name = ?, description = ?, github_repo_full_name = ?
+            WHERE id = ?
+            """,
+            (name, description.strip(), normalize_github_repo(repo) or None, project["id"]),
+        )
+        log_action(conn, int(project["id"]), None, user["id"], "project_updated")
+        return row_to_dict(conn.execute("SELECT * FROM projects WHERE id = ?", (project["id"],)).fetchone()) or {}
 
 
 def list_projects(user: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -331,6 +358,53 @@ def add_project_member(project_id: int, login: str, role: str = "member") -> Non
             """,
             (project_id, user["id"], role, utcnow()),
         )
+
+
+def update_project_member(project_id: int, member_user_id: int, role: str) -> None:
+    if role not in {"admin", "member", "viewer"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid member role")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT role FROM project_members WHERE project_id = ? AND user_id = ?",
+            (project_id, member_user_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project member not found")
+        if row["role"] == "admin" and role != "admin":
+            admin_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM project_members WHERE project_id = ? AND role = 'admin'",
+                (project_id,),
+            ).fetchone()["c"]
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Project must keep at least one admin.",
+                )
+        conn.execute(
+            "UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?",
+            (role, project_id, member_user_id),
+        )
+
+
+def remove_project_member(project_id: int, member_user_id: int) -> None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT role FROM project_members WHERE project_id = ? AND user_id = ?",
+            (project_id, member_user_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project member not found")
+        if row["role"] == "admin":
+            admin_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM project_members WHERE project_id = ? AND role = 'admin'",
+                (project_id,),
+            ).fetchone()["c"]
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Project must keep at least one admin.",
+                )
+        conn.execute("DELETE FROM project_members WHERE project_id = ? AND user_id = ?", (project_id, member_user_id))
 
 
 def create_ticket(
@@ -523,7 +597,14 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
                 (ticket["id"],),
             ).fetchall()
         )
-        return {"ticket": ticket, "comments": comments, "actions": actions, "links": links, "watchers": watchers}
+        return {
+            "ticket": ticket,
+            "comments": comments,
+            "actions": actions,
+            "links": links,
+            "watchers": watchers,
+            "watcher_ids": [int(watcher["id"]) for watcher in watchers],
+        }
 
 
 def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:

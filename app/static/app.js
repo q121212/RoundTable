@@ -15,6 +15,7 @@
       "action.reopen_ticket": "Reopen ticket",
       "action.save": "Save",
       "action.update": "Update",
+      "action.unwatch": "Unwatch",
       "field.comment": "Comment",
       "field.assignee": "Assignee",
       "field.description": "Description",
@@ -32,8 +33,9 @@
       "field.status": "Status",
       "field.title": "Title",
       "github.create_project_first": "Create a project first.",
-      "github.how_copy": "Paste a repository as owner/repo or a full GitHub URL. Add the installation id only when you want RoundTable to create autolinks through your GitHub App.",
+      "github.how_copy": "Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.",
       "github.how_title": "How to connect GitHub",
+      "github.installation_note": "Installation id is optional and only needed for advanced GitHub App actions such as creating repository autolinks automatically. You can leave it empty.",
       "github.integration": "Integration",
       "github.links": "GitHub links",
       "github.repo_links": "Repository links",
@@ -83,6 +85,7 @@
       "notifications.eyebrow": "Personal settings",
       "notifications.how_copy": "RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.",
       "notifications.how_title": "When notifications are sent",
+      "notifications.email_note": "Email is optional and often unavailable from GitHub profiles, so Telegram is the primary channel for now.",
       "notifications.save": "Save preferences",
       "notifications.telegram_copy": "Generate a token, open your configured Telegram bot, and send /start plus that token. The bot webhook must point to /integrations/telegram/webhook.",
       "notifications.telegram_generate": "Generate link token",
@@ -98,6 +101,7 @@
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "What this project is for",
       "placeholder.quick_comment": "Optional comment",
+      "placeholder.ticket_description": "Optional description",
       "placeholder.ticket_title": "New ticket title",
       "priority.High": "High",
       "priority.Low": "Low",
@@ -110,7 +114,9 @@
       "projects.danger": "Danger zone",
       "projects.delete": "Delete project",
       "projects.delete_confirm": "Delete this project and all its tickets? This cannot be undone.",
+      "projects.delete_confirm_key": "Type the project key to confirm:",
       "projects.delete_help": "Deleting a project permanently removes all of its tickets, comments, and history. This cannot be undone.",
+      "projects.details": "Project details",
       "projects.empty_copy": "Create the first project and RoundTable will start ticket keys from KEY-1.",
       "projects.empty_title": "No projects yet",
       "projects.eyebrow": "Workspace",
@@ -118,6 +124,8 @@
       "projects.member_hint": "You can open projects where an admin has added your GitHub login. Project creation is limited to workspace admins.",
       "projects.members": "Members",
       "projects.no_members": "No members yet.",
+      "projects.remove_member": "Remove",
+      "projects.save_details": "Save project",
       "projects.settings": "Project settings",
       "projects.title": "Projects",
       "status.all": "All",
@@ -131,6 +139,16 @@
       "theme.light": "Light",
       "theme.switch": "Switch theme",
       "ticket.activity": "Activity",
+      "ticket.action.assigned": "assigned",
+      "ticket.action.closed": "closed",
+      "ticket.action.commented": "commented",
+      "ticket.action.project_created": "created project",
+      "ticket.action.project_updated": "updated project",
+      "ticket.action.reopened": "reopened",
+      "ticket.action.status_changed": "moved",
+      "ticket.action.ticket_updated": "updated",
+      "ticket.action.unwatching": "stopped watching",
+      "ticket.action.watching": "started watching",
       "ticket.autosave_error": "Could not save",
       "ticket.autosave_saved": "Saved",
       "ticket.autosave_saving": "Saving...",
@@ -142,6 +160,8 @@
       "ticket.quick_create_help": "Create a ticket fast; details can be edited after opening it.",
       "ticket.save": "Save ticket",
       "ticket.unassigned": "Unassigned",
+      "ticket.people": "People",
+      "ticket.unwatch": "Unwatch ticket",
       "ticket.watchers": "Watchers",
       "ticket.watch": "Watch ticket",
       "ticket.workflow_help": "These actions change ticket state; they do not close this page.",
@@ -157,6 +177,7 @@
       "action.reopen_ticket": "Открыть тикет снова",
       "action.save": "Сохранить",
       "action.update": "Обновить",
+      "action.unwatch": "Не следить",
       "field.comment": "Комментарий",
       "field.assignee": "Исполнитель",
       "field.description": "Описание",
@@ -174,8 +195,9 @@
       "field.status": "Статус",
       "field.title": "Заголовок",
       "github.create_project_first": "Сначала создайте проект.",
-      "github.how_copy": "Вставьте репозиторий как owner/repo или полную ссылку GitHub. Installation id нужен только если RoundTable должен создавать autolinks через GitHub App.",
+      "github.how_copy": "Вставьте owner/repo или ссылку GitHub. Этого достаточно, чтобы webhook связывал ветки, коммиты и PR с тикетами.",
       "github.how_title": "Как подключить GitHub",
+      "github.installation_note": "Installation id необязателен и нужен только для продвинутых действий GitHub App, например автоматического создания autolinks в репозитории. Можно оставить пустым.",
       "github.integration": "Интеграция",
       "github.links": "Связи GitHub",
       "github.repo_links": "Репозитории",
@@ -225,6 +247,7 @@
       "notifications.eyebrow": "Личные настройки",
       "notifications.how_copy": "RoundTable уведомляет исполнителей, авторов и наблюдателей при назначении, смене статуса, комментариях, закрытии и переоткрытии.",
       "notifications.how_title": "Когда приходят уведомления",
+      "notifications.email_note": "Email необязателен и часто скрыт в GitHub-профиле, поэтому пока основной канал - Telegram.",
       "notifications.save": "Сохранить настройки",
       "notifications.telegram_copy": "Создайте токен, откройте настроенного Telegram-бота и отправьте /start плюс этот токен. Webhook бота должен указывать на /integrations/telegram/webhook.",
       "notifications.telegram_generate": "Создать токен привязки",
@@ -240,6 +263,7 @@
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "Для чего этот проект",
       "placeholder.quick_comment": "Комментарий, если нужен",
+      "placeholder.ticket_description": "Описание, если нужно",
       "placeholder.ticket_title": "Название нового тикета",
       "priority.High": "Высокий",
       "priority.Low": "Низкий",
@@ -252,7 +276,9 @@
       "projects.danger": "Опасная зона",
       "projects.delete": "Удалить проект",
       "projects.delete_confirm": "Удалить проект и все его тикеты? Действие необратимо.",
+      "projects.delete_confirm_key": "Введите ключ проекта для подтверждения:",
       "projects.delete_help": "Удаление проекта безвозвратно удалит все его тикеты, комментарии и историю. Отменить нельзя.",
+      "projects.details": "Детали проекта",
       "projects.empty_copy": "Создайте первый проект, и RoundTable начнет тикеты с KEY-1.",
       "projects.empty_title": "Проектов пока нет",
       "projects.eyebrow": "Рабочее пространство",
@@ -260,6 +286,8 @@
       "projects.member_hint": "Вы можете открывать проекты, куда админ добавил ваш GitHub логин. Создание проектов доступно только workspace admin.",
       "projects.members": "Участники",
       "projects.no_members": "Участников пока нет.",
+      "projects.remove_member": "Удалить",
+      "projects.save_details": "Сохранить проект",
       "projects.settings": "Настройки проекта",
       "projects.title": "Проекты",
       "status.all": "Все",
@@ -273,6 +301,16 @@
       "theme.light": "Светлая",
       "theme.switch": "Сменить тему",
       "ticket.activity": "История",
+      "ticket.action.assigned": "назначил исполнителя",
+      "ticket.action.closed": "закрыл тикет",
+      "ticket.action.commented": "оставил комментарий",
+      "ticket.action.project_created": "создал проект",
+      "ticket.action.project_updated": "обновил проект",
+      "ticket.action.reopened": "открыл тикет снова",
+      "ticket.action.status_changed": "изменил статус",
+      "ticket.action.ticket_updated": "обновил тикет",
+      "ticket.action.unwatching": "перестал наблюдать",
+      "ticket.action.watching": "начал наблюдать",
       "ticket.autosave_error": "Не удалось сохранить",
       "ticket.autosave_saved": "Сохранено",
       "ticket.autosave_saving": "Сохраняю...",
@@ -284,6 +322,8 @@
       "ticket.quick_create_help": "Создайте тикет быстро; детали можно дописать после открытия.",
       "ticket.save": "Сохранить тикет",
       "ticket.unassigned": "Без исполнителя",
+      "ticket.people": "Участники",
+      "ticket.unwatch": "Не следить за тикетом",
       "ticket.watchers": "Наблюдатели",
       "ticket.watch": "Следить за тикетом",
       "ticket.workflow_help": "Эти действия меняют состояние тикета, а не закрывают страницу.",
@@ -323,6 +363,8 @@
     });
     updateLanguageButton();
     updateThemeButton();
+    setupLocalTimes();
+    setupActionLabels();
     renderIcons();
   }
 
@@ -994,6 +1036,53 @@
     });
   }
 
+  function setupCopyButtons() {
+    document.querySelectorAll("[data-copy-text]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copyText || "");
+          button.classList.add("is-copied");
+          window.setTimeout(() => button.classList.remove("is-copied"), 900);
+        } catch (error) {
+          window.prompt("Copy", button.dataset.copyText || "");
+        }
+      });
+    });
+  }
+
+  function setupLocalTimes() {
+    document.querySelectorAll("[data-local-time]").forEach((element) => {
+      const value = element.dataset.localTime;
+      if (!value) return;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return;
+      element.textContent = new Intl.DateTimeFormat(currentLang() === "ru" ? "ru-RU" : "en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    });
+  }
+
+  function setupActionLabels() {
+    document.querySelectorAll("[data-action-label]").forEach((element) => {
+      const key = `ticket.action.${element.dataset.actionLabel}`;
+      const value = translate(key, currentLang());
+      if (value) element.textContent = value;
+      element.dataset.i18n = key;
+    });
+  }
+
+  function setupMemberRoleForms() {
+    document.querySelectorAll(".member-role-form select").forEach((select) => {
+      select.addEventListener("change", () => {
+        const form = select.closest("form");
+        if (form) form.requestSubmit();
+      });
+    });
+  }
+
   function setupMenus() {
     document.addEventListener("click", (event) => {
       document.querySelectorAll("details.app-menu[open]").forEach((menu) => {
@@ -1051,6 +1140,10 @@
     setupTicketAutosave();
     setupMenus();
     setupConfirms();
+    setupCopyButtons();
+    setupLocalTimes();
+    setupActionLabels();
+    setupMemberRoleForms();
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();

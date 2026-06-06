@@ -8,11 +8,39 @@
   </div>
   <div class="head-actions">
     <a class="secondary" href="/p/{{ project.key }}/board" data-icon="arrow-left" data-i18n="projects.back_to_board">Back to board</a>
-    <a class="secondary" href="/integrations/github" data-icon="github" data-i18n="github.settings">GitHub settings</a>
+    <a class="secondary" href="/integrations/github" data-icon="git-branch" data-i18n="github.settings">GitHub settings</a>
   </div>
 </section>
 
 <section class="split-layout">
+  <div class="panel">
+    <h2 data-i18n="projects.details">Project details</h2>
+    <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/settings">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.name">Name</span>
+          <span class="required-mark" aria-hidden="true">*</span>
+        </span>
+        <input name="name" value="{{ project.name }}" required>
+      </label>
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.description">Description</span>
+        </span>
+        <textarea name="description" rows="4">{{ project.description }}</textarea>
+      </label>
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.github_repo">GitHub repo</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.github_repo" data-tooltip="Use owner/repo, https://github.com/owner/repo, or git@github.com:owner/repo.git.">?</button>
+        </span>
+        <input name="repo" value="{{ project.github_repo_full_name or '' }}" placeholder="owner/repo or https://github.com/owner/repo" data-i18n-placeholder="placeholder.github_repo">
+      </label>
+      <button class="primary" type="submit" data-icon="save" data-i18n="projects.save_details">Save project</button>
+    </form>
+  </div>
+
   <div class="panel">
     <h2 data-i18n="projects.access">Project access</h2>
     <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/members">
@@ -41,7 +69,7 @@
     </form>
   </div>
 
-  <div class="panel">
+  <div class="panel wide-panel">
     <h2 data-i18n="projects.members">Members</h2>
     <div class="table-list">
       {% for member in members %}
@@ -59,7 +87,19 @@
               <span class="muted">{{ member.login }}</span>
             </span>
           </span>
-          <span class="role-pill">{{ member.project_role }}</span>
+          <form class="member-role-form" method="post" action="/api/projects/{{ project.key }}/members/{{ member.id }}">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <select name="role" aria-label="Role">
+              <option value="member" {% if member.project_role == "member" %}selected{% endif %}>member</option>
+              <option value="viewer" {% if member.project_role == "viewer" %}selected{% endif %}>viewer</option>
+              <option value="admin" {% if member.project_role == "admin" %}selected{% endif %}>admin</option>
+            </select>
+            <button class="secondary" type="submit" data-icon="save" data-i18n="action.save">Save</button>
+          </form>
+          <form method="post" action="/api/projects/{{ project.key }}/members/{{ member.id }}/remove">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <button class="ghost" type="submit" data-icon="user-minus" data-i18n="projects.remove_member">Remove</button>
+          </form>
         </div>
       {% else %}
         <p class="muted" data-i18n="projects.no_members">No members yet.</p>
@@ -72,8 +112,10 @@
 <section class="panel danger-zone">
   <h2 data-i18n="projects.danger">Danger zone</h2>
   <p class="muted" data-i18n="projects.delete_help">Deleting a project permanently removes all of its tickets, comments, and history. This cannot be undone.</p>
-  <form method="post" action="/api/projects/{{ project.key }}/delete" data-confirm="projects.delete_confirm">
+  <p class="muted"><span data-i18n="projects.delete_confirm_key">Type the project key to confirm:</span> <code>{{ project.key }}</code></p>
+  <form class="danger-confirm-form" method="post" action="/api/projects/{{ project.key }}/delete">
     <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+    <input name="confirm" required placeholder="{{ project.key }}">
     <button class="danger" type="submit" data-icon="trash-2" data-i18n="projects.delete">Delete project</button>
   </form>
 </section>

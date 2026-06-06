@@ -490,12 +490,29 @@ button,
   margin: 0;
 }
 
-.ticket-create-form,
 .compact-form {
   display: grid;
   grid-template-columns: 1fr minmax(130px, 160px) minmax(150px, 180px) auto;
   gap: 10px;
   align-items: center;
+}
+
+.ticket-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 12px;
+  align-items: end;
+}
+
+.quick-create-main,
+.quick-create-side {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-create-side {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
 }
 
 .board {
@@ -769,6 +786,12 @@ code {
   .ticket-create-form,
   .compact-form,
   .repo-row {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-create-side,
+  .member-row,
+  .danger-confirm-form {
     grid-template-columns: 1fr;
   }
 
@@ -1751,4 +1774,57 @@ a.ticket-key:hover {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* Project settings: member management + delete confirmation (Codex round). */
+.wide-panel {
+  grid-column: 1 / -1;
+}
+
+.member-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.member-role-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.member-role-form select {
+  width: auto;
+  min-height: 36px;
+}
+
+.member-role-form .secondary,
+.member-row .ghost {
+  min-height: 36px;
+}
+
+.danger-confirm-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Copyable ticket key button on the ticket page. */
+.copy-key-button {
+  min-height: 0;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.copy-key-button .icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0.7;
+}
+
+.copy-key-button.is-copied {
+  background: var(--green);
+  color: #fff;
 }

@@ -14,7 +14,9 @@ from app.store import (
     delete_project,
     get_ticket_bundle,
     project_members,
+    remove_project_member,
     sync_configured_admin_roles,
+    update_project_member,
     update_ticket,
     upsert_user,
 )
@@ -112,7 +114,12 @@ def test_delete_project_cascades(temp_db):
     create_project(user, "GT", "GigaTool")
     ticket = create_ticket(user, "GT", "Some ticket")
 
-    delete_project(user, "GT")
+    # Wrong confirmation is rejected.
+    with pytest.raises(HTTPException) as exc:
+        delete_project(user, "GT", "nope")
+    assert exc.value.status_code == 400
+
+    delete_project(user, "GT", "GT")
 
     with get_conn() as conn:
         assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'GT'").fetchone()["c"] == 0
@@ -134,10 +141,10 @@ def test_delete_project_requires_admin(temp_db):
     add_project_member(int(project["id"]), "bob", "member")
 
     with pytest.raises(HTTPException) as exc:
-        delete_project(member, "OPS")
+        delete_project(member, "OPS", "OPS")
     assert exc.value.status_code == 403
 
-    delete_project(owner, "OPS")
+    delete_project(owner, "OPS", "OPS")
     with get_conn() as conn:
         assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'OPS'").fetchone()["c"] == 0
 
@@ -160,6 +167,30 @@ def test_member_cannot_create_project(temp_db):
     )
 
     assert response.status_code == 403
+
+
+def test_member_management_role_change_and_remove(temp_db):
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "WEB", "Website")
+    bob = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+
+    # Promote and demote a regular member.
+    update_project_member(int(project["id"]), int(bob["id"]), "admin")
+    update_project_member(int(project["id"]), int(bob["id"]), "viewer")
+    roles = {m["login"]: m["project_role"] for m in project_members(int(project["id"]))}
+    assert roles["bob"] == "viewer"
+
+    # The sole admin (owner) cannot be demoted or removed.
+    with pytest.raises(HTTPException) as exc:
+        update_project_member(int(project["id"]), int(owner["id"]), "member")
+    assert exc.value.status_code == 400
+    with pytest.raises(HTTPException):
+        remove_project_member(int(project["id"]), int(owner["id"]))
+
+    # A non-admin member can be removed.
+    remove_project_member(int(project["id"]), int(bob["id"]))
+    assert "bob" not in {m["login"] for m in project_members(int(project["id"]))}
 
 
 def test_configured_admins_override_stale_dev_admins(temp_db):

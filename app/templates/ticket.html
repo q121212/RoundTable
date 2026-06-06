@@ -4,7 +4,10 @@
 <section class="page-head">
   <div>
     <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
-    <h1 class="ticket-page-title"><span class="ticket-key">{{ ticket.key }}</span> <span data-ticket-page-title>{{ ticket.title }}</span></h1>
+    <h1 class="ticket-page-title">
+      <button class="ticket-key copy-key-button" type="button" data-copy-text="{{ ticket.key }}" data-icon="copy" aria-label="Copy ticket key">{{ ticket.key }}</button>
+      <span data-ticket-page-title>{{ ticket.title }}</span>
+    </h1>
   </div>
 </section>
 
@@ -61,7 +64,7 @@
           <select name="assignee_id">
             <option value="" data-i18n="ticket.unassigned">Unassigned</option>
             {% for member in members %}
-              <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.login }}</option>
+              <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.name or member.login }}</option>
             {% endfor %}
           </select>
         </label>
@@ -71,27 +74,8 @@
 
   <aside class="side-panel">
     <div class="panel">
-      <h2 data-i18n="ticket.details">Details</h2>
+      <h2 data-i18n="ticket.people">People</h2>
       <dl class="meta-list">
-        <dt data-i18n="field.status">Status</dt><dd data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</dd>
-        <dt data-i18n="field.priority">Priority</dt><dd data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</dd>
-        <dt data-i18n="field.assignee">Assignee</dt>
-        <dd>
-          {% if ticket.assignee_login %}
-            <span class="profile-line">
-              <span class="avatar-dot" aria-hidden="true">
-                {% if ticket.assignee_avatar_url %}
-                  <img src="{{ ticket.assignee_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
-                {% else %}
-                  {{ ticket.assignee_login[:1]|upper }}
-                {% endif %}
-              </span>
-              <span>{{ ticket.assignee_name or ticket.assignee_login }}</span>
-            </span>
-          {% else %}
-            <span data-i18n="ticket.unassigned">Unassigned</span>
-          {% endif %}
-        </dd>
         <dt data-i18n="field.reporter">Reporter</dt>
         <dd>
           <span class="profile-line">
@@ -138,8 +122,13 @@
       </div>
       <form method="post" action="/api/tickets/{{ ticket.key }}/watch">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <input type="hidden" name="watch" value="true">
-        <button class="secondary wide" type="submit" data-icon="eye" data-i18n="ticket.watch">Watch ticket</button>
+        {% if user.id in watcher_ids %}
+          <input type="hidden" name="watch" value="false">
+          <button class="secondary wide" type="submit" data-icon="eye-off" data-i18n="ticket.unwatch">Unwatch ticket</button>
+        {% else %}
+          <input type="hidden" name="watch" value="true">
+          <button class="secondary wide" type="submit" data-icon="eye" data-i18n="ticket.watch">Watch ticket</button>
+        {% endif %}
       </form>
     </div>
     <div class="panel">
@@ -198,7 +187,14 @@
       <h2 data-i18n="ticket.activity">Activity</h2>
       <ol class="activity-list">
         {% for action in actions %}
-          <li><strong>{{ action.actor_login or "System" }}</strong> {{ action.action }} <time>{{ action.created_at }}</time></li>
+          <li>
+            <strong>{{ action.actor_login or "System" }}</strong>
+            <span data-action-label="{{ action.action }}">{{ action.action }}</span>
+            {% if action.field %}
+              <span class="muted">· {{ action.field }}</span>
+            {% endif %}
+            <time data-local-time="{{ action.created_at }}">{{ action.created_at }}</time>
+          </li>
         {% endfor %}
       </ol>
     </div>

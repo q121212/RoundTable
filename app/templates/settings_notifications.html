@@ -20,13 +20,10 @@
     <div class="notice">
       <strong data-i18n="notifications.how_title">When notifications are sent</strong>
       <p class="muted" data-i18n="notifications.how_copy">RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.</p>
+      <p class="muted" data-i18n="notifications.email_note">Email is optional and often unavailable from GitHub profiles, so Telegram is the primary channel for now.</p>
     </div>
     <form class="stacked-form" method="post" action="/api/me/notification-preferences">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-      <label class="check-row">
-        <input type="checkbox" name="email_enabled" value="true" {% if prefs.email_enabled %}checked{% endif %}>
-        <span data-i18n="field.email">Email</span>
-      </label>
       <label class="check-row">
         <input type="checkbox" name="telegram_enabled" value="true" {% if prefs.telegram_enabled %}checked{% endif %}>
         <span>Telegram</span>

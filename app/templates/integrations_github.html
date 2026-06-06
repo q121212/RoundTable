@@ -12,7 +12,8 @@
   <h2 data-i18n="github.repo_links">Repository links</h2>
   <div class="notice">
     <strong data-i18n="github.how_title">How to connect GitHub</strong>
-    <p class="muted" data-i18n="github.how_copy">Paste a repository as owner/repo or a full GitHub URL. Add the installation id only when you want RoundTable to create autolinks through your GitHub App.</p>
+    <p class="muted" data-i18n="github.how_copy">Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.</p>
+    <p class="muted" data-i18n="github.installation_note">Installation id is optional and only needed for advanced GitHub App actions such as creating repository autolinks automatically. You can leave it empty.</p>
     <p class="muted">Webhook URL: <code>{{ base_url }}/integrations/github/webhook</code></p>
   </div>
   <div class="table-list">
@@ -30,6 +31,7 @@
         <label class="field-shell">
           <span class="label-row">
             <span data-i18n="field.installation_id">Installation id</span>
+            <span class="field-badge" data-i18n="field.optional">Optional</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.installation_id" data-tooltip="Numeric GitHub App installation id. Needed for automatic autolink setup; webhooks can still link tickets without it.">?</button>
           </span>
           <input name="installation_id" placeholder="installation id" value="{{ project.github_installation_id or '' }}" data-i18n-placeholder="placeholder.installation_id">

@@ -46,6 +46,7 @@ from .store import (
     notification_preferences,
     normalize_github_repo,
     project_members,
+    remove_project_member,
     reopen_ticket,
     require_project_access,
     require_project_admin,
@@ -54,6 +55,8 @@ from .store import (
     sync_configured_admin_roles,
     unlink_telegram,
     update_notification_preferences,
+    update_project_member,
+    update_project_settings,
     update_ticket,
     upsert_user,
 )
@@ -294,8 +297,23 @@ async def project_settings_page(request: Request, project_key: str) -> HTMLRespo
 @app.post("/api/projects/{project_key}/delete")
 async def api_delete_project(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
-    delete_project(user, project_key)
+    form = await request.form()
+    delete_project(user, project_key, str(form.get("confirm") or ""))
     return redirect("/projects")
+
+
+@app.post("/api/projects/{project_key}/settings")
+async def api_update_project_settings(request: Request, project_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    update_project_settings(
+        user,
+        project_key,
+        str(form.get("name") or ""),
+        str(form.get("description") or ""),
+        str(form.get("repo") or ""),
+    )
+    return redirect("/p/%s/settings" % project_key.upper())
 
 
 @app.post("/api/projects/{project_key}/members")
@@ -306,6 +324,25 @@ async def api_add_member(request: Request, project_key: str) -> RedirectResponse
     form = await request.form()
     add_project_member(int(project["id"]), str(form.get("login") or ""), str(form.get("role") or "member"))
     return redirect(str(request.headers.get("referer") or "/p/%s/settings" % project["key"]))
+
+
+@app.post("/api/projects/{project_key}/members/{member_id}")
+async def api_update_member(request: Request, project_key: str, member_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    form = await request.form()
+    update_project_member(int(project["id"]), member_id, str(form.get("role") or "member"))
+    return redirect("/p/%s/settings" % project["key"])
+
+
+@app.post("/api/projects/{project_key}/members/{member_id}/remove")
+async def api_remove_member(request: Request, project_key: str, member_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    remove_project_member(int(project["id"]), member_id)
+    return redirect("/p/%s/settings" % project["key"])
 
 
 @app.post("/api/projects/{project_key}/github")
@@ -482,7 +519,7 @@ async def api_notification_preferences(request: Request) -> RedirectResponse:
     form = await request.form()
     update_notification_preferences(
         int(user["id"]),
-        email_enabled=str(form.get("email_enabled") or "").lower() == "true",
+        email_enabled=False,
         telegram_enabled=str(form.get("telegram_enabled") or "").lower() == "true",
     )
     return redirect("/settings/notifications")
@@ -530,7 +567,7 @@ async def api_notification_preferences_patch(request: Request) -> JSONResponse:
     payload = await request.json()
     prefs = update_notification_preferences(
         int(user["id"]),
-        bool(payload.get("email_enabled")),
+        False,
         bool(payload.get("telegram_enabled")),
     )
     return JSONResponse(prefs)
