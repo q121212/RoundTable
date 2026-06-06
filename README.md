@@ -53,9 +53,9 @@ Before exposing RoundTable publicly, deploy with:
 DEPLOY_PUBLIC=true DEPLOY_HOST=deploy@example.com ./deploy.sh
 ```
 
-Public deploy mode requires `BASE_URL=https://...`, `ALLOW_DEV_LOGIN=false`, and
-`SESSION_COOKIE_SECURE=true` in the server `.env`. Keep uvicorn bound to
-`127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
+Public deploy mode requires `BASE_URL=https://...`, `ALLOW_DEV_LOGIN=false`,
+`SESSION_COOKIE_SECURE=true`, and signed webhooks in the server `.env`. Keep
+uvicorn bound to `127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
 
 For public repo vs private server configuration separation, see
 [docs/deployment-separation.md](docs/deployment-separation.md). In short: keep
@@ -179,15 +179,19 @@ RoundTable includes a notification system based on a SQLite outbox.
 
 Supported channels:
 
-- Email through SMTP
-- Telegram through Bot API
+- Telegram through Bot API as the primary phone notification channel
+- Email through SMTP remains available in the worker, but the UI treats it as
+  optional because GitHub profiles often do not expose email addresses
 
 Notifications are queued, retried with exponential backoff, and filtered by
 user preferences. Typical notification events are assignment, comments, status
 movement, closing/reopening, and watcher-relevant updates.
 
 Telegram linking uses a one-time token from `/settings/notifications`; the user
-sends `/start <token>` to the configured bot.
+sends `/start <token>` to the configured bot. For public deployments, configure
+Telegram's webhook `secret_token` and set the same value in
+`TELEGRAM_WEBHOOK_SECRET`; RoundTable validates the
+`X-Telegram-Bot-Api-Secret-Token` header.
 
 ## Configuration
 
@@ -216,6 +220,7 @@ SMTP_FROM=roundtable@localhost
 SMTP_TLS=true
 
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
 ```
 
 ## Data Model

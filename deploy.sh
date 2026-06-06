@@ -150,6 +150,9 @@ env_get() {
 BASE_URL="$(env_get BASE_URL)"
 ALLOW_DEV_LOGIN="$(env_get ALLOW_DEV_LOGIN)"
 SESSION_COOKIE_SECURE="$(env_get SESSION_COOKIE_SECURE)"
+GITHUB_WEBHOOK_SECRET="$(env_get GITHUB_WEBHOOK_SECRET)"
+TELEGRAM_BOT_TOKEN="$(env_get TELEGRAM_BOT_TOKEN)"
+TELEGRAM_WEBHOOK_SECRET="$(env_get TELEGRAM_WEBHOOK_SECRET)"
 
 echo "--> deployment env summary"
 echo "    BASE_URL=${BASE_URL:-<unset>}"
@@ -171,6 +174,14 @@ if [ "${PUBLIC,,}" = "true" ]; then
   fi
   if [ "${SESSION_COOKIE_SECURE,,}" != "true" ]; then
     echo "error: DEPLOY_PUBLIC=true requires SESSION_COOKIE_SECURE=true" >&2
+    exit 1
+  fi
+  if [ -z "${GITHUB_WEBHOOK_SECRET:-}" ]; then
+    echo "error: DEPLOY_PUBLIC=true requires GITHUB_WEBHOOK_SECRET for signed GitHub webhooks" >&2
+    exit 1
+  fi
+  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -z "${TELEGRAM_WEBHOOK_SECRET:-}" ]; then
+    echo "error: DEPLOY_PUBLIC=true with TELEGRAM_BOT_TOKEN requires TELEGRAM_WEBHOOK_SECRET" >&2
     exit 1
   fi
 fi

@@ -93,11 +93,21 @@ fixture (`tests/conftest.py`).
 `/srv/RoundTable`. Server runs under systemd — template in
 `deploy/roundtable.service`. Use `DEPLOY_PUBLIC=true` for internet-facing deploys;
 it fails unless the server `.env` has `BASE_URL=https://...`,
-`ALLOW_DEV_LOGIN=false`, and `SESSION_COOKIE_SECURE=true`. The app sets up its own
-schema on boot, so there is no separate migration step.
+`ALLOW_DEV_LOGIN=false`, `SESSION_COOKIE_SECURE=true`, and signed webhook secrets
+for enabled integrations. The app sets up its own schema on boot, so there is no
+separate migration step.
 
 Keep this repo reusable/public. Real server inventory, `.env` values, nginx
 configs with domains, and operational runbooks belong in the private ops repo
 `git@github.com:q121212/RoundTable-Ops.git` or on the server. Use
 `DEPLOY_ENV_FILE` to source private deploy settings from outside this repo. See
 `docs/deployment-separation.md`.
+
+For the current shared server, deploy from this repo with:
+
+```bash
+DEPLOY_PUBLIC=true DEPLOY_ENV_FILE=../RoundTable-Ops/env/adv_msk02.env ./deploy.sh
+```
+
+Do not hand-edit application files on the server for routine releases; update this
+repo, push it, then deploy with the script so `/srv/RoundTable` stays reproducible.

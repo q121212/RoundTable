@@ -595,6 +595,10 @@ async def github_webhook(request: Request) -> JSONResponse:
 
 @app.post("/integrations/telegram/webhook")
 async def telegram_webhook(request: Request) -> JSONResponse:
+    if settings.telegram_webhook_secret:
+        provided = request.headers.get("x-telegram-bot-api-secret-token", "")
+        if not secrets.compare_digest(provided, settings.telegram_webhook_secret):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram webhook secret")
     payload = await request.json()
     message = payload.get("message") or {}
     text = message.get("text") or ""

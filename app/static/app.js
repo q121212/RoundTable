@@ -67,6 +67,7 @@
       "login.title": "Welcome to RoundTable",
       "mcp.auth_header": "Use it as the HTTP header",
       "mcp.copy_bearer": "Copy as Bearer",
+      "mcp.copied": "Copied",
       "mcp.copy_endpoint": "Copy endpoint",
       "mcp.create": "Create token",
       "mcp.create_token": "Create MCP token",
@@ -80,6 +81,7 @@
       "mcp.revoke": "Revoke",
       "mcp.title": "MCP access",
       "mcp.tokens": "Tokens",
+      "mcp.transport_note": "RoundTable exposes a JSON-RPC HTTP endpoint. External clients must trust the HTTPS certificate; self-signed certificates are rejected by many MCP clients.",
       "nav.logout": "Log out",
       "nav.board": "Board",
       "nav.menu": "Menu",
@@ -234,6 +236,7 @@
       "login.title": "Добро пожаловать в RoundTable",
       "mcp.auth_header": "Используйте как HTTP-заголовок",
       "mcp.copy_bearer": "Скопировать как Bearer",
+      "mcp.copied": "Скопировано",
       "mcp.copy_endpoint": "Скопировать endpoint",
       "mcp.create": "Создать токен",
       "mcp.create_token": "Создать MCP токен",
@@ -247,6 +250,7 @@
       "mcp.revoke": "Отозвать",
       "mcp.title": "Доступ MCP",
       "mcp.tokens": "Токены",
+      "mcp.transport_note": "RoundTable отдаёт JSON-RPC HTTP endpoint. Внешние клиенты должны доверять HTTPS-сертификату; самоподписанные сертификаты многие MCP-клиенты отклоняют.",
       "nav.logout": "Выйти",
       "nav.board": "Доска",
       "nav.menu": "Меню",
@@ -1049,10 +1053,17 @@
   function setupCopyButtons() {
     document.querySelectorAll("[data-copy-text]").forEach((button) => {
       button.addEventListener("click", async () => {
+        const originalText = button.dataset.i18n ? translate(button.dataset.i18n, currentLang()) : button.textContent;
         try {
           await navigator.clipboard.writeText(button.dataset.copyText || "");
           button.classList.add("is-copied");
-          window.setTimeout(() => button.classList.remove("is-copied"), 900);
+          if (button.textContent.trim()) button.textContent = translate("mcp.copied", currentLang()) || "Copied";
+          window.setTimeout(() => {
+            button.classList.remove("is-copied");
+            if (button.textContent.trim() && originalText) button.textContent = originalText;
+            renderIcons();
+          }, 1100);
+          renderIcons();
         } catch (error) {
           window.prompt("Copy", button.dataset.copyText || "");
         }

@@ -54,10 +54,10 @@ class Settings:
     smtp_tls: bool = _bool("SMTP_TLS", True)
 
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    telegram_webhook_secret: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "admin_github_logins", _list("ADMIN_GITHUB_LOGINS"))
 
 
 settings = Settings()
-

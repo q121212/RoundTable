@@ -188,7 +188,16 @@
       <ol class="activity-list">
         {% for action in actions %}
           <li>
-            <strong>{{ action.actor_login or "System" }}</strong>
+            <span class="profile-line activity-actor">
+              <span class="avatar-dot" aria-hidden="true">
+                {% if action.actor_avatar_url %}
+                  <img src="{{ action.actor_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                {% else %}
+                  {{ (action.actor_login or "?")[:1]|upper }}
+                {% endif %}
+              </span>
+              <strong>{{ action.actor_name or action.actor_login or "System" }}</strong>
+            </span>
             <span data-action-label="{{ action.action }}">{{ action.action }}</span>
             {% if action.field %}
               <span class="muted">· {{ action.field }}</span>

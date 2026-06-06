@@ -78,3 +78,21 @@ def test_mcp_notification_returns_no_body(temp_db):
 
     assert response.status_code == 202
     assert response.content == b""
+
+
+def test_telegram_webhook_secret_is_checked_when_configured(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "telegram_webhook_secret", "telegram-secret")
+    client = TestClient(app)
+    payload = {"message": {"text": "/start nope", "chat": {"id": 123}, "from": {"username": "alice"}}}
+
+    denied = client.post("/integrations/telegram/webhook", json=payload)
+    allowed = client.post(
+        "/integrations/telegram/webhook",
+        json=payload,
+        headers={"X-Telegram-Bot-Api-Secret-Token": "telegram-secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200

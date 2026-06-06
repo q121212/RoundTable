@@ -702,6 +702,17 @@ button,
   margin: 8px 0;
 }
 
+.activity-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.activity-actor {
+  display: inline-flex;
+}
+
 .link-list li {
   display: grid;
   gap: 4px;
@@ -1842,6 +1853,22 @@ a.ticket-key:hover {
 
 .notice .copy-field {
   margin: 8px 0;
+}
+
+.copy-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-soft);
+}
+
+.copy-card code {
+  overflow-wrap: anywhere;
 }
 
 button.is-copied {

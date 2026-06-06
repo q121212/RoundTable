@@ -565,7 +565,10 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
         actions = rows_to_dicts(
             conn.execute(
                 """
-                SELECT action_log.*, users.login AS actor_login
+                SELECT action_log.*,
+                       users.login AS actor_login,
+                       users.name AS actor_name,
+                       users.avatar_url AS actor_avatar_url
                 FROM action_log
                 LEFT JOIN users ON users.id = action_log.actor_id
                 WHERE action_log.ticket_id = ?

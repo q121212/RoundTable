@@ -26,6 +26,7 @@
       <strong data-i18n="mcp.how_title">How MCP tokens work</strong>
       <p class="muted" data-i18n="mcp.how_copy">Create a token here, copy it once, then use it in your MCP client as an Authorization: Bearer token.</p>
       <p class="muted" data-i18n="mcp.personal_note">Tokens are personal: a token acts as you, with your own project permissions. Each teammate creates their own.</p>
+      <p class="muted" data-i18n="mcp.transport_note">RoundTable exposes a JSON-RPC HTTP endpoint. External clients must trust the HTTPS certificate; self-signed certificates are rejected by many MCP clients.</p>
     </div>
     <form class="stacked-form" method="post" action="/settings/mcp/tokens">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
@@ -38,10 +39,11 @@
       </label>
       <button class="primary" type="submit" data-icon="key-round" data-i18n="mcp.create_token">Create MCP token</button>
     </form>
-    <p class="muted copy-field">
-      <span data-i18n="mcp.endpoint">Endpoint:</span> <code>{{ base_url }}/mcp</code>
-      <button class="ghost tiny" type="button" data-copy-text="{{ base_url }}/mcp" data-icon="copy" aria-label="Copy endpoint" data-i18n-aria="mcp.copy_endpoint"></button>
-    </p>
+    <div class="copy-card">
+      <span class="muted" data-i18n="mcp.endpoint">Endpoint:</span>
+      <code>{{ base_url }}/mcp</code>
+      <button class="secondary tiny" type="button" data-copy-text="{{ base_url }}/mcp" data-icon="copy" data-i18n="mcp.copy_endpoint">Copy endpoint</button>
+    </div>
   </div>
   <div class="panel">
     <h2 data-i18n="mcp.tokens">Tokens</h2>
