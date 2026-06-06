@@ -23,7 +23,6 @@
         <label class="field-shell">
           <span class="label-row">
             <span data-i18n="field.github_repo">GitHub repo</span>
-            <span class="field-badge" data-i18n="field.optional">Optional</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.github_repo" data-tooltip="Use owner/repo, https://github.com/owner/repo, or git@github.com:owner/repo.git.">?</button>
           </span>
           <input name="repo" placeholder="owner/repo or https://github.com/owner/repo" value="{{ project.github_repo_full_name or '' }}" data-i18n-placeholder="placeholder.github_repo">
@@ -31,12 +30,11 @@
         <label class="field-shell">
           <span class="label-row">
             <span data-i18n="field.installation_id">Installation id</span>
-            <span class="field-badge" data-i18n="field.optional">Optional</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.installation_id" data-tooltip="Numeric GitHub App installation id. Needed for automatic autolink setup; webhooks can still link tickets without it.">?</button>
           </span>
           <input name="installation_id" placeholder="installation id" value="{{ project.github_installation_id or '' }}" data-i18n-placeholder="placeholder.installation_id">
         </label>
-        <button class="secondary" type="submit" data-i18n="action.save">Save</button>
+        <button class="secondary" type="submit" data-icon="save" data-i18n="action.save">Save</button>
       </form>
     {% else %}
       <p class="muted" data-i18n="github.create_project_first">Create a project first.</p>

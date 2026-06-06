@@ -341,7 +341,11 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
                    projects.key AS project_key,
                    projects.name AS project_name,
                    assignee.login AS assignee_login,
-                   reporter.login AS reporter_login
+                   assignee.name AS assignee_name,
+                   assignee.avatar_url AS assignee_avatar_url,
+                   reporter.login AS reporter_login,
+                   reporter.name AS reporter_name,
+                   reporter.avatar_url AS reporter_avatar_url
             FROM tickets
             JOIN projects ON projects.id = tickets.project_id
             LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
@@ -365,7 +369,11 @@ def get_ticket(ticket_key: str) -> Dict[str, Any]:
                        projects.key AS project_key,
                        projects.name AS project_name,
                        assignee.login AS assignee_login,
-                       reporter.login AS reporter_login
+                       assignee.name AS assignee_name,
+                       assignee.avatar_url AS assignee_avatar_url,
+                       reporter.login AS reporter_login,
+                       reporter.name AS reporter_name,
+                       reporter.avatar_url AS reporter_avatar_url
                 FROM tickets
                 JOIN projects ON projects.id = tickets.project_id
                 LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
@@ -389,7 +397,9 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
         comments = rows_to_dicts(
             conn.execute(
                 """
-                SELECT comments.*, users.login AS user_login
+                SELECT comments.*, users.login AS user_login,
+                       users.name AS user_name,
+                       users.avatar_url AS user_avatar_url
                 FROM comments
                 LEFT JOIN users ON users.id = comments.user_id
                 WHERE comments.ticket_id = ?
@@ -424,7 +434,7 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
         watchers = rows_to_dicts(
             conn.execute(
                 """
-                SELECT users.id, users.login, users.name
+                SELECT users.id, users.login, users.name, users.avatar_url
                 FROM watchers
                 JOIN users ON users.id = watchers.user_id
                 WHERE watchers.ticket_id = ?
@@ -445,7 +455,11 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                 """
                 SELECT tickets.*,
                        assignee.login AS assignee_login,
-                       reporter.login AS reporter_login
+                       assignee.name AS assignee_name,
+                       assignee.avatar_url AS assignee_avatar_url,
+                       reporter.login AS reporter_login,
+                       reporter.name AS reporter_name,
+                       reporter.avatar_url AS reporter_avatar_url
                 FROM tickets
                 LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
                 LEFT JOIN users reporter ON reporter.id = tickets.reporter_id
@@ -488,7 +502,9 @@ def search_tickets(user: Dict[str, Any], query: str = "", project_key: str = "")
         SELECT tickets.*,
                projects.key AS project_key,
                projects.name AS project_name,
-               assignee.login AS assignee_login
+               assignee.login AS assignee_login,
+               assignee.name AS assignee_name,
+               assignee.avatar_url AS assignee_avatar_url
         FROM tickets
         JOIN projects ON projects.id = tickets.project_id
         LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
@@ -533,7 +549,7 @@ def update_ticket(
             changes.append(("assignee_id", ticket["assignee_id"], assignee_id))
 
         if not changes:
-            return ticket
+            return get_ticket_by_id_conn(conn, ticket["id"])
 
         values = {
             "title": ticket["title"],

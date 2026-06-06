@@ -7,55 +7,65 @@
     <h1>{{ project.name }}</h1>
     {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
   </div>
-  <a class="secondary" href="/integrations/github" data-i18n="github.settings">GitHub settings</a>
 </section>
 
-<section class="ticket-create panel">
-  <div class="section-heading">
-    <div>
-      <h2 data-i18n="ticket.quick_create">Quick create</h2>
-      <p class="muted" data-i18n="ticket.quick_create_help">Create a ticket fast; details can be edited after opening it.</p>
+<div class="board-toolbar">
+  <details class="ticket-create board-create">
+    <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
+    <div class="panel board-create-panel">
+    <div class="section-heading">
+      <div>
+        <h2 data-i18n="ticket.quick_create">Quick create</h2>
+        <p class="muted" data-i18n="ticket.quick_create_help">Create a ticket fast; details can be edited after opening it.</p>
+      </div>
     </div>
-  </div>
-  <form class="ticket-create-form" method="post" action="/api/tickets">
-    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-    <input type="hidden" name="project_key" value="{{ project.key }}">
-    <label class="field-shell">
-      <span class="label-row">
-        <span data-i18n="field.title">Title</span>
-        <span class="field-badge required" data-i18n="field.required">Required</span>
-        <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
-      </span>
-      <input name="title" required placeholder="New ticket title" data-i18n-placeholder="placeholder.ticket_title">
-    </label>
-    <label class="field-shell">
-      <span class="label-row">
-        <span data-i18n="field.priority">Priority</span>
-        <span class="field-badge" data-i18n="field.optional">Optional</span>
-        <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
-      </span>
-      <select name="priority" aria-label="Priority">
-        {% for priority in priorities %}
-          <option value="{{ priority }}" {% if priority == "Medium" %}selected{% endif %}>{{ priority }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="field-shell">
-      <span class="label-row">
-        <span data-i18n="field.assignee">Assignee</span>
-        <span class="field-badge" data-i18n="field.optional">Optional</span>
-        <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
-      </span>
-      <select name="assignee_id" aria-label="Assignee">
-        <option value="" data-i18n="ticket.unassigned">Unassigned</option>
-        {% for member in members %}
-          <option value="{{ member.id }}">{{ member.login }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <button class="primary" type="submit" data-i18n="action.create">Create</button>
-  </form>
-</section>
+    <form class="ticket-create-form" method="post" action="/api/tickets">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <input type="hidden" name="project_key" value="{{ project.key }}">
+      <label class="field-shell">
+        <span class="label-row">
+          <span data-i18n="field.title">Title</span>
+          <span class="required-mark" aria-hidden="true">*</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
+        </span>
+        <input name="title" required placeholder="New ticket title" data-i18n-placeholder="placeholder.ticket_title">
+      </label>
+      <label class="field-shell">
+        <span class="label-row">
+          <span data-i18n="field.priority">Priority</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
+        </span>
+        <select name="priority" aria-label="Priority">
+          {% for priority in priorities %}
+            <option value="{{ priority }}" {% if priority == "Medium" %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field-shell">
+        <span class="label-row">
+          <span data-i18n="field.assignee">Assignee</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
+        </span>
+        <select name="assignee_id" aria-label="Assignee">
+          <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+          {% for member in members %}
+            <option value="{{ member.id }}">{{ member.login }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="primary" type="submit" data-icon="plus" data-i18n="action.create">Create</button>
+    </form>
+    </div>
+  </details>
+
+  <details class="board-menu">
+    <summary class="ghost tiny" data-icon="settings" data-i18n="nav.settings">Settings</summary>
+    <div class="menu-popover">
+      <a href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+      <a href="/integrations/github" data-icon="github" data-i18n="github.settings">GitHub settings</a>
+    </div>
+  </details>
+</div>
 
 <div class="mobile-status-tabs" role="tablist" aria-label="Statuses">
   <button class="status-tab active" data-status-filter="all" type="button" data-i18n="status.all">All</button>
@@ -73,24 +83,65 @@
       </header>
       <div class="dropzone" data-status="{{ status }}">
         {% for ticket in columns[status] %}
-          <article class="ticket-card priority-{{ ticket.priority|lower }}" data-ticket-key="{{ ticket.key }}">
-            <div class="ticket-card-row">
-              <button class="drag-handle" type="button" data-i18n="action.drag" data-i18n-tooltip="help.drag_ticket" data-tooltip="Drag with mouse or finger to another status.">Drag</button>
-              <a class="ticket-card-main" href="/t/{{ ticket.key }}">
-                <span class="ticket-key">{{ ticket.key }}</span>
-                <strong>{{ ticket.title }}</strong>
-                <span class="muted">{{ ticket.assignee_login or "Unassigned" }} · <span data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span></span>
-              </a>
+          <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}">
+            <div class="ticket-card-top">
+              <a class="ticket-key" href="/t/{{ ticket.key }}">{{ ticket.key }}</a>
+              {% if ticket.priority in ["Urgent", "High"] %}
+                <span class="priority-chip priority-chip-{{ ticket.priority|lower }}" data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
+              {% endif %}
             </div>
-            <form class="mobile-move" method="post" action="/api/tickets/{{ ticket.key }}">
-              <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-              <select name="status">
-                {% for target in statuses %}
-                  <option value="{{ target }}" {% if target == ticket.status %}selected{% endif %} data-i18n="status.{{ target }}">{{ target }}</option>
-                {% endfor %}
-              </select>
-              <button class="ghost" type="submit" data-i18n="action.move">Move</button>
-            </form>
+            <a class="ticket-title-link" href="/t/{{ ticket.key }}"><span class="ticket-title">{{ ticket.title }}</span></a>
+            <div class="ticket-card-footer">
+              <span class="assignee-chip">
+                <span class="avatar-dot" aria-hidden="true">
+                  {% if ticket.assignee_avatar_url %}
+                    <img src="{{ ticket.assignee_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                  {% else %}
+                    {{ (ticket.assignee_login or "?")[:1]|upper }}
+                  {% endif %}
+                </span>
+                {% if ticket.assignee_login %}
+                  <span class="assignee-label">{{ ticket.assignee_name or ticket.assignee_login }}</span>
+                {% else %}
+                  <span class="assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
+                {% endif %}
+              </span>
+            </div>
+            <details class="ticket-quick-edit">
+              <summary data-icon="sliders-horizontal" data-i18n="ticket.quick_edit">Quick edit</summary>
+              <div class="quick-edit-grid">
+                <label>
+                  <span data-i18n="field.status">Status</span>
+                  <select data-inline-field="status" data-ticket-key="{{ ticket.key }}" aria-label="Status">
+                    {% for target in statuses %}
+                      <option value="{{ target }}" {% if target == ticket.status %}selected{% endif %} data-i18n="status.{{ target }}">{{ target }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="field.priority">Priority</span>
+                  <select data-inline-field="priority" data-ticket-key="{{ ticket.key }}" aria-label="Priority">
+                    {% for priority in priorities %}
+                      <option value="{{ priority }}" {% if priority == ticket.priority %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="field.assignee">Assignee</span>
+                  <select data-inline-field="assignee_id" data-ticket-key="{{ ticket.key }}" aria-label="Assignee">
+                    <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+                    {% for member in members %}
+                      <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.login }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+              <form class="quick-comment" method="post" action="/api/tickets/{{ ticket.key }}/comments" data-inline-comment>
+                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                <textarea name="body" rows="2" placeholder="Optional comment" data-i18n-placeholder="placeholder.quick_comment"></textarea>
+                <button class="secondary tiny" type="submit" data-icon="message-square-plus" data-i18n="action.comment">Comment</button>
+              </form>
+            </details>
           </article>
         {% endfor %}
       </div>
@@ -98,35 +149,7 @@
   {% endfor %}
 </section>
 
-<section class="panel admin-panel">
-  <h2 data-i18n="projects.access">Project access</h2>
-  <form class="compact-form" method="post" action="/api/projects/{{ project.key }}/members">
-    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-    <label class="field-shell">
-      <span class="label-row">
-        <span data-i18n="field.github_login">GitHub login</span>
-        <span class="field-badge required" data-i18n="field.required">Required</span>
-        <button class="help-dot" type="button" data-i18n-tooltip="help.member_login" data-tooltip="Login of a user who already signed in once.">?</button>
-      </span>
-      <input name="login" placeholder="Existing user login" required data-i18n-placeholder="placeholder.existing_login">
-    </label>
-    <label class="field-shell">
-      <span class="label-row">
-        <span data-i18n="field.role">Role</span>
-        <span class="field-badge required" data-i18n="field.required">Required</span>
-        <button class="help-dot" type="button" data-i18n-tooltip="help.role" data-tooltip="member can edit, viewer can only read, admin can manage project access.">?</button>
-      </span>
-      <select name="role">
-        <option value="member">member</option>
-        <option value="viewer">viewer</option>
-        <option value="admin">admin</option>
-      </select>
-    </label>
-    <button class="secondary" type="submit" data-i18n="projects.add_member">Add member</button>
-  </form>
-</section>
-
 <div class="bottom-action">
-  <a class="primary" href="#top" onclick="document.querySelector('[name=title]').focus(); return false;" data-i18n="ticket.new">New ticket</a>
+  <a class="primary" href="#top" data-open-create data-icon="plus" data-i18n="ticket.new">New ticket</a>
 </div>
 {% endblock %}

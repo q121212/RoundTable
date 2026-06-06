@@ -16,7 +16,7 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.key">Key</span>
-          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <span class="required-mark" aria-hidden="true">*</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.project_key" data-tooltip="Short uppercase prefix for ticket keys, for example CRM or OPS.">?</button>
         </span>
         <input name="key" maxlength="10" required placeholder="CRM">
@@ -24,7 +24,7 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.name">Name</span>
-          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <span class="required-mark" aria-hidden="true">*</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.project_name" data-tooltip="Human-readable project name shown in the UI.">?</button>
         </span>
         <input name="name" required placeholder="Customer CRM">
@@ -32,7 +32,6 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.github_repo">GitHub repo</span>
-          <span class="field-badge" data-i18n="field.optional">Optional</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.github_repo" data-tooltip="Paste owner/repo or a full GitHub URL. You can also connect it later in GitHub settings.">?</button>
         </span>
         <input name="repo" placeholder="owner/repo or https://github.com/owner/repo" data-i18n-placeholder="placeholder.github_repo">
@@ -40,12 +39,11 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.description">Description</span>
-          <span class="field-badge" data-i18n="field.optional">Optional</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.project_description" data-tooltip="Short context for teammates opening the project later.">?</button>
         </span>
         <textarea name="description" rows="4" placeholder="What this project is for" data-i18n-placeholder="placeholder.project_description"></textarea>
       </label>
-      <button class="primary" type="submit" data-i18n="projects.create">Create project</button>
+      <button class="primary" type="submit" data-icon="plus" data-i18n="projects.create">Create project</button>
     </form>
   </div>
 

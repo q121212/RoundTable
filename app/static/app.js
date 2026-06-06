@@ -2,17 +2,19 @@
   let dragState = null;
   const STORAGE_LANG = "roundtable.lang";
   const STORAGE_THEME = "roundtable.theme";
+  const STORAGE_BOARD_URL = "roundtable.lastBoardUrl";
   const messages = {
     en: {
       "action.close": "Close",
       "action.comment": "Comment",
       "action.create": "Create",
-      "action.drag": "Drag",
+      "action.drag": "Move ticket",
       "action.mark_closed": "Mark ticket closed",
       "action.move": "Move",
       "action.reopen": "Reopen",
       "action.reopen_ticket": "Reopen ticket",
       "action.save": "Save",
+      "action.update": "Update",
       "field.comment": "Comment",
       "field.assignee": "Assignee",
       "field.description": "Description",
@@ -40,7 +42,7 @@
       "github.use_key_suffix": "in branches, commits, or PRs to link code.",
       "help.assignee": "Person responsible for the next action. They will receive notifications if enabled.",
       "help.comment": "Visible update for everyone watching the ticket.",
-      "help.drag_ticket": "Drag with mouse or finger to another status.",
+      "help.drag_ticket": "Drag the free area of a card to move it. Links and fields remain editable.",
       "help.github_repo": "Use owner/repo, https://github.com/owner/repo, or git@github.com:owner/repo.git.",
       "help.installation_id": "Numeric GitHub App installation id. Needed for automatic autolink setup; webhooks can still link tickets without it.",
       "help.mcp_token_name": "A label to remember where this token is used, for example Codex laptop.",
@@ -53,6 +55,7 @@
       "help.status": "Where the ticket currently is on the board.",
       "help.ticket_description": "Add context, acceptance criteria, links, or notes. Markdown-style text is fine.",
       "help.ticket_title": "Short human-readable task name.",
+      "language.switch": "Switch language",
       "login.copy": "Use GitHub OAuth in production. Local login is available only when enabled by configuration.",
       "login.eyebrow": "Local ticket tracker",
       "login.github": "Continue with GitHub",
@@ -71,8 +74,11 @@
       "mcp.title": "MCP access",
       "mcp.tokens": "Tokens",
       "nav.logout": "Log out",
+      "nav.board": "Board",
+      "nav.menu": "Menu",
       "nav.notifications": "Notifications",
       "nav.projects": "Projects",
+      "nav.settings": "Settings",
       "notifications.channels": "Channels",
       "notifications.eyebrow": "Personal settings",
       "notifications.how_copy": "RoundTable notifies assignees, reporters, and watchers on assignment, status changes, comments, and close/reopen actions.",
@@ -91,6 +97,7 @@
       "placeholder.github_repo": "owner/repo or https://github.com/owner/repo",
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "What this project is for",
+      "placeholder.quick_comment": "Optional comment",
       "placeholder.ticket_title": "New ticket title",
       "priority.High": "High",
       "priority.Low": "Low",
@@ -98,10 +105,14 @@
       "priority.Urgent": "Urgent",
       "projects.access": "Project access",
       "projects.add_member": "Add member",
+      "projects.back_to_board": "Back to board",
       "projects.create": "Create project",
       "projects.empty_copy": "Create the first project and RoundTable will start ticket keys from KEY-1.",
       "projects.empty_title": "No projects yet",
       "projects.eyebrow": "Workspace",
+      "projects.members": "Members",
+      "projects.no_members": "No members yet.",
+      "projects.settings": "Project settings",
       "projects.title": "Projects",
       "status.all": "All",
       "status.Backlog": "Backlog",
@@ -116,10 +127,12 @@
       "ticket.comments": "Comments",
       "ticket.details": "Details",
       "ticket.new": "New ticket",
+      "ticket.quick_edit": "Quick edit",
       "ticket.quick_create": "Quick create",
       "ticket.quick_create_help": "Create a ticket fast; details can be edited after opening it.",
       "ticket.save": "Save ticket",
       "ticket.unassigned": "Unassigned",
+      "ticket.watchers": "Watchers",
       "ticket.watch": "Watch ticket",
       "ticket.workflow_help": "These actions change ticket state; they do not close this page.",
     },
@@ -127,12 +140,13 @@
       "action.close": "Закрыть",
       "action.comment": "Комментировать",
       "action.create": "Создать",
-      "action.drag": "Тащить",
+      "action.drag": "Переместить тикет",
       "action.mark_closed": "Закрыть тикет",
       "action.move": "Переместить",
       "action.reopen": "Открыть снова",
       "action.reopen_ticket": "Открыть тикет снова",
       "action.save": "Сохранить",
+      "action.update": "Обновить",
       "field.comment": "Комментарий",
       "field.assignee": "Исполнитель",
       "field.description": "Описание",
@@ -160,7 +174,7 @@
       "github.use_key_suffix": "в ветках, коммитах или PR, чтобы связать код.",
       "help.assignee": "Человек, который отвечает за следующий шаг. Если уведомления включены, он получит сообщение.",
       "help.comment": "Обновление, которое увидят все наблюдатели тикета.",
-      "help.drag_ticket": "Перетащите мышью или пальцем в другой статус.",
+      "help.drag_ticket": "Тяните за свободную область карточки, чтобы переместить ее. Ссылки и поля остаются редактируемыми.",
       "help.github_repo": "Можно owner/repo, https://github.com/owner/repo или git@github.com:owner/repo.git.",
       "help.installation_id": "Числовой id установки GitHub App. Нужен для автоматического создания autolink; webhook-связи работают и без него.",
       "help.mcp_token_name": "Метка, чтобы помнить, где используется токен, например Codex laptop.",
@@ -173,6 +187,7 @@
       "help.status": "Где тикет сейчас находится на доске.",
       "help.ticket_description": "Добавьте контекст, критерии приемки, ссылки или заметки. Можно писать markdown-подобный текст.",
       "help.ticket_title": "Короткое человеческое название задачи.",
+      "language.switch": "Сменить язык",
       "login.copy": "В продакшене используйте GitHub OAuth. Локальный вход доступен только если включен в конфигурации.",
       "login.eyebrow": "Локальный трекер задач",
       "login.github": "Войти через GitHub",
@@ -191,8 +206,11 @@
       "mcp.title": "Доступ MCP",
       "mcp.tokens": "Токены",
       "nav.logout": "Выйти",
+      "nav.board": "Доска",
+      "nav.menu": "Меню",
       "nav.notifications": "Уведомления",
       "nav.projects": "Проекты",
+      "nav.settings": "Настройки",
       "notifications.channels": "Каналы",
       "notifications.eyebrow": "Личные настройки",
       "notifications.how_copy": "RoundTable уведомляет исполнителей, авторов и наблюдателей при назначении, смене статуса, комментариях, закрытии и переоткрытии.",
@@ -211,6 +229,7 @@
       "placeholder.github_repo": "owner/repo или https://github.com/owner/repo",
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "Для чего этот проект",
+      "placeholder.quick_comment": "Комментарий, если нужен",
       "placeholder.ticket_title": "Название нового тикета",
       "priority.High": "Высокий",
       "priority.Low": "Низкий",
@@ -218,10 +237,14 @@
       "priority.Urgent": "Срочный",
       "projects.access": "Доступ к проекту",
       "projects.add_member": "Добавить участника",
+      "projects.back_to_board": "Назад к доске",
       "projects.create": "Создать проект",
       "projects.empty_copy": "Создайте первый проект, и RoundTable начнет тикеты с KEY-1.",
       "projects.empty_title": "Проектов пока нет",
       "projects.eyebrow": "Рабочее пространство",
+      "projects.members": "Участники",
+      "projects.no_members": "Участников пока нет.",
+      "projects.settings": "Настройки проекта",
       "projects.title": "Проекты",
       "status.all": "Все",
       "status.Backlog": "Бэклог",
@@ -236,10 +259,12 @@
       "ticket.comments": "Комментарии",
       "ticket.details": "Детали",
       "ticket.new": "Новый тикет",
+      "ticket.quick_edit": "Быстро изменить",
       "ticket.quick_create": "Быстрое создание",
       "ticket.quick_create_help": "Создайте тикет быстро; детали можно дописать после открытия.",
       "ticket.save": "Сохранить тикет",
       "ticket.unassigned": "Без исполнителя",
+      "ticket.watchers": "Наблюдатели",
       "ticket.watch": "Следить за тикетом",
       "ticket.workflow_help": "Эти действия меняют состояние тикета, а не закрывают страницу.",
     },
@@ -272,32 +297,67 @@
       const value = translate(element.dataset.i18nTooltip, lang);
       if (value) element.setAttribute("data-tooltip", value);
     });
-    document.querySelectorAll("[data-lang-option]").forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.langOption === lang));
+    document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+      const value = translate(element.dataset.i18nAria, lang);
+      if (value) element.setAttribute("aria-label", value);
     });
+    updateLanguageButton();
     updateThemeButton();
+    renderIcons();
   }
 
   function applyTheme(theme) {
     localStorage.setItem(STORAGE_THEME, theme);
     document.documentElement.dataset.theme = theme;
     updateThemeButton();
+    renderIcons();
   }
 
   function updateThemeButton() {
     const button = document.querySelector("[data-theme-toggle]");
     if (!button) return;
     const nextKey = currentTheme() === "dark" ? "theme.light" : "theme.dark";
+    button.dataset.icon = currentTheme() === "dark" ? "sun" : "moon";
     button.dataset.i18n = nextKey;
     button.textContent = translate(nextKey, currentLang());
+  }
+
+  function updateLanguageButton() {
+    const button = document.querySelector("[data-lang-toggle]");
+    if (!button) return;
+    button.textContent = currentLang().toUpperCase();
+    button.setAttribute("aria-label", translate("language.switch", currentLang()));
+  }
+
+  function renderIcons() {
+    if (!window.lucide) return;
+    document.querySelectorAll("[data-icon], .help-dot").forEach((element) => {
+      element.querySelectorAll("svg.icon").forEach((icon) => icon.remove());
+      const iconName = element.dataset.icon || "info";
+      const placeholder = document.createElement("i");
+      placeholder.setAttribute("data-lucide", iconName);
+      placeholder.className = "icon";
+      element.prepend(placeholder);
+      element.classList.add("has-icon");
+      if (element.classList.contains("help-dot") && !element.getAttribute("aria-label")) {
+        element.setAttribute("aria-label", "Help");
+      }
+    });
+    window.lucide.createIcons({
+      attrs: {
+        class: "icon",
+        "aria-hidden": "true",
+      },
+    });
   }
 
   function setupPreferences() {
     applyTheme(currentTheme());
     applyLanguage(currentLang());
-    document.querySelectorAll("[data-lang-option]").forEach((button) => {
-      button.addEventListener("click", () => applyLanguage(button.dataset.langOption));
-    });
+    const langButton = document.querySelector("[data-lang-toggle]");
+    if (langButton) {
+      langButton.addEventListener("click", () => applyLanguage(currentLang() === "ru" ? "en" : "ru"));
+    }
     const themeButton = document.querySelector("[data-theme-toggle]");
     if (themeButton) {
       themeButton.addEventListener("click", () => {
@@ -306,17 +366,49 @@
     }
   }
 
+  function setupLastBoardLinks() {
+    const currentProjectUrl = document.body.dataset.currentProjectUrl;
+    if (currentProjectUrl) {
+      localStorage.setItem(STORAGE_BOARD_URL, currentProjectUrl);
+    }
+    const boardUrl = localStorage.getItem(STORAGE_BOARD_URL) || "/projects";
+    document.querySelectorAll("[data-board-link], [data-home-link]").forEach((link) => {
+      link.setAttribute("href", boardUrl);
+    });
+  }
+
   function setupBoardDnD() {
-    document.querySelectorAll(".drag-handle").forEach((handle) => {
-      handle.addEventListener("pointerdown", startTicketDrag);
+    document.querySelectorAll(".ticket-card").forEach((card) => {
+      card.addEventListener("pointerdown", startTicketDrag);
     });
   }
 
   function startTicketDrag(event) {
     if (event.button !== undefined && event.button !== 0) return;
+    if (
+      event.target.closest(
+        "a, button, input, select, textarea, label, summary, details, .ticket-key, .priority-chip, .assignee-chip, .ticket-title"
+      )
+    ) {
+      return;
+    }
     const card = event.currentTarget.closest(".ticket-card");
     if (!card) return;
     event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragState = {
+      card,
+      handle: event.currentTarget,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      started: false,
+    };
+  }
+
+  function activateTicketDrag(event) {
+    if (!dragState || dragState.started) return;
+    const card = dragState.card;
     const rect = card.getBoundingClientRect();
     const placeholder = document.createElement("div");
     placeholder.className = "ticket-placeholder";
@@ -336,18 +428,15 @@
     card.after(placeholder);
     card.classList.add("drag-source");
     document.body.appendChild(preview);
-    dragState = {
-      card,
-      currentZone: null,
-      handle: event.currentTarget,
+    Object.assign(dragState, {
       hiddenColumns,
       offsetX: event.clientX - rect.left,
       offsetY: event.clientY - rect.top,
       placeholder,
-      pointerId: event.pointerId,
       preview,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
+      currentZone: null,
+      started: true,
+    });
     document.body.classList.add("is-dragging-ticket");
     moveDragPreview(event.clientX, event.clientY);
   }
@@ -373,6 +462,12 @@
     if (!dragState) return;
     const state = dragState;
     dragState = null;
+    if (!state.started) {
+      if (state.handle.hasPointerCapture && state.handle.hasPointerCapture(state.pointerId)) {
+        state.handle.releasePointerCapture(state.pointerId);
+      }
+      return;
+    }
     document.body.classList.remove("is-dragging-ticket");
     document.querySelectorAll(".dropzone.drag-over").forEach((zone) => zone.classList.remove("drag-over"));
     state.hiddenColumns.forEach((column) => {
@@ -385,7 +480,9 @@
     state.preview.remove();
     const zone = state.currentZone || document.elementFromPoint(event.clientX, event.clientY)?.closest(".dropzone");
     const status = zone ? zone.dataset.status : "";
-    if (!zone || !status) {
+    const previousZone = state.placeholder.closest(".dropzone");
+    const previousStatus = previousZone ? previousZone.dataset.status : "";
+    if (!zone || !status || status === previousStatus) {
       state.card.classList.remove("drag-source");
       state.placeholder.replaceWith(state.card);
       return;
@@ -393,12 +490,14 @@
     zone.appendChild(state.card);
     state.placeholder.remove();
     state.card.classList.remove("drag-source");
+    refreshColumnCounts();
     try {
-      await patchTicket(state.card.dataset.ticketKey, { status });
-      window.location.reload();
+      const ticket = await patchTicket(state.card.dataset.ticketKey, { status });
+      applyTicketUpdate(state.card, ticket);
     } catch (error) {
+      if (previousZone) previousZone.appendChild(state.card);
+      refreshColumnCounts();
       window.alert(error.message || "Could not move ticket");
-      window.location.reload();
     }
   }
 
@@ -406,6 +505,12 @@
     if (!dragState) return;
     const state = dragState;
     dragState = null;
+    if (!state.started) {
+      if (state.handle.hasPointerCapture && state.handle.hasPointerCapture(state.pointerId)) {
+        state.handle.releasePointerCapture(state.pointerId);
+      }
+      return;
+    }
     document.body.classList.remove("is-dragging-ticket");
     document.querySelectorAll(".dropzone.drag-over").forEach((zone) => zone.classList.remove("drag-over"));
     state.hiddenColumns.forEach((column) => {
@@ -434,6 +539,176 @@
     return response.json();
   }
 
+  function setupInlineTicketControls() {
+    document.querySelectorAll("[data-inline-field]").forEach((control) => {
+      control.dataset.lastValue = control.value;
+      control.addEventListener("change", async () => {
+        const card = control.closest(".ticket-card");
+        const field = control.dataset.inlineField;
+        const previousValue = control.dataset.lastValue || "";
+        const payload = {};
+        payload[field] = field === "assignee_id" ? (control.value ? Number(control.value) : null) : control.value;
+        control.disabled = true;
+        card.classList.add("is-saving");
+        try {
+          const ticket = await patchTicket(control.dataset.ticketKey, payload);
+          control.dataset.lastValue = control.value;
+          applyTicketUpdate(card, ticket);
+          flashSaved(card);
+        } catch (error) {
+          control.value = previousValue;
+          window.alert(error.message || "Could not update ticket");
+        } finally {
+          control.disabled = false;
+          card.classList.remove("is-saving");
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-inline-comment]").forEach((form) => {
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = form.querySelector("[name=body]");
+        const body = input.value.trim();
+        if (!body) return;
+        const card = form.closest(".ticket-card");
+        const button = form.querySelector("button");
+        const formData = new FormData(form);
+        input.disabled = true;
+        button.disabled = true;
+        card.classList.add("is-saving");
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            headers: { "x-csrf-token": form.querySelector("[name=csrf_token]").value },
+            body: formData,
+          });
+          if (!response.ok) throw new Error(await response.text());
+          input.value = "";
+          flashSaved(card);
+        } catch (error) {
+          window.alert(error.message || "Could not add comment");
+        } finally {
+          input.disabled = false;
+          button.disabled = false;
+          card.classList.remove("is-saving");
+        }
+      });
+    });
+  }
+
+  function applyTicketUpdate(card, ticket) {
+    if (!card || !ticket) return;
+    card.dataset.ticketKey = ticket.key;
+    updateCardClasses(card, ticket);
+    moveCardToStatus(card, ticket.status);
+    updateSelect(card, "status", ticket.status);
+    updateSelect(card, "priority", ticket.priority);
+    updateSelect(card, "assignee_id", ticket.assignee_id ? String(ticket.assignee_id) : "");
+    updateAssignee(card, ticket);
+    updatePriorityChip(card, ticket);
+    refreshColumnCounts();
+  }
+
+  function updatePriorityChip(card, ticket) {
+    const top = card.querySelector(".ticket-card-top");
+    if (!top) return;
+    let chip = top.querySelector(".priority-chip");
+    const elevated = ticket.priority === "Urgent" || ticket.priority === "High";
+    if (!elevated) {
+      if (chip) chip.remove();
+      return;
+    }
+    if (!chip) {
+      chip = document.createElement("span");
+      top.appendChild(chip);
+    }
+    chip.className = `priority-chip priority-chip-${ticket.priority.toLowerCase()}`;
+    chip.dataset.i18n = `priority.${ticket.priority}`;
+    chip.textContent = translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority;
+  }
+
+  function updateCardClasses(card, ticket) {
+    card.className = card.className
+      .split(/\s+/)
+      .filter((name) => name && !name.startsWith("priority-") && !name.startsWith("status-"))
+      .join(" ");
+    card.classList.add("ticket-card", `priority-${ticket.priority.toLowerCase()}`, `status-${ticket.status.toLowerCase().replace(/\s+/g, "-")}`);
+  }
+
+  function moveCardToStatus(card, status) {
+    const zone = document.querySelector(`.dropzone[data-status="${cssEscape(status)}"]`);
+    if (zone && !zone.contains(card)) zone.appendChild(card);
+  }
+
+  function updateSelect(card, field, value) {
+    const select = card.querySelector(`[data-inline-field="${field}"]`);
+    if (!select) return;
+    select.value = value || "";
+    select.dataset.lastValue = select.value;
+  }
+
+  function updateAssignee(card, ticket) {
+    const chip = card.querySelector(".assignee-chip");
+    if (!chip) return;
+    const avatar = chip.querySelector(".avatar-dot");
+    const label = chip.querySelector(".assignee-label");
+    renderAvatar(avatar, ticket.assignee_avatar_url, ticket.assignee_login);
+    if (label) {
+      if (ticket.assignee_login) {
+        label.removeAttribute("data-i18n");
+        label.textContent = ticket.assignee_name || ticket.assignee_login;
+      } else {
+        label.dataset.i18n = "ticket.unassigned";
+        label.textContent = translate("ticket.unassigned", currentLang()) || "Unassigned";
+      }
+    }
+  }
+
+  function renderAvatar(container, avatarUrl, login) {
+    if (!container) return;
+    container.textContent = "";
+    if (avatarUrl) {
+      const image = document.createElement("img");
+      image.src = avatarUrl;
+      image.alt = "";
+      image.loading = "lazy";
+      image.referrerPolicy = "no-referrer";
+      container.appendChild(image);
+    } else {
+      container.textContent = (login || "?").slice(0, 1).toUpperCase();
+    }
+  }
+
+  function refreshColumnCounts() {
+    document.querySelectorAll(".board-column").forEach((column) => {
+      const counter = column.querySelector(".column-head span");
+      if (counter) counter.textContent = column.querySelectorAll(".ticket-card").length;
+    });
+  }
+
+  function flashSaved(card) {
+    card.classList.add("is-saved");
+    window.setTimeout(() => card.classList.remove("is-saved"), 900);
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && window.CSS.escape) return window.CSS.escape(value);
+    return String(value).replace(/"/g, '\\"');
+  }
+
+  function setupOpenCreate() {
+    document.querySelectorAll("[data-open-create]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const panel = document.querySelector(".board-create");
+        if (panel) panel.open = true;
+        const title = document.querySelector("[name=title]");
+        if (title) title.focus();
+      });
+    });
+  }
+
   function setupMobileStatusTabs() {
     const tabs = document.querySelectorAll("[data-status-filter]");
     if (!tabs.length) return;
@@ -454,16 +729,20 @@
       document.querySelectorAll(".help-dot.tooltip-open").forEach((button) => {
         if (button !== event.target) button.classList.remove("tooltip-open");
       });
-      if (event.target.matches(".help-dot")) {
+      const helpButton = event.target.closest(".help-dot");
+      if (helpButton) {
         event.preventDefault();
-        event.target.classList.toggle("tooltip-open");
+        helpButton.classList.toggle("tooltip-open");
       }
     });
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    setupLastBoardLinks();
     setupPreferences();
     setupBoardDnD();
+    setupInlineTicketControls();
+    setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();
   });
@@ -471,6 +750,11 @@
   window.addEventListener("pointermove", (event) => {
     if (!dragState) return;
     event.preventDefault();
+    if (!dragState.started) {
+      const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+      if (distance < 6) return;
+      activateTicketDrag(event);
+    }
     moveDragPreview(event.clientX, event.clientY);
     updateDragTarget(event.clientX, event.clientY);
   });

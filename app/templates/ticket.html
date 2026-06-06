@@ -15,7 +15,7 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.title">Title</span>
-          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <span class="required-mark" aria-hidden="true">*</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
         </span>
         <input name="title" value="{{ ticket.title }}" required>
@@ -23,7 +23,6 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.description">Description</span>
-          <span class="field-badge" data-i18n="field.optional">Optional</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
         </span>
         <textarea name="description" rows="8">{{ ticket.description }}</textarea>
@@ -32,7 +31,7 @@
         <label>
           <span class="label-row">
             <span data-i18n="field.status">Status</span>
-            <span class="field-badge required" data-i18n="field.required">Required</span>
+            <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">?</button>
           </span>
           <select name="status">
@@ -44,7 +43,7 @@
         <label>
           <span class="label-row">
             <span data-i18n="field.priority">Priority</span>
-            <span class="field-badge required" data-i18n="field.required">Required</span>
+            <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
           </span>
           <select name="priority">
@@ -56,7 +55,6 @@
         <label>
           <span class="label-row">
             <span data-i18n="field.assignee">Assignee</span>
-            <span class="field-badge" data-i18n="field.optional">Optional</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
           </span>
           <select name="assignee_id">
@@ -67,7 +65,7 @@
           </select>
         </label>
       </div>
-      <button class="primary" type="submit" data-i18n="ticket.save">Save ticket</button>
+      <button class="primary" type="submit" data-icon="save" data-i18n="ticket.save">Save ticket</button>
     </form>
   </div>
 
@@ -77,27 +75,71 @@
       <dl class="meta-list">
         <dt data-i18n="field.status">Status</dt><dd data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</dd>
         <dt data-i18n="field.priority">Priority</dt><dd data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</dd>
-        <dt data-i18n="field.assignee">Assignee</dt><dd>{{ ticket.assignee_login or "Unassigned" }}</dd>
-        <dt data-i18n="field.reporter">Reporter</dt><dd>{{ ticket.reporter_login or "Unknown" }}</dd>
+        <dt data-i18n="field.assignee">Assignee</dt>
+        <dd>
+          {% if ticket.assignee_login %}
+            <span class="profile-line">
+              <span class="avatar-dot" aria-hidden="true">
+                {% if ticket.assignee_avatar_url %}
+                  <img src="{{ ticket.assignee_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                {% else %}
+                  {{ ticket.assignee_login[:1]|upper }}
+                {% endif %}
+              </span>
+              <span>{{ ticket.assignee_name or ticket.assignee_login }}</span>
+            </span>
+          {% else %}
+            <span data-i18n="ticket.unassigned">Unassigned</span>
+          {% endif %}
+        </dd>
+        <dt data-i18n="field.reporter">Reporter</dt>
+        <dd>
+          <span class="profile-line">
+            <span class="avatar-dot" aria-hidden="true">
+              {% if ticket.reporter_avatar_url %}
+                <img src="{{ ticket.reporter_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+              {% else %}
+                {{ (ticket.reporter_login or "?")[:1]|upper }}
+              {% endif %}
+            </span>
+            <span>{{ ticket.reporter_name or ticket.reporter_login or "Unknown" }}</span>
+          </span>
+        </dd>
       </dl>
+      {% if watchers %}
+        <div class="watcher-list">
+          <span class="muted" data-i18n="ticket.watchers">Watchers</span>
+          <div>
+            {% for watcher in watchers %}
+              <span class="avatar-dot" title="{{ watcher.name or watcher.login }}" aria-label="{{ watcher.name or watcher.login }}">
+                {% if watcher.avatar_url %}
+                  <img src="{{ watcher.avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                {% else %}
+                  {{ (watcher.login or "?")[:1]|upper }}
+                {% endif %}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
       <div class="workflow-actions">
         <p class="muted" data-i18n="ticket.workflow_help">These actions change ticket state; they do not close this page.</p>
         {% if ticket.status == "Closed" %}
           <form method="post" action="/api/tickets/{{ ticket.key }}/reopen">
             <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <button class="secondary wide" type="submit" data-i18n="action.reopen_ticket">Reopen ticket</button>
+            <button class="secondary wide" type="submit" data-icon="rotate-ccw" data-i18n="action.reopen_ticket">Reopen ticket</button>
           </form>
         {% else %}
           <form method="post" action="/api/tickets/{{ ticket.key }}/close">
             <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <button class="danger wide" type="submit" data-i18n="action.mark_closed">Mark ticket closed</button>
+            <button class="danger wide" type="submit" data-icon="circle-check" data-i18n="action.mark_closed">Mark ticket closed</button>
           </form>
         {% endif %}
       </div>
       <form method="post" action="/api/tickets/{{ ticket.key }}/watch">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <input type="hidden" name="watch" value="true">
-        <button class="secondary wide" type="submit" data-i18n="ticket.watch">Watch ticket</button>
+        <button class="secondary wide" type="submit" data-icon="eye" data-i18n="ticket.watch">Watch ticket</button>
       </form>
     </div>
     <div class="panel">
@@ -123,19 +165,30 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.comment">Comment</span>
-          <span class="field-badge required" data-i18n="field.required">Required</span>
+          <span class="required-mark" aria-hidden="true">*</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.comment" data-tooltip="Visible update for everyone watching the ticket.">?</button>
         </span>
         <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment"></textarea>
       </label>
-      <button class="secondary" type="submit" data-i18n="action.comment">Comment</button>
+      <button class="secondary" type="submit" data-icon="message-square" data-i18n="action.comment">Comment</button>
     </form>
     <div class="comment-list">
       {% for comment in comments %}
         <article class="comment">
-          <strong>{{ comment.user_login or "Unknown" }}</strong>
+          <div class="comment-head">
+            <span class="profile-line">
+              <span class="avatar-dot" aria-hidden="true">
+                {% if comment.user_avatar_url %}
+                  <img src="{{ comment.user_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                {% else %}
+                  {{ (comment.user_login or "?")[:1]|upper }}
+                {% endif %}
+              </span>
+              <strong>{{ comment.user_name or comment.user_login or "Unknown" }}</strong>
+            </span>
+            <time>{{ comment.created_at }}</time>
+          </div>
           <p>{{ comment.body }}</p>
-          <time>{{ comment.created_at }}</time>
         </article>
       {% endfor %}
     </div>

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ project.key }} settings - RoundTable{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">{{ project.key }}</p>
+    <h1 data-i18n="projects.settings">Project settings</h1>
+  </div>
+  <div class="head-actions">
+    <a class="secondary" href="/p/{{ project.key }}/board" data-icon="arrow-left" data-i18n="projects.back_to_board">Back to board</a>
+    <a class="secondary" href="/integrations/github" data-icon="github" data-i18n="github.settings">GitHub settings</a>
+  </div>
+</section>
+
+<section class="split-layout">
+  <div class="panel">
+    <h2 data-i18n="projects.access">Project access</h2>
+    <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/members">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.github_login">GitHub login</span>
+          <span class="required-mark" aria-hidden="true">*</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.member_login" data-tooltip="Login of a user who already signed in once.">?</button>
+        </span>
+        <input name="login" required placeholder="Existing user login" data-i18n-placeholder="placeholder.existing_login">
+      </label>
+      <label>
+        <span class="label-row">
+          <span data-i18n="field.role">Role</span>
+          <span class="required-mark" aria-hidden="true">*</span>
+          <button class="help-dot" type="button" data-i18n-tooltip="help.role" data-tooltip="member can edit, viewer can only read, admin can manage project access.">?</button>
+        </span>
+        <select name="role">
+          <option value="member">member</option>
+          <option value="viewer">viewer</option>
+          <option value="admin">admin</option>
+        </select>
+      </label>
+      <button class="secondary" type="submit" data-icon="user-plus" data-i18n="projects.add_member">Add member</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2 data-i18n="projects.members">Members</h2>
+    <div class="table-list">
+      {% for member in members %}
+        <div class="table-row member-row">
+          <span class="profile-line">
+            <span class="avatar-dot" aria-hidden="true">
+              {% if member.avatar_url %}
+                <img src="{{ member.avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+              {% else %}
+                {{ (member.login or "?")[:1]|upper }}
+              {% endif %}
+            </span>
+            <span>
+              <strong>{{ member.name or member.login }}</strong>
+              <span class="muted">{{ member.login }}</span>
+            </span>
+          </span>
+          <span class="role-pill">{{ member.project_role }}</span>
+        </div>
+      {% else %}
+        <p class="muted" data-i18n="projects.no_members">No members yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -31,11 +31,11 @@
         <input type="checkbox" name="telegram_enabled" value="true" {% if prefs.telegram_enabled %}checked{% endif %}>
         <span>Telegram</span>
       </label>
-      <button class="primary" type="submit" data-i18n="notifications.save">Save preferences</button>
+      <button class="primary" type="submit" data-icon="save" data-i18n="notifications.save">Save preferences</button>
     </form>
     <form class="compact-form" method="post" action="/api/me/notifications/test">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-      <button class="secondary" type="submit" data-i18n="notifications.test">Send test</button>
+      <button class="secondary" type="submit" data-icon="send" data-i18n="notifications.test">Send test</button>
     </form>
   </div>
   <div class="panel">
@@ -44,7 +44,7 @@
       <p>Linked to chat <code>{{ telegram_link.chat_id }}</code></p>
       <form method="post" action="/api/me/telegram/unlink">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <button class="danger" type="submit" data-i18n="notifications.telegram_unlink">Unlink Telegram</button>
+        <button class="danger" type="submit" data-icon="unlink" data-i18n="notifications.telegram_unlink">Unlink Telegram</button>
       </form>
     {% else %}
       <div class="notice">
@@ -54,7 +54,7 @@
       <p class="muted" data-i18n="notifications.telegram_help">Generate a one-time token, then send it to the configured Telegram bot.</p>
       <form method="post" action="/api/me/telegram/link">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <button class="secondary" type="submit" data-i18n="notifications.telegram_generate">Generate link token</button>
+        <button class="secondary" type="submit" data-icon="link" data-i18n="notifications.telegram_generate">Generate link token</button>
       </form>
     {% endif %}
   </div>

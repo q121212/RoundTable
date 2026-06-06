@@ -6,26 +6,32 @@
     <title>{% block title %}RoundTable{% endblock %}</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script defer src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="/static/app.js"></script>
   </head>
-  <body>
+  <body data-current-project-url="{{ current_project_url }}">
     <header class="topbar">
-      <a class="brand" href="/">RoundTable</a>
+      <a class="brand" href="/" data-home-link>RoundTable</a>
       <nav class="topnav">
         {% if user %}
-          <a href="/projects" data-i18n="nav.projects">Projects</a>
-          <a href="/settings/mcp">MCP</a>
-          <a href="/settings/notifications" data-i18n="nav.notifications">Notifications</a>
-          <a href="/integrations/github">GitHub</a>
-          <form class="inline" method="post" action="/logout">
-            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <button class="ghost" type="submit" data-i18n="nav.logout">Log out</button>
-          </form>
+          <a href="/projects" data-board-link data-icon="columns-3" data-i18n="nav.board">Board</a>
+          <details class="app-menu">
+            <summary class="ghost tiny" data-icon="menu" data-i18n="nav.menu">Menu</summary>
+            <div class="menu-popover">
+              <a href="/projects" data-icon="folder-kanban" data-i18n="nav.projects">Projects</a>
+              <a href="/settings/mcp" data-icon="key-round">MCP</a>
+              <a href="/settings/notifications" data-icon="bell" data-i18n="nav.notifications">Notifications</a>
+              <a href="/integrations/github" data-icon="github">GitHub</a>
+              <form class="inline" method="post" action="/logout">
+                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                <button class="ghost" type="submit" data-icon="log-out" data-i18n="nav.logout">Log out</button>
+              </form>
+            </div>
+          </details>
         {% endif %}
         <div class="quick-prefs" aria-label="Display settings">
-          <button class="ghost tiny" type="button" data-lang-option="en" aria-pressed="true">EN</button>
-          <button class="ghost tiny" type="button" data-lang-option="ru" aria-pressed="false">RU</button>
-          <button class="ghost tiny" type="button" data-theme-toggle data-i18n="theme.dark">Dark</button>
+          <button class="ghost tiny" type="button" data-icon="languages" data-lang-toggle aria-label="Switch language">EN</button>
+          <button class="ghost tiny" type="button" data-icon="moon" data-theme-toggle data-i18n="theme.dark">Dark</button>
         </div>
       </nav>
     </header>

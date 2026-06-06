@@ -26,12 +26,11 @@
       <label>
         <span class="label-row">
           <span data-i18n="field.name">Name</span>
-          <span class="field-badge" data-i18n="field.optional">Optional</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.mcp_token_name" data-tooltip="A label to remember where this token is used, for example Codex laptop.">?</button>
         </span>
         <input name="name" placeholder="Codex on laptop">
       </label>
-      <button class="primary" type="submit" data-i18n="mcp.create_token">Create MCP token</button>
+      <button class="primary" type="submit" data-icon="key-round" data-i18n="mcp.create_token">Create MCP token</button>
     </form>
     <p class="muted"><span data-i18n="mcp.endpoint">Endpoint:</span> <code>{{ base_url }}/mcp</code></p>
   </div>
@@ -45,7 +44,7 @@
           {% if not token.revoked_at %}
             <form method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
               <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-              <button class="ghost" type="submit" data-i18n="mcp.revoke">Revoke</button>
+              <button class="ghost" type="submit" data-icon="trash-2" data-i18n="mcp.revoke">Revoke</button>
             </form>
           {% endif %}
         </div>
