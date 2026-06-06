@@ -3,17 +3,18 @@ import json
 import logging
 import secrets
 from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import settings
 from .db import PRIORITIES, TICKET_STATUSES, get_conn, init_db
 from .github_integration import exchange_oauth_code, github_oauth_configured, handle_webhook
+from .live import project_events, sse_message
 from .mcp_server import handle_mcp
 from .notifications import notification_worker
 from .security import (
@@ -178,6 +179,15 @@ def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
 
 
+async def publish_ticket_event(ticket: Dict[str, Any], event_name: str = "ticket_changed") -> None:
+    if not ticket:
+        return
+    await project_events.publish(
+        str(ticket["project_key"]),
+        {"event": event_name, "ticket": ticket},
+    )
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login(request: Request) -> HTMLResponse:
     if page_user(request):
@@ -279,6 +289,34 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
     board = board_for_project(project_key, user)
     members = project_members(int(board["project"]["id"]))
     return render(request, "board.html", {**board, "members": members})
+
+
+@app.get("/events/projects/{project_key}")
+async def project_events_stream(request: Request, project_key: str) -> StreamingResponse:
+    user = require_page_user(request)
+    project = get_project_by_key(project_key)
+    require_project_access(user, int(project["id"]))
+
+    async def stream() -> AsyncIterator[str]:
+        queue = await project_events.subscribe(str(project["key"]))
+        try:
+            yield sse_message("ready", {"project_key": project["key"]})
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=25)
+                    yield sse_message(str(item.get("event") or "ticket_changed"), item)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                if await request.is_disconnected():
+                    break
+        finally:
+            await project_events.unsubscribe(str(project["key"]), queue)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/p/{project_key}/settings", response_class=HTMLResponse)
@@ -391,6 +429,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
         str(form.get("priority") or "Medium"),
         assignee_id,
     )
+    await publish_ticket_event(ticket, "ticket_created")
     return redirect("/t/%s" % ticket["key"])
 
 
@@ -408,7 +447,7 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
     user = await validate_csrf_request(request)
     form = await request.form()
     assignee_present = "assignee_id" in form
-    update_ticket(
+    ticket = update_ticket(
         user,
         ticket_key,
         title=str(form.get("title")) if "title" in form else None,
@@ -418,6 +457,7 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched=assignee_present,
     )
+    await publish_ticket_event(ticket)
     return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
 
 
@@ -425,7 +465,7 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
 async def api_quick_update_ticket(request: Request, ticket_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
     form = await request.form()
-    update_ticket(
+    ticket = update_ticket(
         user,
         ticket_key,
         status_value=str(form.get("status")) if "status" in form else None,
@@ -436,6 +476,8 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
     comment = str(form.get("comment") or "").strip()
     if comment:
         add_comment(user, ticket_key, comment)
+        ticket = get_ticket_bundle(ticket_key)["ticket"]
+    await publish_ticket_event(ticket, "ticket_changed")
     return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
 
 
@@ -453,6 +495,7 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         assignee_id=payload.get("assignee_id"),
         assignee_touched="assignee_id" in payload,
     )
+    await publish_ticket_event(ticket)
     return JSONResponse(ticket)
 
 
@@ -461,20 +504,23 @@ async def api_add_comment(request: Request, ticket_key: str) -> RedirectResponse
     user = await validate_csrf_request(request)
     form = await request.form()
     add_comment(user, ticket_key, str(form.get("body") or ""))
+    await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_commented")
     return redirect("/t/%s" % ticket_key)
 
 
 @app.post("/api/tickets/{ticket_key}/close")
 async def api_close_ticket(request: Request, ticket_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
-    close_ticket(user, ticket_key)
+    ticket = close_ticket(user, ticket_key)
+    await publish_ticket_event(ticket)
     return redirect("/t/%s" % ticket_key)
 
 
 @app.post("/api/tickets/{ticket_key}/reopen")
 async def api_reopen_ticket(request: Request, ticket_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
-    reopen_ticket(user, ticket_key)
+    ticket = reopen_ticket(user, ticket_key)
+    await publish_ticket_event(ticket)
     return redirect("/t/%s" % ticket_key)
 
 
@@ -483,6 +529,7 @@ async def api_watch_ticket(request: Request, ticket_key: str) -> RedirectRespons
     user = await validate_csrf_request(request)
     form = await request.form()
     set_watch(user, ticket_key, str(form.get("watch") or "true").lower() == "true")
+    await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"])
     return redirect("/t/%s" % ticket_key)
 
 

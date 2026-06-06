@@ -72,6 +72,7 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 - Append-only `action_log` for important changes.
 - Mobile-first UI: desktop kanban columns, phone status tabs, large touch
   targets, mobile status move controls, and no required horizontal scrolling.
+- Live board updates through Server-Sent Events for ticket moves and edits.
 - Quick display preferences: `en`/`ru` language switch and light/dark themes.
 - GitHub App OAuth login and webhook-based linking for branches, commits, and PRs.
 - MCP-style JSON-RPC endpoint for ticket automation.

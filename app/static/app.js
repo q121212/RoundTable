@@ -164,6 +164,8 @@
       "ticket.autosave_saving": "Saving...",
       "ticket.comments": "Comments",
       "ticket.details": "Details",
+      "ticket.live_connected": "Live updates on",
+      "ticket.live_reconnecting": "Reconnecting...",
       "ticket.new": "New ticket",
       "ticket.quick_edit": "Quick edit",
       "ticket.quick_create": "Quick create",
@@ -336,6 +338,8 @@
       "ticket.autosave_saving": "Сохраняю...",
       "ticket.comments": "Комментарии",
       "ticket.details": "Детали",
+      "ticket.live_connected": "Живые обновления включены",
+      "ticket.live_reconnecting": "Переподключаюсь...",
       "ticket.new": "Новый тикет",
       "ticket.quick_edit": "Быстро изменить",
       "ticket.quick_create": "Быстрое создание",
@@ -903,6 +907,16 @@
   function applyTicketUpdate(card, ticket) {
     if (!card || !ticket) return;
     card.dataset.ticketKey = ticket.key;
+    card.dataset.description = ticket.description || "";
+    const keyLink = card.querySelector(".ticket-key");
+    if (keyLink) {
+      keyLink.href = `/t/${ticket.key}`;
+      keyLink.textContent = ticket.key;
+    }
+    const titleEl = card.querySelector(".ticket-title");
+    if (titleEl) titleEl.textContent = ticket.title || "";
+    const openLink = card.querySelector(".ticket-open-link");
+    if (openLink) openLink.href = `/t/${ticket.key}`;
     updateCardClasses(card, ticket);
     moveCardToStatus(card, ticket.status);
     setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
@@ -984,6 +998,80 @@
   function flashSaved(card) {
     card.classList.add("is-saved");
     window.setTimeout(() => card.classList.remove("is-saved"), 900);
+  }
+
+  function createTicketCard(ticket) {
+    const card = document.createElement("article");
+    card.className = "ticket-card";
+    card.dataset.ticketKey = ticket.key;
+    card.dataset.description = ticket.description || "";
+    card.innerHTML = `
+      <div class="ticket-card-top">
+        <span class="drag-handle" data-icon="grip-vertical" role="button" tabindex="0" aria-label="Move ticket"></span>
+      </div>
+      <div class="ticket-title-row">
+        <a class="ticket-key"></a>
+        <button class="ticket-title-edit" type="button" data-title-edit aria-label="Edit title">
+          <span class="ticket-title"></span>
+        </button>
+        <a class="ticket-open-link" data-icon="external-link" aria-label="Open ticket"></a>
+      </div>
+      <div class="ticket-card-chips">
+        <button type="button" class="chip chip-edit chip-status" data-edit="status" aria-haspopup="true">
+          <span class="chip-dot" aria-hidden="true"></span>
+          <span class="chip-label"></span>
+        </button>
+        <button type="button" class="chip chip-edit chip-priority" data-edit="priority" aria-haspopup="true">
+          <span class="chip-label"></span>
+        </button>
+        <button type="button" class="chip chip-edit chip-assignee" data-edit="assignee_id" aria-haspopup="true">
+          <span class="avatar-dot" aria-hidden="true"></span>
+          <span class="chip-label assignee-label"></span>
+        </button>
+        <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description"></button>
+        <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment"></button>
+      </div>
+    `;
+    card.addEventListener("pointerdown", startTicketDrag);
+    const titleButton = card.querySelector("[data-title-edit]");
+    if (titleButton) titleButton.addEventListener("click", () => startBoardTitleEdit(titleButton));
+    applyTicketUpdate(card, ticket);
+    renderIcons();
+    return card;
+  }
+
+  function applyLiveTicket(ticket) {
+    if (!ticket || !ticket.key) return;
+    let card = document.querySelector(`.ticket-card[data-ticket-key="${cssEscape(ticket.key)}"]`);
+    if (!card) {
+      card = createTicketCard(ticket);
+      const zone = document.querySelector(`.dropzone[data-status="${cssEscape(ticket.status)}"]`);
+      if (!zone) return;
+      zone.prepend(card);
+      refreshColumnCounts();
+      flashSaved(card);
+      return;
+    }
+    applyTicketUpdate(card, ticket);
+    flashSaved(card);
+  }
+
+  function setupBoardLiveEvents() {
+    const board = document.querySelector(".board[data-events-url]");
+    if (!board || !window.EventSource) return;
+    const source = new EventSource(board.dataset.eventsUrl);
+    const handleTicketEvent = (event) => {
+      try {
+        const payload = JSON.parse(event.data || "{}");
+        applyLiveTicket(payload.ticket);
+      } catch (error) {
+        // Ignore malformed live events; the next reload/resync will recover.
+      }
+    };
+    source.addEventListener("ticket_created", handleTicketEvent);
+    source.addEventListener("ticket_changed", handleTicketEvent);
+    source.addEventListener("ticket_commented", handleTicketEvent);
+    window.addEventListener("beforeunload", () => source.close());
   }
 
   function setupTicketAutosave() {
@@ -1212,6 +1300,7 @@
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();
+    setupBoardLiveEvents();
   });
 
   window.addEventListener("pointermove", (event) => {

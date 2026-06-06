@@ -98,7 +98,7 @@
   {% endfor %}
 </div>
 
-<section class="board" data-csrf="{{ user.csrf_token }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-members='{{ members | tojson }}'>
+<section class="board" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-members='{{ members | tojson }}'>
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
