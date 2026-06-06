@@ -523,6 +523,10 @@
       placeholder,
       preview,
       currentZone: null,
+      autoScrollFrame: null,
+      autoScrollSpeed: 0,
+      lastClientX: event.clientX,
+      lastClientY: event.clientY,
       started: true,
     });
     document.body.classList.add("is-dragging-ticket");
@@ -546,9 +550,50 @@
     dragState.currentZone = zone;
   }
 
+  function updateDragAutoScroll(clientX, clientY) {
+    if (!dragState || !dragState.started) return;
+    const edge = 88;
+    const maxSpeed = 18;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    let speed = 0;
+    if (clientY < edge) {
+      speed = -Math.ceil(((edge - clientY) / edge) * maxSpeed);
+    } else if (clientY > viewportHeight - edge) {
+      speed = Math.ceil(((clientY - (viewportHeight - edge)) / edge) * maxSpeed);
+    }
+    dragState.lastClientX = clientX;
+    dragState.lastClientY = clientY;
+    dragState.autoScrollSpeed = speed;
+    if (!speed) {
+      stopDragAutoScroll();
+      return;
+    }
+    if (!dragState.autoScrollFrame) {
+      dragState.autoScrollFrame = window.requestAnimationFrame(stepDragAutoScroll);
+    }
+  }
+
+  function stepDragAutoScroll() {
+    if (!dragState || !dragState.started || !dragState.autoScrollSpeed) {
+      stopDragAutoScroll();
+      return;
+    }
+    window.scrollBy({ top: dragState.autoScrollSpeed, left: 0, behavior: "auto" });
+    moveDragPreview(dragState.lastClientX, dragState.lastClientY);
+    updateDragTarget(dragState.lastClientX, dragState.lastClientY);
+    dragState.autoScrollFrame = window.requestAnimationFrame(stepDragAutoScroll);
+  }
+
+  function stopDragAutoScroll() {
+    if (!dragState || !dragState.autoScrollFrame) return;
+    window.cancelAnimationFrame(dragState.autoScrollFrame);
+    dragState.autoScrollFrame = null;
+  }
+
   async function finishTicketDrag(event) {
     if (!dragState) return;
     const state = dragState;
+    stopDragAutoScroll();
     dragState = null;
     if (!state.started) {
       if (state.handle.hasPointerCapture && state.handle.hasPointerCapture(state.pointerId)) {
@@ -592,6 +637,7 @@
   function cancelTicketDrag() {
     if (!dragState) return;
     const state = dragState;
+    stopDragAutoScroll();
     dragState = null;
     if (!state.started) {
       if (state.handle.hasPointerCapture && state.handle.hasPointerCapture(state.pointerId)) {
@@ -634,6 +680,8 @@
 
   let activePopover = null;
   let activeChip = null;
+  let popoverAnchorScrollY = 0;
+  let popoverAnchorWidth = 0;
 
   function setupChipEditors() {
     document.querySelectorAll(".board").forEach((board) => {
@@ -737,12 +785,14 @@
     positionPopover(pop, chip);
     activePopover = pop;
     activeChip = chip;
+    popoverAnchorScrollY = window.scrollY;
+    popoverAnchorWidth = window.innerWidth;
     chip.setAttribute("aria-expanded", "true");
     window.setTimeout(() => {
       document.addEventListener("pointerdown", onOutsidePointer, true);
       document.addEventListener("keydown", onPopoverKey, true);
-      window.addEventListener("scroll", closePopover, true);
-      window.addEventListener("resize", closePopover);
+      window.addEventListener("scroll", onPopoverScroll, true);
+      window.addEventListener("resize", onPopoverResize);
       const focusable = pop.querySelector("textarea, .popover-option");
       if (focusable) focusable.focus();
     }, 0);
@@ -755,8 +805,30 @@
     activeChip = null;
     document.removeEventListener("pointerdown", onOutsidePointer, true);
     document.removeEventListener("keydown", onPopoverKey, true);
-    window.removeEventListener("scroll", closePopover, true);
-    window.removeEventListener("resize", closePopover);
+    window.removeEventListener("scroll", onPopoverScroll, true);
+    window.removeEventListener("resize", onPopoverResize);
+  }
+
+  // Close only on meaningful scrolling; small scrolls (e.g. mobile keyboard
+  // nudging the viewport) just reposition the popover so it stays attached.
+  function onPopoverScroll() {
+    if (!activePopover || !activeChip) return;
+    if (Math.abs(window.scrollY - popoverAnchorScrollY) > 120) {
+      closePopover();
+    } else {
+      positionPopover(activePopover, activeChip);
+    }
+  }
+
+  // The mobile virtual keyboard fires resize by changing height, not width.
+  // Only treat width changes (orientation / real resize) as a reason to close.
+  function onPopoverResize() {
+    if (!activePopover || !activeChip) return;
+    if (window.innerWidth !== popoverAnchorWidth) {
+      closePopover();
+    } else {
+      positionPopover(activePopover, activeChip);
+    }
   }
 
   function onOutsidePointer(event) {
@@ -1205,22 +1277,33 @@
   }
 
   function setupCopyButtons() {
-    document.querySelectorAll("[data-copy-text]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const originalText = button.dataset.i18n ? translate(button.dataset.i18n, currentLang()) : button.textContent;
+    document.querySelectorAll("[data-copy-text]").forEach((control) => {
+      const copy = async () => {
+        const canSwapText = control.tagName === "BUTTON";
+        const originalText = control.dataset.i18n
+          ? translate(control.dataset.i18n, currentLang())
+          : control.textContent;
         try {
-          await navigator.clipboard.writeText(button.dataset.copyText || "");
-          button.classList.add("is-copied");
-          if (button.textContent.trim()) button.textContent = translate("mcp.copied", currentLang()) || "Copied";
+          await navigator.clipboard.writeText(control.dataset.copyText || "");
+          control.classList.add("is-copied");
+          if (canSwapText && control.textContent.trim()) {
+            control.textContent = translate("mcp.copied", currentLang()) || "Copied";
+          }
           window.setTimeout(() => {
-            button.classList.remove("is-copied");
-            if (button.textContent.trim() && originalText) button.textContent = originalText;
+            control.classList.remove("is-copied");
+            if (canSwapText && control.textContent.trim() && originalText) control.textContent = originalText;
             renderIcons();
           }, 1100);
           renderIcons();
         } catch (error) {
-          window.prompt("Copy", button.dataset.copyText || "");
+          window.prompt("Copy", control.dataset.copyText || "");
         }
+      };
+      control.addEventListener("click", copy);
+      control.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        copy();
       });
     });
   }
@@ -1401,6 +1484,7 @@
     }
     moveDragPreview(event.clientX, event.clientY);
     updateDragTarget(event.clientX, event.clientY);
+    updateDragAutoScroll(event.clientX, event.clientY);
   });
 
   window.addEventListener("pointerup", (event) => {

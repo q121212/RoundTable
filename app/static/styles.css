@@ -523,13 +523,14 @@ button,
 }
 
 .quick-create-side {
-  grid-template-columns: minmax(170px, 220px) minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(150px, 220px) minmax(220px, 320px) auto;
   align-items: end;
+  justify-content: start;
 }
 
 .quick-create-button {
   min-width: 150px;
-  justify-self: end;
+  justify-self: start;
 }
 
 .assignee-picker {
@@ -1649,6 +1650,78 @@ a.ticket-key:hover {
   }
 }
 
+@media (max-width: 900px) {
+  .mobile-status-tabs {
+    position: sticky;
+    top: 64px;
+    z-index: 12;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 0 12px;
+    background: var(--bg);
+  }
+
+  .status-tab {
+    min-height: 46px;
+    min-width: max-content;
+    padding: 9px 13px;
+    background: #fff;
+    color: var(--muted);
+    border: 1px solid var(--line);
+  }
+
+  .status-tab.active {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+  }
+
+  .board {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .board-column {
+    min-width: 0;
+  }
+
+  .board-column.mobile-hidden {
+    display: none;
+  }
+
+  .ticket-card {
+    padding: 10px;
+    gap: 7px;
+  }
+
+  .ticket-title-edit {
+    min-height: 42px;
+  }
+
+  .ticket-open-link,
+  .drag-handle,
+  .icon-only {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .chip {
+    min-height: 40px;
+    padding: 7px 10px;
+  }
+
+  .quick-create-side {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .quick-create-button {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
 @media (max-width: 720px) {
   button,
   .primary,
@@ -1980,10 +2053,19 @@ a.ticket-key:hover {
   display: block;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.copy-card code:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
+.copy-card code.is-copied {
+  background: color-mix(in srgb, var(--green) 18%, var(--surface-strong));
+  color: var(--green-dark);
 }
 
 button.is-copied {
