@@ -303,10 +303,26 @@ def require_project_member_conn(conn: Any, project_id: int, user_id: int) -> Non
 def add_project_member(project_id: int, login: str, role: str = "member") -> None:
     if role not in {"admin", "member", "viewer"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid member role")
+    login = login.strip()
+    if not login:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Login is required")
     with get_conn() as conn:
-        user = conn.execute("SELECT id FROM users WHERE login = ?", (login.strip(),)).fetchone()
+        user = conn.execute("SELECT id FROM users WHERE login = ?", (login,)).fetchone()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            user = conn.execute(
+                """
+                INSERT INTO users (login, name, role, created_at)
+                VALUES (?, ?, ?, ?)
+                RETURNING id
+                """,
+                (
+                    login,
+                    login,
+                    "admin" if login in settings.admin_github_logins else "member",
+                    utcnow(),
+                ),
+            ).fetchone()
+            ensure_notification_preferences(conn, int(user["id"]))
         conn.execute(
             """
             INSERT INTO project_members (project_id, user_id, role, created_at)

@@ -91,6 +91,22 @@ def test_project_members_exposes_safe_profile_fields(temp_db):
     assert set(member) == {"id", "login", "name", "avatar_url", "project_role"}
 
 
+def test_project_member_can_be_invited_before_first_login(temp_db):
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "INV", "Invites")
+
+    add_project_member(int(project["id"]), "octocat", "viewer")
+
+    invited = project_members(int(project["id"]))
+    assert any(member["login"] == "octocat" and member["project_role"] == "viewer" for member in invited)
+
+    upsert_user("octocat", github_id="42", name="The Octocat", avatar_url="https://example.com/a.png")
+    updated = {member["login"]: member for member in project_members(int(project["id"]))}
+    assert updated["octocat"]["name"] == "The Octocat"
+    assert updated["octocat"]["avatar_url"] == "https://example.com/a.png"
+    assert updated["octocat"]["project_role"] == "viewer"
+
+
 def test_delete_project_cascades(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "GT", "GigaTool")
