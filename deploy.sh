@@ -14,7 +14,7 @@
 #   DEPLOY_PATH        app dir on server        (default: /opt/roundtable)
 #   DEPLOY_BRANCH      git branch to deploy     (default: main)
 #   DEPLOY_SERVICE     systemd unit name        (default: roundtable)
-#   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8000/login)
+#   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8380/login)
 #   DEPLOY_PYTHON      python on server         (default: python3)
 #
 # Usage:
@@ -30,7 +30,7 @@ HOST="${DEPLOY_HOST:-}"
 APP_DIR="${DEPLOY_PATH:-/opt/roundtable}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 SERVICE="${DEPLOY_SERVICE:-roundtable}"
-HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8000/login}"
+HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8380/login}"
 PY="${DEPLOY_PYTHON:-python3}"
 
 while [ $# -gt 0 ]; do

@@ -16,7 +16,7 @@ Type=simple
 User=roundtable
 WorkingDirectory=/opt/roundtable
 EnvironmentFile=/opt/roundtable/.env
-ExecStart=/opt/roundtable/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/roundtable/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8380
 Restart=on-failure
 RestartSec=3
 
