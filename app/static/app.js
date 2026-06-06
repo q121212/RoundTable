@@ -107,6 +107,10 @@
       "projects.add_member": "Add member",
       "projects.back_to_board": "Back to board",
       "projects.create": "Create project",
+      "projects.danger": "Danger zone",
+      "projects.delete": "Delete project",
+      "projects.delete_confirm": "Delete this project and all its tickets? This cannot be undone.",
+      "projects.delete_help": "Deleting a project permanently removes all of its tickets, comments, and history. This cannot be undone.",
       "projects.empty_copy": "Create the first project and RoundTable will start ticket keys from KEY-1.",
       "projects.empty_title": "No projects yet",
       "projects.eyebrow": "Workspace",
@@ -239,6 +243,10 @@
       "projects.add_member": "Добавить участника",
       "projects.back_to_board": "Назад к доске",
       "projects.create": "Создать проект",
+      "projects.danger": "Опасная зона",
+      "projects.delete": "Удалить проект",
+      "projects.delete_confirm": "Удалить проект и все его тикеты? Действие необратимо.",
+      "projects.delete_help": "Удаление проекта безвозвратно удалит все его тикеты, комментарии и историю. Отменить нельзя.",
       "projects.empty_copy": "Создайте первый проект, и RoundTable начнет тикеты с KEY-1.",
       "projects.empty_title": "Проектов пока нет",
       "projects.eyebrow": "Рабочее пространство",
@@ -575,6 +583,8 @@
     pop.className = "popover-menu";
     if (field === "comment") {
       buildCommentPopover(pop, card);
+    } else if (field === "description") {
+      buildDescriptionPopover(pop, card);
     } else {
       buildOptionsPopover(pop, field, card, chip);
     }
@@ -713,6 +723,44 @@
     });
   }
 
+  function buildDescriptionPopover(pop, card) {
+    pop.classList.add("popover-desc");
+    const textarea = document.createElement("textarea");
+    textarea.rows = 6;
+    textarea.value = card.dataset.description || "";
+    textarea.placeholder = translate("help.ticket_description", currentLang()) || "Description";
+    const actions = document.createElement("div");
+    actions.className = "popover-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary tiny";
+    button.textContent = translate("action.save", currentLang()) || "Save";
+    actions.appendChild(button);
+    pop.appendChild(textarea);
+    pop.appendChild(actions);
+    const submit = async () => {
+      button.disabled = true;
+      textarea.disabled = true;
+      card.classList.add("is-saving");
+      try {
+        const ticket = await patchTicket(card.dataset.ticketKey, { description: textarea.value });
+        card.dataset.description = ticket && ticket.description != null ? ticket.description : textarea.value;
+        closePopover();
+        flashSaved(card);
+      } catch (error) {
+        window.alert(error.message || "Could not save description");
+        button.disabled = false;
+        textarea.disabled = false;
+      } finally {
+        card.classList.remove("is-saving");
+      }
+    };
+    button.addEventListener("click", submit);
+    textarea.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit();
+    });
+  }
+
   function applyTicketUpdate(card, ticket) {
     if (!card || !ticket) return;
     card.dataset.ticketKey = ticket.key;
@@ -804,6 +852,23 @@
     return String(value).replace(/"/g, '\\"');
   }
 
+  function setupConfirms() {
+    document.querySelectorAll("form[data-confirm]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        const message = translate(form.dataset.confirm, currentLang()) || "Are you sure?";
+        if (!window.confirm(message)) event.preventDefault();
+      });
+    });
+  }
+
+  function setupMenus() {
+    document.addEventListener("click", (event) => {
+      document.querySelectorAll("details.app-menu[open]").forEach((menu) => {
+        if (!menu.contains(event.target)) menu.removeAttribute("open");
+      });
+    });
+  }
+
   function setupOpenCreate() {
     document.querySelectorAll("[data-open-create]").forEach((link) => {
       link.addEventListener("click", (event) => {
@@ -849,6 +914,8 @@
     setupPreferences();
     setupBoardDnD();
     setupChipEditors();
+    setupMenus();
+    setupConfirms();
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();

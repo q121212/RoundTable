@@ -3,9 +3,11 @@
 {% block content %}
 <section class="page-head board-head">
   <div>
-    <p class="eyebrow">{{ project.key }}</p>
     <h1>{{ project.name }}</h1>
     {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
+  </div>
+  <div class="head-actions">
+    <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
   </div>
 </section>
 
@@ -57,14 +59,6 @@
     </form>
     </div>
   </details>
-
-  <details class="board-menu">
-    <summary class="ghost tiny" data-icon="settings" data-i18n="nav.settings">Settings</summary>
-    <div class="menu-popover">
-      <a href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
-      <a href="/integrations/github" data-icon="github" data-i18n="github.settings">GitHub settings</a>
-    </div>
-  </details>
 </div>
 
 <div class="mobile-status-tabs" role="tablist" aria-label="Statuses">
@@ -83,7 +77,7 @@
       </header>
       <div class="dropzone" data-status="{{ status }}">
         {% for ticket in columns[status] %}
-          <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}">
+          <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}" data-description="{{ ticket.description }}">
             <div class="ticket-card-top">
               <a class="ticket-key" href="/t/{{ ticket.key }}">{{ ticket.key }}</a>
               <span class="drag-handle" data-icon="grip-vertical" role="button" tabindex="0" data-i18n-aria="action.drag" aria-label="Move ticket"></span>
@@ -111,6 +105,7 @@
                   <span class="chip-label assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
                 {% endif %}
               </button>
+              <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description"></button>
               <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment"></button>
             </div>
           </article>
