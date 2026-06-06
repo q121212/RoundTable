@@ -4,8 +4,8 @@
     {
       "name": "roundtable",
       "runtimeExecutable": ".venv/bin/uvicorn",
-      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8765"],
-      "port": 8765
+      "runtimeArgs": ["app.main:app", "--host", "127.0.0.1", "--port", "8380"],
+      "port": 8380
     }
   ]
 }
