@@ -129,7 +129,11 @@
       "status.Todo": "Todo",
       "theme.dark": "Dark",
       "theme.light": "Light",
+      "theme.switch": "Switch theme",
       "ticket.activity": "Activity",
+      "ticket.autosave_error": "Could not save",
+      "ticket.autosave_saved": "Saved",
+      "ticket.autosave_saving": "Saving...",
       "ticket.comments": "Comments",
       "ticket.details": "Details",
       "ticket.new": "New ticket",
@@ -267,7 +271,11 @@
       "status.Todo": "К выполнению",
       "theme.dark": "Темная",
       "theme.light": "Светлая",
+      "theme.switch": "Сменить тему",
       "ticket.activity": "История",
+      "ticket.autosave_error": "Не удалось сохранить",
+      "ticket.autosave_saved": "Сохранено",
+      "ticket.autosave_saving": "Сохраняю...",
       "ticket.comments": "Комментарии",
       "ticket.details": "Детали",
       "ticket.new": "Новый тикет",
@@ -330,8 +338,9 @@
     if (!button) return;
     const nextKey = currentTheme() === "dark" ? "theme.light" : "theme.dark";
     button.dataset.icon = currentTheme() === "dark" ? "sun" : "moon";
-    button.dataset.i18n = nextKey;
-    button.textContent = translate(nextKey, currentLang());
+    button.removeAttribute("data-i18n");
+    button.textContent = "";
+    button.setAttribute("aria-label", translate("theme.switch", currentLang()) || translate(nextKey, currentLang()));
   }
 
   function updateLanguageButton() {
@@ -399,7 +408,7 @@
     if (event.button !== undefined && event.button !== 0) return;
     if (
       event.target.closest(
-        "a, button, input, select, textarea, label, summary, details, .ticket-key, .priority-chip, .assignee-chip, .ticket-title"
+        "a, button, input, select, textarea, label, summary, details, .ticket-key, .priority-chip, .assignee-chip, .ticket-title, .ticket-title-input"
       )
     ) {
       return;
@@ -534,14 +543,19 @@
     state.placeholder.replaceWith(state.card);
   }
 
-  async function patchTicket(ticketKey, payload) {
+  function csrfToken() {
     const board = document.querySelector(".board");
-    const csrf = board ? board.dataset.csrf : "";
+    if (board && board.dataset.csrf) return board.dataset.csrf;
+    const input = document.querySelector('input[name="csrf_token"]');
+    return input ? input.value : "";
+  }
+
+  async function patchTicket(ticketKey, payload) {
     const response = await fetch(`/api/tickets/${ticketKey}`, {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "x-csrf-token": csrf,
+        "x-csrf-token": csrfToken(),
       },
       body: JSON.stringify(payload),
     });
@@ -566,6 +580,66 @@
         }
         openPopover(chip);
       });
+    });
+  }
+
+  function setupBoardTitleEditors() {
+    document.querySelectorAll("[data-title-edit]").forEach((button) => {
+      button.addEventListener("click", () => startBoardTitleEdit(button));
+    });
+  }
+
+  function startBoardTitleEdit(button) {
+    const card = button.closest(".ticket-card");
+    const titleEl = button.querySelector(".ticket-title");
+    if (!card || !titleEl || button.classList.contains("is-editing")) return;
+    const original = titleEl.textContent.trim();
+    button.classList.add("is-editing");
+    const input = document.createElement("input");
+    input.className = "ticket-title-input";
+    input.value = original;
+    input.maxLength = 180;
+    input.setAttribute("aria-label", translate("field.title", currentLang()) || "Title");
+    button.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let finished = false;
+    const restore = (value) => {
+      titleEl.textContent = value;
+      button.classList.remove("is-editing");
+      input.replaceWith(button);
+    };
+    const save = async () => {
+      if (finished) return;
+      finished = true;
+      const next = input.value.trim();
+      if (!next || next === original) {
+        restore(original);
+        return;
+      }
+      card.classList.add("is-saving");
+      input.disabled = true;
+      try {
+        const ticket = await patchTicket(card.dataset.ticketKey, { title: next });
+        restore(ticket.title || next);
+        flashSaved(card);
+      } catch (error) {
+        window.alert(error.message || "Could not update title");
+        restore(original);
+      } finally {
+        card.classList.remove("is-saving");
+      }
+    };
+    input.addEventListener("blur", save);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      } else if (event.key === "Escape") {
+        finished = true;
+        restore(original);
+      }
     });
   }
 
@@ -698,7 +772,6 @@
     const submit = async () => {
       const body = textarea.value.trim();
       if (!body) return;
-      const board = document.querySelector(".board");
       button.disabled = true;
       textarea.disabled = true;
       const formData = new FormData();
@@ -707,7 +780,7 @@
       try {
         const response = await fetch(`/api/tickets/${card.dataset.ticketKey}/comments`, {
           method: "POST",
-          headers: { "x-csrf-token": board ? board.dataset.csrf : "" },
+          headers: { "x-csrf-token": csrfToken() },
           body: formData,
         });
         if (!response.ok) throw new Error(await response.text());
@@ -851,6 +924,62 @@
     window.setTimeout(() => card.classList.remove("is-saved"), 900);
   }
 
+  function setupTicketAutosave() {
+    const form = document.querySelector("[data-ticket-autosave]");
+    if (!form) return;
+    const ticketKey = form.dataset.ticketKey;
+    const status = form.querySelector("[data-autosave-status]");
+    const fields = ["title", "description", "status", "priority", "assignee_id"];
+    const timers = new Map();
+
+    form.addEventListener("submit", (event) => event.preventDefault());
+
+    const setStatus = (key) => {
+      if (!status) return;
+      status.dataset.i18n = key;
+      status.textContent = translate(key, currentLang()) || status.textContent;
+      status.dataset.state = key.endsWith("error") ? "error" : key.endsWith("saving") ? "saving" : "saved";
+    };
+
+    const fieldValue = (field) => {
+      const control = form.elements[field];
+      if (!control) return undefined;
+      if (field === "assignee_id") return control.value ? Number(control.value) : null;
+      return control.value;
+    };
+
+    const saveField = async (field) => {
+      const payload = {};
+      payload[field] = fieldValue(field);
+      setStatus("ticket.autosave_saving");
+      try {
+        const ticket = await patchTicket(ticketKey, payload);
+        if (field === "title") {
+          const title = document.querySelector("[data-ticket-page-title]");
+          if (title) title.textContent = ticket.title || payload.title;
+        }
+        setStatus("ticket.autosave_saved");
+      } catch (error) {
+        setStatus("ticket.autosave_error");
+      }
+    };
+
+    fields.forEach((field) => {
+      const control = form.elements[field];
+      if (!control) return;
+      const saveSoon = (delay) => {
+        window.clearTimeout(timers.get(field));
+        timers.set(field, window.setTimeout(() => saveField(field), delay));
+      };
+      if (control.tagName === "SELECT") {
+        control.addEventListener("change", () => saveSoon(0));
+      } else {
+        control.addEventListener("input", () => saveSoon(650));
+        control.addEventListener("blur", () => saveSoon(0));
+      }
+    });
+  }
+
   function cssEscape(value) {
     if (window.CSS && window.CSS.escape) return window.CSS.escape(value);
     return String(value).replace(/"/g, '\\"');
@@ -918,6 +1047,8 @@
     setupPreferences();
     setupBoardDnD();
     setupChipEditors();
+    setupBoardTitleEditors();
+    setupTicketAutosave();
     setupMenus();
     setupConfirms();
     setupOpenCreate();

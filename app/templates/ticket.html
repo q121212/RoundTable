@@ -4,14 +4,15 @@
 <section class="page-head">
   <div>
     <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
-    <h1><span class="ticket-key">{{ ticket.key }}</span> {{ ticket.title }}</h1>
+    <h1 class="ticket-page-title"><span class="ticket-key">{{ ticket.key }}</span> <span data-ticket-page-title>{{ ticket.title }}</span></h1>
   </div>
 </section>
 
 <section class="ticket-layout">
   <div class="panel">
-    <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}">
+    <form class="stacked-form ticket-autosave-form" method="post" action="/api/tickets/{{ ticket.key }}" data-ticket-autosave data-ticket-key="{{ ticket.key }}">
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>
       <label>
         <span class="label-row">
           <span data-i18n="field.title">Title</span>
@@ -65,7 +66,6 @@
           </select>
         </label>
       </div>
-      <button class="primary" type="submit" data-icon="save" data-i18n="ticket.save">Save ticket</button>
     </form>
   </div>
 

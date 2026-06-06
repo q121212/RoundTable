@@ -20,7 +20,7 @@
               <a href="/projects" data-icon="folder-kanban" data-i18n="nav.projects">Projects</a>
               <a href="/settings/mcp" data-icon="key-round">MCP</a>
               <a href="/settings/notifications" data-icon="bell" data-i18n="nav.notifications">Notifications</a>
-              <a href="/integrations/github" data-icon="github">GitHub</a>
+              <a href="/integrations/github" data-icon="git-branch">GitHub</a>
               <form class="inline" method="post" action="/logout">
                 <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
                 <button class="ghost" type="submit" data-icon="log-out" data-i18n="nav.logout">Log out</button>
@@ -30,7 +30,7 @@
         {% endif %}
         <div class="quick-prefs" aria-label="Display settings">
           <button class="ghost tiny" type="button" data-icon="languages" data-lang-toggle aria-label="Switch language">EN</button>
-          <button class="ghost tiny" type="button" data-icon="moon" data-theme-toggle data-i18n="theme.dark">Dark</button>
+          <button class="ghost tiny icon-pref" type="button" data-icon="moon" data-theme-toggle aria-label="Switch theme"></button>
         </div>
       </nav>
     </header>

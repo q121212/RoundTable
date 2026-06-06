@@ -79,10 +79,15 @@
         {% for ticket in columns[status] %}
           <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}" data-description="{{ ticket.description }}">
             <div class="ticket-card-top">
-              <a class="ticket-key" href="/t/{{ ticket.key }}">{{ ticket.key }}</a>
               <span class="drag-handle" data-icon="grip-vertical" role="button" tabindex="0" data-i18n-aria="action.drag" aria-label="Move ticket"></span>
             </div>
-            <a class="ticket-title-link" href="/t/{{ ticket.key }}"><span class="ticket-title">{{ ticket.title }}</span></a>
+            <div class="ticket-title-row">
+              <a class="ticket-key" href="/t/{{ ticket.key }}">{{ ticket.key }}</a>
+              <button class="ticket-title-edit" type="button" data-title-edit aria-label="Edit title" data-i18n-aria="field.title">
+                <span class="ticket-title">{{ ticket.title }}</span>
+              </button>
+              <a class="ticket-open-link" href="/t/{{ ticket.key }}" data-icon="external-link" aria-label="Open ticket"></a>
+            </div>
             <div class="ticket-card-chips">
               <button type="button" class="chip chip-edit chip-status" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true">
                 <span class="chip-dot" aria-hidden="true"></span>
