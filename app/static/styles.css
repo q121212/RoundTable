@@ -2042,8 +2042,8 @@ a.ticket-key:hover {
 /* Project settings: member management + delete confirmation (Codex round). */
 .project-settings-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -2051,8 +2051,8 @@ a.ticket-key:hover {
   position: sticky;
   top: 74px;
   display: grid;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -2063,12 +2063,13 @@ a.ticket-key:hover {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 10px;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 8px;
   border-radius: 7px;
   color: var(--text);
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 750;
 }
 
 .settings-rail a:hover,
@@ -2079,13 +2080,14 @@ a.ticket-key:hover {
 
 .settings-stack {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
 .settings-section {
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  padding: 16px;
 }
 
 .section-heading {
@@ -2101,8 +2103,8 @@ a.ticket-key:hover {
 
 .settings-subsection {
   display: grid;
-  gap: 10px;
-  padding-top: 14px;
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
@@ -2112,8 +2114,16 @@ a.ticket-key:hover {
 }
 
 .access-add-form {
-  grid-template-columns: minmax(180px, 1fr) minmax(140px, 220px) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 180px) auto;
   align-items: end;
+}
+
+.settings-section .stacked-form {
+  gap: 12px;
+}
+
+.settings-section textarea {
+  min-height: 94px;
 }
 
 .wide-panel {
