@@ -28,7 +28,6 @@ class Settings:
     app_name: str = os.getenv("APP_NAME", "RoundTable")
     base_url: str = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
     database_path: str = os.getenv("DATABASE_PATH", "./data/roundtable.db")
-    secret_key: str = os.getenv("SECRET_KEY", "dev-roundtable-secret-change-me")
     # Secure-by-default: dev login is an auth bypass (any login becomes admin),
     # so it must be opted into explicitly. Local dev keeps it on via .env.
     allow_dev_login: bool = _bool("ALLOW_DEV_LOGIN", False)

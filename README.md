@@ -210,7 +210,6 @@ Important values:
 ```env
 BASE_URL=http://localhost:8000
 DATABASE_PATH=./data/roundtable.db
-SECRET_KEY=change-me-long-random-string
 ALLOW_DEV_LOGIN=false
 ADMIN_GITHUB_LOGINS=your-github-login
 
