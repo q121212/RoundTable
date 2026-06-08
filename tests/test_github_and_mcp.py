@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs, unquote, urlparse
 
 from fastapi.testclient import TestClient
 
@@ -6,6 +7,21 @@ from app.db import get_conn, row_to_dict
 from app.github_integration import handle_webhook
 from app.main import app
 from app.store import create_mcp_token, create_project, create_ticket, upsert_user
+
+
+def test_github_oauth_start_includes_base_url_redirect_uri(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "base_url", "https://rt.example.test")
+    object.__setattr__(settings, "github_client_id", "client-id")
+    object.__setattr__(settings, "github_client_secret", "client-secret")
+
+    client = TestClient(app)
+    response = client.get("/auth/github/start", follow_redirects=False)
+
+    assert response.status_code == 307
+    params = parse_qs(urlparse(response.headers["location"]).query)
+    assert unquote(params["redirect_uri"][0]) == "https://rt.example.test/auth/github/callback"
 
 
 def test_github_push_links_commit_to_ticket(temp_db):

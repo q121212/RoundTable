@@ -24,6 +24,7 @@ async def exchange_oauth_code(code: str) -> Dict[str, Any]:
                 "client_id": settings.github_client_id,
                 "client_secret": settings.github_client_secret,
                 "code": code,
+                "redirect_uri": "%s/auth/github/callback" % settings.base_url,
             },
         )
         token_response.raise_for_status()
@@ -187,4 +188,3 @@ def keys_from(values: Iterable[str]) -> List[str]:
 
 def first_line(value: str) -> str:
     return value.splitlines()[0] if value else ""
-

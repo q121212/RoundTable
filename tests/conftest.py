@@ -18,6 +18,8 @@ def temp_db(tmp_path):
     object.__setattr__(settings, "admin_github_logins", [])
     object.__setattr__(settings, "allow_dev_login", True)
     object.__setattr__(settings, "base_url", "http://testserver")
+    object.__setattr__(settings, "github_client_id", "")
+    object.__setattr__(settings, "github_client_secret", "")
     object.__setattr__(settings, "github_webhook_secret", "")
     object.__setattr__(settings, "telegram_webhook_secret", "")
     init_db()
