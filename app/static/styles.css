@@ -1167,6 +1167,26 @@ button,
   align-items: stretch;
 }
 
+.board-single-row {
+  grid-template-columns: repeat(var(--board-columns, 4), minmax(220px, 1fr));
+}
+
+.board-count-1 {
+  --board-columns: 1;
+}
+
+.board-count-2 {
+  --board-columns: 2;
+}
+
+.board-count-3 {
+  --board-columns: 3;
+}
+
+.board-count-4 {
+  --board-columns: 4;
+}
+
 .board-column {
   min-width: 0;
   padding: 10px;
@@ -1969,6 +1989,37 @@ a.ticket-key:hover {
 /* Project settings: member management + delete confirmation (Codex round). */
 .wide-panel {
   grid-column: 1 / -1;
+}
+
+.status-settings {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.status-settings legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  font-weight: 800;
+}
+
+.status-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.status-choice {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
 }
 
 .member-row {

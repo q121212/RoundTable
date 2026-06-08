@@ -17,6 +17,7 @@ from app.store import (
     remove_project_member,
     sync_configured_admin_roles,
     update_project_member,
+    update_project_settings,
     update_ticket,
     upsert_user,
 )
@@ -40,6 +41,34 @@ def test_project_accepts_github_repo_url(temp_db):
     project = create_project(user, "web", "Website", repo="https://github.com/acme/site.git")
 
     assert project["github_repo_full_name"] == "acme/site"
+
+
+def test_project_status_settings_control_board_and_ticket_updates(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "OPS", "Operations")
+
+    update_project_settings(user, "OPS", "Operations", statuses=["Todo", "Review", "Done"])
+    ticket = create_ticket(user, "OPS", "Custom workflow")
+    board = board_for_project("OPS", user)
+
+    assert list(board["columns"]) == ["Todo", "Review", "Done"]
+    assert ticket["status"] == "Todo"
+    assert update_ticket(user, ticket["key"], status_value="Review")["status"] == "Review"
+    with pytest.raises(HTTPException) as exc:
+        update_ticket(user, ticket["key"], status_value="Closed")
+    assert exc.value.status_code == 400
+
+
+def test_project_status_with_tickets_cannot_be_disabled(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "WEB", "Website")
+    create_ticket(user, "WEB", "Keep visible")
+
+    with pytest.raises(HTTPException) as exc:
+        update_project_settings(user, "WEB", "Website", statuses=["Todo", "Review"])
+
+    assert exc.value.status_code == 400
+    assert "Backlog" in exc.value.detail
 
 
 def test_close_ticket_logs_action(temp_db):

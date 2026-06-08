@@ -47,6 +47,7 @@ from .store import (
     notification_preferences,
     normalize_github_repo,
     project_members,
+    project_statuses,
     remove_project_member,
     reopen_ticket,
     require_project_access,
@@ -334,7 +335,15 @@ async def project_settings_page(request: Request, project_key: str, error: str =
     return render(
         request,
         "project_settings.html",
-        {"project": project, "members": members, "admin_count": admin_count, "can_delete": True, "error": error},
+        {
+            "project": project,
+            "members": members,
+            "admin_count": admin_count,
+            "can_delete": True,
+            "error": error,
+            "all_statuses": TICKET_STATUSES,
+            "active_statuses": project_statuses(project),
+        },
     )
 
 
@@ -356,6 +365,7 @@ async def api_update_project_settings(request: Request, project_key: str) -> Red
         str(form.get("name") or ""),
         str(form.get("description") or ""),
         str(form.get("repo") or ""),
+        [str(value) for value in form.getlist("statuses")],
     )
     return redirect("/p/%s/settings" % project_key.upper())
 
@@ -444,7 +454,8 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
     bundle = get_ticket_bundle(ticket_key)
     require_project_access(user, int(bundle["ticket"]["project_id"]))
     members = project_members(int(bundle["ticket"]["project_id"]))
-    return render(request, "ticket.html", {**bundle, "members": members})
+    project = get_project_by_key(str(bundle["ticket"]["project_key"]))
+    return render(request, "ticket.html", {**bundle, "members": members, "statuses": project_statuses(project)})
 
 
 @app.post("/api/tickets/{ticket_key}")

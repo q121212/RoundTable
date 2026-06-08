@@ -222,6 +222,7 @@ def init_db() -> None:
         )
         # Additive, idempotent column migrations for existing databases.
         _add_column_if_missing(conn, "mcp_tokens", "suffix", "TEXT")
+        _add_column_if_missing(conn, "projects", "statuses_json", "TEXT")
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
@@ -241,4 +242,3 @@ def json_loads(value: Optional[str], default: Any) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return default
-

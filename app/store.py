@@ -41,6 +41,31 @@ def validate_status(value: str) -> str:
     return value
 
 
+def normalize_project_statuses(values: List[str]) -> List[str]:
+    seen = set()
+    normalized = []
+    for value in values:
+        status_value = validate_status(str(value))
+        if status_value not in seen:
+            normalized.append(status_value)
+            seen.add(status_value)
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one status")
+    return normalized
+
+
+def project_statuses(project: Dict[str, Any]) -> List[str]:
+    configured = normalize_project_statuses(json_loads(project.get("statuses_json"), TICKET_STATUSES))
+    return configured
+
+
+def validate_project_ticket_status(project: Dict[str, Any], value: str) -> str:
+    status_value = validate_status(value)
+    if status_value not in project_statuses(project):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status is not enabled for this project")
+    return status_value
+
+
 def validate_priority(value: str) -> str:
     if value not in PRIORITIES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid priority")
@@ -211,21 +236,46 @@ def delete_project(user: Dict[str, Any], project_key: str, confirmation: str = "
 
 
 def update_project_settings(
-    user: Dict[str, Any], project_key: str, name: str, description: str = "", repo: str = ""
+    user: Dict[str, Any],
+    project_key: str,
+    name: str,
+    description: str = "",
+    repo: str = "",
+    statuses: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
     name = name.strip()
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name is required")
+    enabled_statuses = project_statuses(project) if statuses is None else normalize_project_statuses(statuses)
     with get_conn() as conn:
+        used_statuses = {
+            row["status"]
+            for row in conn.execute(
+                "SELECT DISTINCT status FROM tickets WHERE project_id = ?",
+                (project["id"],),
+            ).fetchall()
+        }
+        disabled_used = sorted(used_statuses.difference(enabled_statuses), key=TICKET_STATUSES.index)
+        if disabled_used:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot disable statuses that still contain tickets: %s" % ", ".join(disabled_used),
+            )
         conn.execute(
             """
             UPDATE projects
-            SET name = ?, description = ?, github_repo_full_name = ?
+            SET name = ?, description = ?, github_repo_full_name = ?, statuses_json = ?
             WHERE id = ?
             """,
-            (name, description.strip(), normalize_github_repo(repo) or None, project["id"]),
+            (
+                name,
+                description.strip(),
+                normalize_github_repo(repo) or None,
+                json_dumps(enabled_statuses),
+                project["id"],
+            ),
         )
         log_action(conn, int(project["id"]), None, user["id"], "project_updated")
         return row_to_dict(conn.execute("SELECT * FROM projects WHERE id = ?", (project["id"],)).fetchone()) or {}
@@ -273,10 +323,18 @@ def create_project(
         cur = conn.execute(
             """
             INSERT INTO projects
-                (key, name, description, created_by, github_repo_full_name, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (key, name, description, created_by, github_repo_full_name, statuses_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (key, name, description.strip(), user["id"], normalize_github_repo(repo) or None, now),
+            (
+                key,
+                name,
+                description.strip(),
+                user["id"],
+                normalize_github_repo(repo) or None,
+                json_dumps(TICKET_STATUSES),
+                now,
+            ),
         )
         project_id = int(cur.lastrowid)
         conn.execute(
@@ -429,6 +487,7 @@ def create_ticket(
         require_project_access(user, int(project["id"]), write=True)
         if assignee_id:
             require_project_member_conn(conn, int(project["id"]), assignee_id)
+        initial_status = project_statuses(project)[0]
         number = int(project["next_ticket_number"])
         ticket_key = "%s-%s" % (project["key"], number)
         conn.execute(
@@ -438,9 +497,9 @@ def create_ticket(
         cur = conn.execute(
             """
             INSERT INTO tickets
-                (project_id, number, key, title, description, priority,
+                (project_id, number, key, title, description, status, priority,
                  assignee_id, reporter_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project["id"],
@@ -448,6 +507,7 @@ def create_ticket(
                 ticket_key,
                 title,
                 description.strip(),
+                initial_status,
                 priority,
                 assignee_id,
                 user["id"],
@@ -613,6 +673,7 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
 def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_access(user, int(project["id"]))
+    statuses = project_statuses(project)
     with get_conn() as conn:
         rows = rows_to_dicts(
             conn.execute(
@@ -643,10 +704,10 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                 (project["id"],),
             ).fetchall()
         )
-    columns = {status_name: [] for status_name in TICKET_STATUSES}
+    columns = {status_name: [] for status_name in statuses}
     for ticket in rows:
         columns.setdefault(ticket["status"], []).append(ticket)
-    return {"project": project, "statuses": TICKET_STATUSES, "columns": columns}
+    return {"project": project, "statuses": statuses, "columns": columns}
 
 
 def search_tickets(user: Dict[str, Any], query: str = "", project_key: str = "") -> List[Dict[str, Any]]:
@@ -702,7 +763,10 @@ def update_ticket(
         if description is not None and description.strip() != ticket["description"]:
             changes.append(("description", ticket["description"], description.strip()))
         if status_value is not None:
-            status_value = validate_status(status_value)
+            project = row_to_dict(
+                conn.execute("SELECT * FROM projects WHERE id = ?", (ticket["project_id"],)).fetchone()
+            ) or {}
+            status_value = validate_project_ticket_status(project, status_value)
             if status_value != ticket["status"]:
                 changes.append(("status", ticket["status"], status_value))
         if priority is not None:
@@ -781,7 +845,10 @@ def close_ticket(user: Dict[str, Any], ticket_key: str) -> Dict[str, Any]:
 
 
 def reopen_ticket(user: Dict[str, Any], ticket_key: str) -> Dict[str, Any]:
-    return update_ticket(user, ticket_key, status_value="Todo")
+    project = get_project_for_ticket_key(ticket_key)
+    statuses = project_statuses(project)
+    target = "Todo" if "Todo" in statuses else statuses[0]
+    return update_ticket(user, ticket_key, status_value=target)
 
 
 def get_ticket_by_key_conn(conn: Any, ticket_key: str) -> Dict[str, Any]:
