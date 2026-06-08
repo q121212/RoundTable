@@ -2222,6 +2222,168 @@ a.ticket-key:hover {
   margin-top: 0;
 }
 
+@media (min-width: 901px) {
+  .project-settings-layout {
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 12px;
+    max-width: 1180px;
+  }
+
+  .settings-rail {
+    top: 72px;
+    box-shadow: none;
+  }
+
+  .settings-rail a {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 0.84rem;
+  }
+
+  .settings-stack {
+    gap: 10px;
+  }
+
+  .settings-section {
+    gap: 10px;
+    padding: 14px 16px;
+    box-shadow: none;
+  }
+
+  .settings-section .section-heading {
+    gap: 8px;
+  }
+
+  .settings-section .eyebrow {
+    font-size: 0.68rem;
+    line-height: 1.1;
+  }
+
+  .settings-section h2,
+  .settings-subsection h3 {
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .settings-danger-panel h2 {
+    font-size: 1.35rem;
+  }
+
+  .settings-section .stacked-form {
+    gap: 10px;
+  }
+
+  .settings-section .stacked-form label {
+    gap: 4px;
+    font-size: 0.86rem;
+  }
+
+  .settings-section .label-row {
+    min-height: 20px;
+    gap: 6px;
+  }
+
+  .settings-section input,
+  .settings-section select,
+  .settings-section textarea {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    font-size: 0.9rem;
+  }
+
+  .settings-section textarea {
+    min-height: 74px;
+  }
+
+  .settings-section button,
+  .settings-section .primary,
+  .settings-section .secondary,
+  .settings-section .danger,
+  .settings-section .ghost {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    font-size: 0.88rem;
+  }
+
+  .settings-section .help-dot {
+    width: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+  }
+
+  .access-add-form {
+    grid-template-columns: minmax(240px, 1fr) 132px auto;
+    gap: 10px;
+  }
+
+  .settings-subsection {
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .status-settings {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .board-status-settings {
+    padding: 10px;
+  }
+
+  .board-status-settings .status-choice-grid {
+    grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+    gap: 6px;
+  }
+
+  .status-choice {
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    font-size: 0.86rem;
+  }
+
+  .member-row {
+    min-height: 44px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .member-role-form {
+    gap: 5px;
+  }
+
+  .member-role-form select,
+  .member-role-form .secondary,
+  .member-row .ghost {
+    min-height: 34px;
+  }
+
+  .settings-section .profile-line {
+    gap: 8px;
+    font-size: 0.82rem;
+  }
+
+  .settings-section .avatar-dot {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+  }
+
+  .settings-danger-panel p {
+    margin-block: 0;
+    font-size: 0.92rem;
+  }
+
+  .settings-danger-panel .danger-confirm-form {
+    max-width: 420px;
+  }
+}
+
 @media (max-width: 900px) {
   .project-settings-layout {
     grid-template-columns: 1fr;
