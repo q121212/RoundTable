@@ -34,13 +34,13 @@ def test_github_push_links_commit_to_ticket(temp_db):
         "delivery-1",
         {
             "ref": "refs/heads/ENG-1-mcp",
-            "compare": "https://github.test/compare",
+            "compare": "https://github.com/acme/app/compare/main...ENG-1-mcp",
             "repository": {"full_name": "acme/app"},
             "commits": [
                 {
                     "id": "abc123",
                     "message": "ENG-1 implement server",
-                    "url": "https://github.test/commit/abc123",
+                    "url": "https://github.com/acme/app/commit/abc123",
                 }
             ],
         },
@@ -74,6 +74,70 @@ def test_mcp_lists_projects_with_token(temp_db):
     payload = response.json()
     assert payload["result"]["content"][0]["type"] == "text"
     assert "WEB" in payload["result"]["content"][0]["text"]
+
+
+def test_mcp_link_github_ref_uses_project_repo_by_default(temp_db):
+    user = upsert_user("alice")
+    create_project(user, "GT", "GigaTool", repo="https://github.com/acme/app")
+    ticket = create_ticket(user, "GT", "Wire GitHub")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "link_github_ref",
+                "arguments": {
+                    "ticket_key": ticket["key"],
+                    "ref_type": "pull_request",
+                    "ref_name": "#12",
+                    "url": "https://github.com/acme/app/pull/12",
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert "error" not in response.json()
+    with get_conn() as conn:
+        link = row_to_dict(conn.execute("SELECT * FROM github_links WHERE ticket_id = ?", (ticket["id"],)).fetchone())
+    assert link["repo_full_name"] == "acme/app"
+
+
+def test_mcp_link_github_ref_rejects_wrong_project_repo(temp_db):
+    user = upsert_user("alice")
+    create_project(user, "GT", "GigaTool", repo="https://github.com/acme/app")
+    ticket = create_ticket(user, "GT", "Wire GitHub")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "link_github_ref",
+                "arguments": {
+                    "ticket_key": ticket["key"],
+                    "repo_full_name": "other/repo",
+                    "ref_type": "pull_request",
+                    "ref_name": "#12",
+                    "url": "https://github.com/other/repo/pull/12",
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert "does not match" in response.json()["error"]["message"]
 
 
 def test_mcp_token_exposes_prefix_and_suffix(temp_db):

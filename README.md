@@ -170,6 +170,13 @@ The endpoint supports:
 Implemented tools include project listing, ticket search/read/create/update,
 status movement, assignment, comments, close/reopen, and GitHub ref linking.
 
+MCP tokens are personal user tokens, not project-specific tokens. A token sees
+the projects that its user can access. Clients should call `list_projects` and
+pass `project_key` explicitly when creating or searching tickets. Existing
+tickets carry their project in the ticket key, e.g. `GT-12`. For GitHub linking,
+`link_github_ref` can omit `repo_full_name`; RoundTable then uses the repository
+configured on the ticket's project and rejects mismatched repositories.
+
 Note: the current implementation is a lightweight MCP-compatible JSON-RPC
 endpoint. The official Python MCP package was not available from the current
 package index in this environment, so the dependency is not pinned yet.

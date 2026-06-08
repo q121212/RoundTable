@@ -90,10 +90,17 @@ def tool_specs() -> List[Dict[str, Any]]:
         return {"type": "object", "properties": properties, "required": required or []}
 
     return [
-        {"name": "list_projects", "description": "List visible projects.", "inputSchema": schema({})},
+        {
+            "name": "list_projects",
+            "description": (
+                "List projects visible to this token's user. Use the returned project key explicitly "
+                "when creating tickets or narrowing searches."
+            ),
+            "inputSchema": schema({}),
+        },
         {
             "name": "search_tickets",
-            "description": "Search tickets by key, title, or description.",
+            "description": "Search tickets by key, title, or description. Pass project_key to search one project.",
             "inputSchema": schema({"query": {"type": "string"}, "project_key": {"type": "string"}}),
         },
         {
@@ -103,7 +110,7 @@ def tool_specs() -> List[Dict[str, Any]]:
         },
         {
             "name": "create_ticket",
-            "description": "Create a ticket in a project.",
+            "description": "Create a ticket in a project. project_key is required; get it from list_projects.",
             "inputSchema": schema(
                 {
                     "project_key": {"type": "string"},
@@ -156,7 +163,10 @@ def tool_specs() -> List[Dict[str, Any]]:
         },
         {
             "name": "link_github_ref",
-            "description": "Link a ticket to a GitHub branch, commit, or pull request.",
+            "description": (
+                "Link a ticket to a GitHub branch, commit, tag, or pull request. repo_full_name is optional; "
+                "when omitted, RoundTable uses the GitHub repository configured on the ticket's project."
+            ),
             "inputSchema": schema(
                 {
                     "ticket_key": {"type": "string"},
@@ -168,7 +178,7 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "title": {"type": "string"},
                     "state": {"type": "string"},
                 },
-                ["ticket_key", "repo_full_name", "ref_type", "ref_name"],
+                ["ticket_key", "ref_type", "ref_name"],
             ),
         },
     ]
@@ -203,22 +213,36 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
         "add_comment": lambda u, a: add_comment(u, a["ticket_key"], a["body"]),
         "close_ticket": lambda u, a: close_ticket(u, a["ticket_key"]),
         "reopen_ticket": lambda u, a: reopen_ticket(u, a["ticket_key"]),
-        "link_github_ref": lambda u, a: link_github_ref(
-            a["ticket_key"],
-            a["repo_full_name"],
-            a["ref_type"],
-            a["ref_name"],
-            a.get("url", ""),
-            a.get("sha", ""),
-            a.get("title", ""),
-            a.get("state", ""),
-            actor_id=u["id"],
-        ),
+        "link_github_ref": link_github_ref_for_mcp,
     }
     if name not in tools:
         raise ValueError("Unknown tool: %s" % name)
     result = tools[name](user, args)
     return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, default=str)}]}
+
+
+def link_github_ref_for_mcp(user: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
+    bundle = read_ticket_checked(user, args["ticket_key"])
+    ticket = bundle["ticket"]
+    repo_full_name = str(args.get("repo_full_name") or ticket.get("project_github_repo_full_name") or "")
+    if not repo_full_name:
+        raise ValueError(
+            "This ticket's project has no GitHub repository configured; configure the project or pass repo_full_name."
+        )
+    linked = link_github_ref(
+        args["ticket_key"],
+        repo_full_name,
+        args["ref_type"],
+        args["ref_name"],
+        args.get("url", ""),
+        args.get("sha", ""),
+        args.get("title", ""),
+        args.get("state", ""),
+        actor_id=user["id"],
+    )
+    if not linked:
+        raise ValueError("GitHub repository does not match the ticket's project.")
+    return linked
 
 
 def resource_list(user: Dict[str, Any]) -> List[Dict[str, Any]]:

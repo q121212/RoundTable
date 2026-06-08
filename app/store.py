@@ -23,6 +23,7 @@ PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
 TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
 GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
+GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
 
 
 def validate_project_key(key: str) -> str:
@@ -94,6 +95,19 @@ def normalize_github_repo(value: str) -> str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="GitHub repository must be owner/repo or a github.com URL.",
+        )
+    return raw
+
+
+def normalize_github_link_url(value: str) -> str:
+    raw = value.strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw)
+    if parsed.scheme != "https" or parsed.netloc.lower() not in {"github.com", "www.github.com"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub link URL must be an https://github.com URL.",
         )
     return raw
 
@@ -554,6 +568,7 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
             SELECT tickets.*,
                    projects.key AS project_key,
                    projects.name AS project_name,
+                   projects.github_repo_full_name AS project_github_repo_full_name,
                    assignee.login AS assignee_login,
                    assignee.name AS assignee_name,
                    assignee.avatar_url AS assignee_avatar_url,
@@ -582,6 +597,7 @@ def get_ticket(ticket_key: str) -> Dict[str, Any]:
                 SELECT tickets.*,
                        projects.key AS project_key,
                        projects.name AS project_name,
+                       projects.github_repo_full_name AS project_github_repo_full_name,
                        assignee.login AS assignee_login,
                        assignee.name AS assignee_name,
                        assignee.avatar_url AS assignee_avatar_url,
@@ -1048,9 +1064,27 @@ def link_github_ref(
     actor_id: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     now = utcnow()
+    repo_full_name = normalize_github_repo(repo_full_name)
+    ref_type = ref_type.strip()
+    if ref_type not in GITHUB_REF_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GitHub ref type")
+    url = normalize_github_link_url(url)
     with get_conn() as conn:
-        ticket = row_to_dict(conn.execute("SELECT * FROM tickets WHERE key = ?", (ticket_key.upper(),)).fetchone())
+        ticket = row_to_dict(
+            conn.execute(
+                """
+                SELECT tickets.*, projects.github_repo_full_name AS project_github_repo_full_name
+                FROM tickets
+                JOIN projects ON projects.id = tickets.project_id
+                WHERE tickets.key = ?
+                """,
+                (ticket_key.upper(),),
+            ).fetchone()
+        )
         if not ticket:
+            return None
+        project_repo = ticket.get("project_github_repo_full_name")
+        if project_repo and project_repo != repo_full_name:
             return None
         conn.execute(
             """

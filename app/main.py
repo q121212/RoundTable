@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import secrets
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Dict, Optional
@@ -65,6 +66,14 @@ from .store import (
 
 
 logger = logging.getLogger("roundtable")
+
+
+def static_version() -> str:
+    candidates = ("app/static/app.js", "app/static/styles.css", "app/static/favicon.svg")
+    try:
+        return str(int(max(os.path.getmtime(path) for path in candidates if os.path.exists(path))))
+    except ValueError:
+        return "dev"
 
 
 def warn_insecure_config() -> None:
@@ -159,6 +168,7 @@ def render(
         "request": request,
         "user": page_user(request),
         "base_url": settings.base_url,
+        "static_version": static_version(),
         "statuses": TICKET_STATUSES,
         "priorities": PRIORITIES,
     }

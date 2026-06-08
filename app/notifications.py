@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import smtplib
 from email.message import EmailMessage
 from typing import Any, Dict, Optional
@@ -9,12 +10,15 @@ from .config import settings
 from .db import get_conn, row_to_dict, rows_to_dicts, utcnow
 
 
+logger = logging.getLogger("roundtable.notifications")
+
+
 async def notification_worker(stop_event: asyncio.Event) -> None:
     while not stop_event.is_set():
         try:
             await process_due_notifications()
         except Exception:
-            pass
+            logger.exception("notification worker iteration failed")
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=5)
         except asyncio.TimeoutError:
@@ -126,4 +130,3 @@ def load_telegram_link(user_id: int) -> Optional[Dict[str, Any]]:
         return row_to_dict(
             conn.execute("SELECT * FROM telegram_links WHERE user_id = ?", (user_id,)).fetchone()
         )
-

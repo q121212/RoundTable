@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}RoundTable{% endblock %}</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ static_version }}">
+    <link rel="stylesheet" href="/static/styles.css?v={{ static_version }}">
     <script defer src="/static/vendor/lucide.min.js"></script>
-    <script defer src="/static/app.js"></script>
+    <script defer src="/static/app.js?v={{ static_version }}"></script>
   </head>
   <body data-current-project-url="{{ current_project_url }}">
     <header class="topbar">
