@@ -174,8 +174,12 @@
 
     {% if can_delete %}
       <div class="panel danger-zone settings-danger-panel settings-section" id="settings-danger">
-        <p class="eyebrow" data-i18n="projects.settings_danger">Danger</p>
-        <h2 data-i18n="projects.danger">Danger zone</h2>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" data-i18n="projects.settings_danger">Danger</p>
+            <h2 data-i18n="projects.danger">Danger zone</h2>
+          </div>
+        </div>
         <p class="muted" data-i18n="projects.delete_help">Deleting a project permanently removes all of its tickets, comments, and history. This cannot be undone.</p>
         <p class="muted"><span data-i18n="projects.delete_confirm_key">Type the project key to confirm:</span> <code>{{ project.key }}</code></p>
         <form class="danger-confirm-form" method="post" action="/api/projects/{{ project.key }}/delete">
