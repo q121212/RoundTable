@@ -680,7 +680,6 @@
 
   let activePopover = null;
   let activeChip = null;
-  let popoverAnchorScrollY = 0;
   let popoverAnchorWidth = 0;
 
   function setupChipEditors() {
@@ -785,7 +784,6 @@
     positionPopover(pop, chip);
     activePopover = pop;
     activeChip = chip;
-    popoverAnchorScrollY = window.scrollY;
     popoverAnchorWidth = window.innerWidth;
     chip.setAttribute("aria-expanded", "true");
     window.setTimeout(() => {
@@ -809,15 +807,11 @@
     window.removeEventListener("resize", onPopoverResize);
   }
 
-  // Close only on meaningful scrolling; small scrolls (e.g. mobile keyboard
-  // nudging the viewport) just reposition the popover so it stays attached.
+  // Mobile keyboards and touch-dragging can scroll the viewport while a popover
+  // is open. Keep it open and attached; explicit outside taps still close it.
   function onPopoverScroll() {
     if (!activePopover || !activeChip) return;
-    if (Math.abs(window.scrollY - popoverAnchorScrollY) > 120) {
-      closePopover();
-    } else {
-      positionPopover(activePopover, activeChip);
-    }
+    positionPopover(activePopover, activeChip);
   }
 
   // The mobile virtual keyboard fires resize by changing height, not width.
