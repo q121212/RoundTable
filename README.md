@@ -14,7 +14,7 @@ to become a full GitHub Issues clone.
 ## Quick Start
 
 ```bash
-python3 -m venv .venv
+python3.10 -m venv .venv  # or newer
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env

@@ -2075,6 +2075,19 @@ a.ticket-key:hover {
   background: var(--surface-strong);
 }
 
+.board-status-settings {
+  padding: 14px;
+  background: var(--surface);
+}
+
+.board-status-settings .status-choice-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.board-status-settings .status-choice {
+  background: var(--surface-soft);
+}
+
 .member-row {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;

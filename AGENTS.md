@@ -71,7 +71,7 @@ deploy.sh, deploy/   deployment (see below)
 ## Run / test / lint
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+python3.10 -m venv .venv && source .venv/bin/activate  # or newer
 pip install -r requirements-dev.txt
 cp .env.example .env
 perl -0pi -e 's/ALLOW_DEV_LOGIN=false/ALLOW_DEV_LOGIN=true/' .env  # local dev only

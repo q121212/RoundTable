@@ -19,7 +19,7 @@
 #   DEPLOY_BRANCH      git branch to deploy     (default: main)
 #   DEPLOY_SERVICE     systemd unit name        (default: roundtable)
 #   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8380/login)
-#   DEPLOY_PYTHON      python on server         (default: python3)
+#   DEPLOY_PYTHON      Python 3.10+ on server   (default: python3)
 #   DEPLOY_MODE        auto | git | rsync       (default: auto)
 #   DEPLOY_PUBLIC      true requires safe public .env settings
 #   DEPLOY_ENV_FILE    optional private deploy env file to source
@@ -187,6 +187,19 @@ if [ "${PUBLIC,,}" = "true" ]; then
 fi
 
 echo "--> python deps"
+"$PY" - <<'PYMIN'
+import sys
+if sys.version_info < (3, 10):
+    raise SystemExit("RoundTable requires Python 3.10+")
+PYMIN
+if [ -d .venv ] && ! ./.venv/bin/python - <<'PYMIN'
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 10) else 1)
+PYMIN
+then
+  echo "--> existing .venv uses old Python; recreating"
+  rm -rf .venv
+fi
 if [ ! -d .venv ]; then "$PY" -m venv .venv; fi
 ./.venv/bin/python -m pip install --upgrade pip --quiet
 ./.venv/bin/python -m pip install -r requirements.txt --quiet

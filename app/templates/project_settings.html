@@ -43,21 +43,9 @@
         </span>
         <input name="repo" value="{{ project.github_repo_full_name or '' }}" placeholder="owner/repo or https://github.com/owner/repo" data-i18n-placeholder="placeholder.github_repo">
       </label>
-      <fieldset class="status-settings">
-        <legend>
-          <span data-i18n="projects.statuses">Board statuses</span>
-          <span class="field-badge" data-i18n="field.required">Required</span>
-        </legend>
-        <div class="status-choice-grid">
-          {% for status in all_statuses %}
-            <label class="check-row status-choice">
-              <input type="checkbox" name="statuses" value="{{ status }}" {% if status in active_statuses %}checked{% endif %}>
-              <span data-i18n="status.{{ status }}">{{ status }}</span>
-            </label>
-          {% endfor %}
-        </div>
-        <p class="muted" data-i18n="projects.statuses_help">Only selected statuses appear on the board and in ticket status menus. Move tickets out before disabling a status.</p>
-      </fieldset>
+      {% for status in active_statuses %}
+        <input type="hidden" name="statuses" value="{{ status }}">
+      {% endfor %}
       <button class="primary" type="submit" data-icon="save" data-i18n="projects.save_details">Save project</button>
     </form>
   </div>
@@ -87,6 +75,32 @@
         </select>
       </label>
       <button class="secondary" type="submit" data-icon="user-plus" data-i18n="projects.add_member">Add member</button>
+    </form>
+  </div>
+
+  <div class="panel wide-panel">
+    <h2 data-i18n="projects.statuses">Board statuses</h2>
+    <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/settings">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <input type="hidden" name="name" value="{{ project.name }}">
+      <input type="hidden" name="description" value="{{ project.description }}">
+      <input type="hidden" name="repo" value="{{ project.github_repo_full_name or '' }}">
+      <fieldset class="status-settings board-status-settings">
+        <legend>
+          <span data-i18n="projects.statuses_selected">Statuses used by this project</span>
+          <span class="required-mark" aria-hidden="true">*</span>
+        </legend>
+        <div class="status-choice-grid">
+          {% for status in all_statuses %}
+            <label class="check-row status-choice">
+              <input type="checkbox" name="statuses" value="{{ status }}" {% if status in active_statuses %}checked{% endif %}>
+              <span data-i18n="status.{{ status }}">{{ status }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <p class="muted" data-i18n="projects.statuses_help">Only selected statuses appear on the board and in ticket status menus. Move tickets out before disabling a status.</p>
+      </fieldset>
+      <button class="secondary" type="submit" data-icon="columns-3" data-i18n="projects.save_statuses">Save statuses</button>
     </form>
   </div>
 
