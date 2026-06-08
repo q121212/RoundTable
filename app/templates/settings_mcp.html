@@ -54,13 +54,15 @@
             <strong>{{ token.name }}</strong>
             <span class="muted mcp-token-preview">{{ token.prefix }}…{{ token.suffix or "" }}</span>
           </span>
-          <span class="muted mcp-token-used">{{ token.revoked_at or token.last_used_at or "never used" }}</span>
-          {% if not token.revoked_at %}
-            <form class="mcp-token-action" method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
-              <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-              <button class="ghost" type="submit" data-icon="trash-2" data-i18n="mcp.revoke">Revoke</button>
-            </form>
+          {% if token.last_used_at %}
+            <time class="muted mcp-token-used" data-local-time="{{ token.last_used_at }}">{{ token.last_used_at }}</time>
+          {% else %}
+            <span class="muted mcp-token-used" data-i18n="mcp.never_used">Never used</span>
           {% endif %}
+          <form class="mcp-token-action" method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <button class="ghost" type="submit" data-icon="trash-2" data-i18n="mcp.revoke">Revoke</button>
+          </form>
         </div>
       {% else %}
         <p class="muted" data-i18n="mcp.empty">No tokens yet.</p>

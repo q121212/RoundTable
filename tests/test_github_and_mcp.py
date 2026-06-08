@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.db import get_conn, row_to_dict
 from app.github_integration import handle_webhook
 from app.main import app
-from app.store import create_mcp_token, create_project, create_ticket, upsert_user
+from app.store import create_mcp_token, create_project, create_ticket, list_mcp_tokens, revoke_mcp_token, upsert_user
 
 
 def test_github_oauth_start_includes_base_url_redirect_uri(temp_db):
@@ -81,6 +81,16 @@ def test_mcp_token_exposes_prefix_and_suffix(temp_db):
     created = create_mcp_token(user, "laptop")
     assert created["token"].startswith(created["prefix"])
     assert created["token"].endswith(created["suffix"])
+
+
+def test_revoked_mcp_tokens_are_hidden(temp_db):
+    user = upsert_user("alice")
+    create_mcp_token(user, "old laptop")
+    token = list_mcp_tokens(int(user["id"]))[0]
+
+    revoke_mcp_token(int(user["id"]), int(token["id"]))
+
+    assert list_mcp_tokens(int(user["id"])) == []
 
 
 def test_mcp_notification_returns_no_body(temp_db):

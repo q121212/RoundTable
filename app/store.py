@@ -1137,7 +1137,7 @@ def list_mcp_tokens(user_id: int) -> List[Dict[str, Any]]:
                 """
                 SELECT id, name, prefix, suffix, last_used_at, revoked_at, created_at
                 FROM mcp_tokens
-                WHERE user_id = ?
+                WHERE user_id = ? AND revoked_at IS NULL
                 ORDER BY created_at DESC
                 """,
                 (user_id,),
