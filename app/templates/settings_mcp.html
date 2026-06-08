@@ -49,11 +49,14 @@
     <h2 data-i18n="mcp.tokens">Tokens</h2>
     <div class="table-list">
       {% for token in tokens %}
-        <div class="table-row">
-          <span><strong>{{ token.name }}</strong><br><span class="muted">{{ token.prefix }}…{{ token.suffix or "" }}</span></span>
-          <span>{{ token.revoked_at or token.last_used_at or "never used" }}</span>
+        <div class="table-row mcp-token-row">
+          <span class="mcp-token-main">
+            <strong>{{ token.name }}</strong>
+            <span class="muted mcp-token-preview">{{ token.prefix }}…{{ token.suffix or "" }}</span>
+          </span>
+          <span class="muted mcp-token-used">{{ token.revoked_at or token.last_used_at or "never used" }}</span>
           {% if not token.revoked_at %}
-            <form method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
+            <form class="mcp-token-action" method="post" action="/settings/mcp/tokens/{{ token.id }}/revoke">
               <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
               <button class="ghost" type="submit" data-icon="trash-2" data-i18n="mcp.revoke">Revoke</button>
             </form>

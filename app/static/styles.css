@@ -838,6 +838,47 @@ time {
   grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.4fr) minmax(120px, 0.8fr) auto;
 }
 
+.mcp-token-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main action"
+    "used action";
+  gap: 4px 12px;
+  padding: 14px;
+}
+
+.mcp-token-main {
+  grid-area: main;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.mcp-token-main strong,
+.mcp-token-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-token-preview {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.mcp-token-used {
+  grid-area: used;
+  font-size: 0.86rem;
+}
+
+.mcp-token-action {
+  grid-area: action;
+}
+
+.mcp-token-action .ghost {
+  min-height: 40px;
+  padding-inline: 12px;
+}
+
 .check-row {
   display: flex !important;
   grid-template-columns: none !important;
@@ -884,8 +925,20 @@ code {
   .quick-create-side,
   .member-row,
   .danger-confirm-form,
-  .copy-card {
+  .copy-card,
+  .mcp-token-row {
     grid-template-columns: 1fr;
+  }
+
+  .mcp-token-row {
+    grid-template-areas:
+      "main"
+      "used"
+      "action";
+  }
+
+  .mcp-token-action .ghost {
+    width: 100%;
   }
 
   .quick-create-button {
