@@ -87,3 +87,6 @@ Expose RoundTable through HTTPS reverse proxy only.
 If `/srv/RoundTable` is a plain copied directory rather than a git checkout,
 `deploy.sh` handles it with `DEPLOY_MODE=auto`, which falls back to `rsync` while
 preserving server-only `.env`, `.venv`, and `data/`.
+
+Operational runbooks such as SQLite backup/restore steps, real reverse proxy
+checks, and post-deploy checklists belong in the private ops repo, not here.

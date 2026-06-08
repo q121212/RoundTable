@@ -2040,6 +2040,82 @@ a.ticket-key:hover {
 }
 
 /* Project settings: member management + delete confirmation (Codex round). */
+.project-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.settings-rail {
+  position: sticky;
+  top: 74px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.settings-rail a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.settings-rail a:hover,
+.settings-rail a:focus-visible {
+  background: var(--surface-soft);
+  color: var(--green);
+}
+
+.settings-stack {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.settings-section {
+  display: grid;
+  gap: 14px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.settings-subsection {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-subsection h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.access-add-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 220px) auto;
+  align-items: end;
+}
+
 .wide-panel {
   grid-column: 1 / -1;
 }
@@ -2122,6 +2198,36 @@ a.ticket-key:hover {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+}
+
+.settings-danger-panel {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .project-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-rail {
+    position: static;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    box-shadow: none;
+  }
+
+  .settings-rail a {
+    flex: 0 0 auto;
+  }
+
+  .access-add-form {
+    grid-template-columns: 1fr;
+  }
+
+  .danger-confirm-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Copyable ticket key button on the ticket page. */
