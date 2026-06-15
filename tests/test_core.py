@@ -18,6 +18,7 @@ from app.store import (
     project_members,
     project_ticket_types,
     remove_project_member,
+    search_linkable_tickets,
     sync_configured_admin_roles,
     update_project_member,
     update_project_settings,
@@ -167,6 +168,21 @@ def test_ticket_links_reject_self_and_cross_project(temp_db):
     with pytest.raises(HTTPException) as cross_exc:
         link_ticket(user, one["key"], two["key"])
     assert cross_exc.value.status_code == 400
+
+
+def test_search_linkable_tickets_filters_by_key_and_title(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    project = create_project(user, "RT", "RoundTable")
+    current = create_ticket(user, "RT", "Current")
+    by_title = create_ticket(user, "RT", "OAuth callback fails", ticket_type="Bug")
+    by_key = create_ticket(user, "RT", "Plain work")
+
+    title_results = search_linkable_tickets(int(project["id"]), current["key"], "oauth")
+    key_results = search_linkable_tickets(int(project["id"]), current["key"], by_key["key"].lower())
+
+    assert [ticket["key"] for ticket in title_results] == [by_title["key"]]
+    assert key_results[0]["key"] == by_key["key"]
+    assert current["key"] not in {ticket["key"] for ticket in title_results + key_results}
 
 
 def test_close_ticket_logs_action(temp_db):

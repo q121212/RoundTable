@@ -766,6 +766,48 @@ def list_linkable_tickets_conn(conn: Any, project_id: int, current_ticket_id: in
     )
 
 
+def search_linkable_tickets(project_id: int, current_ticket_key: str, query: str, limit: int = 20) -> List[Dict[str, Any]]:
+    normalized_query = query.strip()
+    if not normalized_query:
+        return []
+    like_query = normalized_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    with get_conn() as conn:
+        current = get_ticket_by_key_conn(conn, current_ticket_key)
+        if int(current["project_id"]) != int(project_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        return rows_to_dicts(
+            conn.execute(
+                """
+                SELECT id, key, title, ticket_type, status
+                FROM tickets
+                WHERE project_id = ?
+                  AND id != ?
+                  AND (
+                    key LIKE ? ESCAPE '\\'
+                    OR title LIKE ? ESCAPE '\\'
+                  )
+                ORDER BY
+                  CASE
+                    WHEN key = ? THEN 0
+                    WHEN key LIKE ? ESCAPE '\\' THEN 1
+                    ELSE 2
+                  END,
+                  number DESC
+                LIMIT ?
+                """,
+                (
+                    project_id,
+                    current["id"],
+                    f"{like_query}%",
+                    f"%{like_query}%",
+                    normalized_query.upper(),
+                    f"{like_query}%",
+                    limit,
+                ),
+            ).fetchall()
+        )
+
+
 def list_ticket_links_conn(conn: Any, ticket_id: int) -> List[Dict[str, Any]]:
     rows = rows_to_dicts(
         conn.execute(

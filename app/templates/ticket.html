@@ -40,12 +40,19 @@
           </span>
           <input type="hidden" name="ticket_type" value="{{ ticket.ticket_type }}">
           <div class="type-picker" data-type-picker>
+            <button class="type-select-button" type="button" data-type-toggle aria-haspopup="listbox" aria-expanded="false">
+              <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-selected-type-icon data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+              <span data-selected-type-label data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
+              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="type-picker-menu" role="listbox">
             {% for ticket_type in ticket_types %}
-              <button class="type-choice {% if ticket_type == ticket.ticket_type %}is-selected{% endif %}" type="button" data-type-value="{{ ticket_type }}" aria-pressed="{% if ticket_type == ticket.ticket_type %}true{% else %}false{% endif %}">
+              <button class="type-choice {% if ticket_type == ticket.ticket_type %}is-selected{% endif %}" type="button" role="option" data-type-value="{{ ticket_type }}" aria-selected="{% if ticket_type == ticket.ticket_type %}true{% else %}false{% endif %}">
                 <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
                 <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
               </button>
             {% endfor %}
+            </div>
           </div>
         </label>
         <label>
@@ -190,11 +197,23 @@
               <span class="label-row">
                 <span data-i18n="field.target_ticket">Target ticket</span>
               </span>
-              <select name="target_key">
-                {% for other in linkable_tickets %}
-                  <option value="{{ other.key }}">{{ other.key }} · {{ other.title }}</option>
-                {% endfor %}
-              </select>
+              <div
+                class="ticket-search"
+                data-ticket-search
+                data-search-url="/api/projects/{{ ticket.project_key }}/tickets/search"
+                data-exclude-key="{{ ticket.key }}"
+              >
+                <input type="hidden" name="target_key" data-ticket-search-value>
+                <input
+                  type="search"
+                  required
+                  autocomplete="off"
+                  placeholder="GT-12 or part of title"
+                  data-i18n-placeholder="placeholder.target_ticket"
+                  data-ticket-search-input
+                >
+                <div class="ticket-search-menu" data-ticket-search-results role="listbox"></div>
+              </div>
             </label>
           </div>
           <button class="secondary wide" type="submit" data-icon="link" data-i18n="ticket.add_link">Link ticket</button>

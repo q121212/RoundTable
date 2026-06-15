@@ -49,12 +49,19 @@
           </span>
           <input type="hidden" name="ticket_type" value="Task">
           <div class="type-picker" data-type-picker>
+            <button class="type-select-button" type="button" data-type-toggle aria-haspopup="listbox" aria-expanded="false">
+              <span class="type-icon type-task" data-selected-type-icon data-icon="{{ ticket_type_icons.get('Task', 'circle-dot') }}" aria-hidden="true"></span>
+              <span data-selected-type-label data-i18n="type.Task">Task</span>
+              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="type-picker-menu" role="listbox">
             {% for ticket_type in ticket_types %}
-              <button class="type-choice {% if ticket_type == 'Task' %}is-selected{% endif %}" type="button" data-type-value="{{ ticket_type }}" aria-pressed="{% if ticket_type == 'Task' %}true{% else %}false{% endif %}">
+              <button class="type-choice {% if ticket_type == 'Task' %}is-selected{% endif %}" type="button" role="option" data-type-value="{{ ticket_type }}" aria-selected="{% if ticket_type == 'Task' %}true{% else %}false{% endif %}">
                 <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
                 <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
               </button>
             {% endfor %}
+            </div>
           </div>
         </label>
         <label class="field-shell">

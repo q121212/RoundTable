@@ -119,6 +119,7 @@
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "What this project is for",
       "placeholder.quick_comment": "Optional comment",
+      "placeholder.target_ticket": "GT-12 or part of title",
       "placeholder.ticket_description": "Optional description",
       "placeholder.ticket_title": "New ticket title",
       "priority.High": "High",
@@ -325,6 +326,7 @@
       "placeholder.installation_id": "installation id",
       "placeholder.project_description": "Для чего этот проект",
       "placeholder.quick_comment": "Комментарий, если нужен",
+      "placeholder.target_ticket": "GT-12 или часть названия",
       "placeholder.ticket_description": "Описание, если нужно",
       "placeholder.ticket_title": "Название нового тикета",
       "priority.High": "Высокий",
@@ -1397,20 +1399,197 @@
   function setupTypePickers() {
     document.querySelectorAll("[data-type-picker]").forEach((picker) => {
       const field = picker.parentElement ? picker.parentElement.querySelector('input[name="ticket_type"]') : null;
+      const toggle = picker.querySelector("[data-type-toggle]");
+      const menu = picker.querySelector(".type-picker-menu");
+      const selectedIcon = picker.querySelector("[data-selected-type-icon]");
+      const selectedLabel = picker.querySelector("[data-selected-type-label]");
       if (!field) return;
       const update = (value, notify = false) => {
         field.value = value;
         picker.querySelectorAll("[data-type-value]").forEach((button) => {
           const selected = button.dataset.typeValue === value;
           button.classList.toggle("is-selected", selected);
-          button.setAttribute("aria-pressed", selected ? "true" : "false");
+          button.setAttribute("aria-selected", selected ? "true" : "false");
         });
+        if (selectedIcon) {
+          selectedIcon.className = `type-icon ${ticketTypeClass(value)}`;
+          selectedIcon.dataset.icon = ticketTypeIcon(value);
+        }
+        if (selectedLabel) {
+          selectedLabel.dataset.i18n = `type.${value}`;
+          selectedLabel.textContent = translate(`type.${value}`, currentLang()) || value;
+        }
+        renderIcons();
         if (notify) field.dispatchEvent(new Event("change", { bubbles: true }));
       };
+      const close = () => {
+        picker.classList.remove("is-open");
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
+      };
+      if (toggle) {
+        toggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const isOpen = picker.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        });
+        toggle.addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowDown" && event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          picker.classList.add("is-open");
+          toggle.setAttribute("aria-expanded", "true");
+          const current = menu && menu.querySelector(".type-choice.is-selected");
+          if (current) current.focus();
+        });
+      }
       picker.querySelectorAll("[data-type-value]").forEach((button) => {
-        button.addEventListener("click", () => update(button.dataset.typeValue || "Task", true));
+        button.addEventListener("click", () => {
+          update(button.dataset.typeValue || "Task", true);
+          close();
+        });
+        button.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            close();
+            if (toggle) toggle.focus();
+          }
+        });
       });
       update(field.value || "Task");
+    });
+    document.addEventListener("click", (event) => {
+      document.querySelectorAll("[data-type-picker].is-open").forEach((picker) => {
+        if (picker.contains(event.target)) return;
+        picker.classList.remove("is-open");
+        const toggle = picker.querySelector("[data-type-toggle]");
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
+
+  function setupTicketSearchInputs() {
+    document.querySelectorAll("[data-ticket-search]").forEach((search) => {
+      const input = search.querySelector("[data-ticket-search-input]");
+      const valueField = search.querySelector("[data-ticket-search-value]");
+      const results = search.querySelector("[data-ticket-search-results]");
+      const form = search.closest("form");
+      if (!input || !valueField || !results) return;
+      let timer = null;
+      let controller = null;
+      let options = [];
+
+      const close = () => {
+        search.classList.remove("is-open");
+        results.innerHTML = "";
+      };
+
+      const selectTicket = (ticket) => {
+        valueField.value = ticket.key;
+        input.value = `${ticket.key} · ${ticket.title}`;
+        input.dataset.selectedKey = ticket.key;
+        close();
+      };
+
+      const renderResults = (tickets) => {
+        options = tickets;
+        results.innerHTML = "";
+        if (!tickets.length) {
+          close();
+          return;
+        }
+        tickets.forEach((ticket, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "ticket-search-option";
+          button.setAttribute("role", "option");
+          button.dataset.ticketKey = ticket.key;
+          const badge = document.createElement("span");
+          badge.className = "field-badge ticket-type-badge";
+          const icon = document.createElement("span");
+          icon.className = `type-icon ${ticketTypeClass(ticket.ticket_type)}`;
+          icon.dataset.icon = ticketTypeIcon(ticket.ticket_type);
+          icon.setAttribute("aria-hidden", "true");
+          const key = document.createElement("span");
+          key.textContent = ticket.key;
+          const title = document.createElement("span");
+          title.textContent = ticket.title;
+          badge.append(icon, key);
+          button.append(badge, title);
+          if (index === 0) button.classList.add("is-active");
+          button.addEventListener("click", () => selectTicket(ticket));
+          results.appendChild(button);
+        });
+        search.classList.add("is-open");
+        renderIcons();
+      };
+
+      const runSearch = async () => {
+        const query = input.value.trim();
+        valueField.value = "";
+        input.dataset.selectedKey = "";
+        if (!query) {
+          close();
+          return;
+        }
+        if (/^[A-Z][A-Z0-9]{1,9}-\d+$/i.test(query)) {
+          valueField.value = query.toUpperCase();
+        }
+        if (controller) controller.abort();
+        controller = new AbortController();
+        const url = new URL(search.dataset.searchUrl || "", window.location.origin);
+        url.searchParams.set("q", query);
+        url.searchParams.set("exclude", search.dataset.excludeKey || "");
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) throw new Error("search failed");
+          const data = await response.json();
+          renderResults(Array.isArray(data.tickets) ? data.tickets : []);
+        } catch (error) {
+          if (error.name !== "AbortError") close();
+        }
+      };
+
+      input.addEventListener("input", () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(runSearch, 180);
+      });
+      input.addEventListener("focus", () => {
+        if (options.length) renderResults(options);
+      });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          close();
+          return;
+        }
+        if (event.key !== "Enter" || !search.classList.contains("is-open")) return;
+        const active = results.querySelector(".ticket-search-option.is-active");
+        if (!active) return;
+        const ticket = options.find((item) => item.key === active.dataset.ticketKey);
+        if (!ticket) return;
+        event.preventDefault();
+        selectTicket(ticket);
+      });
+      if (form) {
+        form.addEventListener("submit", (event) => {
+          const raw = input.value.trim();
+          const exact = raw.match(/^[A-Z][A-Z0-9]{1,9}-\d+/i);
+          if (!valueField.value && exact) valueField.value = exact[0].toUpperCase();
+          if (!valueField.value && options.length) {
+            valueField.value = options[0].key;
+          }
+          if (!valueField.value) {
+            event.preventDefault();
+            input.focus();
+          }
+        });
+      }
+    });
+    document.addEventListener("click", (event) => {
+      document.querySelectorAll("[data-ticket-search].is-open").forEach((search) => {
+        if (search.contains(event.target)) return;
+        search.classList.remove("is-open");
+        const results = search.querySelector("[data-ticket-search-results]");
+        if (results) results.innerHTML = "";
+      });
     });
   }
 
@@ -1615,6 +1794,7 @@
     setupChipEditors();
     setupBoardTitleEditors();
     setupTypePickers();
+    setupTicketSearchInputs();
     setupTicketAutosave();
     setupMenus();
     setupConfirms();

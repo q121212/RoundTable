@@ -56,6 +56,7 @@ from .store import (
     require_project_access,
     require_project_admin,
     revoke_mcp_token,
+    search_linkable_tickets,
     set_watch,
     sync_configured_admin_roles,
     unlink_ticket,
@@ -498,6 +499,15 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
             "link_types": TICKET_LINK_TYPES,
         },
     )
+
+
+@app.get("/api/projects/{project_key}/tickets/search")
+async def api_search_project_tickets(request: Request, project_key: str, q: str = "", exclude: str = "") -> JSONResponse:
+    user = require_page_user(request)
+    project = get_project_by_key(project_key)
+    require_project_access(user, int(project["id"]))
+    tickets = search_linkable_tickets(int(project["id"]), exclude, q)
+    return JSONResponse({"tickets": tickets})
 
 
 @app.post("/api/tickets/{ticket_key}")
