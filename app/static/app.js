@@ -3,6 +3,7 @@
   const STORAGE_LANG = "roundtable.lang";
   const STORAGE_THEME = "roundtable.theme";
   const STORAGE_BOARD_URL = "roundtable.lastBoardUrl";
+  const STORAGE_SOUND_MODE = "roundtable.soundMode";
   const messages = {
     en: {
       "action.close": "Close",
@@ -161,6 +162,12 @@
       "projects.ticket_types_selected": "Ticket types used by this project",
       "projects.save_board_settings": "Save board settings",
       "projects.title": "Projects",
+      "sound.copy": "Short local sounds for board events. Different event types use different cues.",
+      "sound.focused": "Focused",
+      "sound.off": "Off",
+      "sound.soft": "Soft",
+      "sound.test": "Test sound",
+      "sound.title": "Sounds on this device",
       "status.all": "All",
       "status.Backlog": "Backlog",
       "status.Closed": "Closed",
@@ -368,6 +375,12 @@
       "projects.ticket_types_selected": "Типы тикетов этого проекта",
       "projects.save_board_settings": "Сохранить настройки доски",
       "projects.title": "Проекты",
+      "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
+      "sound.focused": "Важное",
+      "sound.off": "Выкл",
+      "sound.soft": "Мягко",
+      "sound.test": "Проверить звук",
+      "sound.title": "Звуки на этом устройстве",
       "status.all": "Все",
       "status.Backlog": "Бэклог",
       "status.Closed": "Закрыто",
@@ -516,6 +529,127 @@
 
   function ticketTypeClass(type) {
     return `type-${String(type || "Task").toLowerCase()}`;
+  }
+
+  let audioContext = null;
+
+  function currentSoundMode() {
+    return localStorage.getItem(STORAGE_SOUND_MODE) || "off";
+  }
+
+  function setSoundMode(mode) {
+    const value = ["off", "soft", "focused"].includes(mode) ? mode : "off";
+    localStorage.setItem(STORAGE_SOUND_MODE, value);
+    updateSoundControls();
+  }
+
+  function updateSoundControls() {
+    document.querySelectorAll("[data-sound-mode]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.soundMode === currentSoundMode());
+      button.setAttribute("aria-pressed", button.dataset.soundMode === currentSoundMode() ? "true" : "false");
+    });
+  }
+
+  function setupSoundPreferences() {
+    updateSoundControls();
+    document.querySelectorAll("[data-sound-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        setSoundMode(button.dataset.soundMode || "off");
+        if (currentSoundMode() !== "off") playTicketSound({ event: "test" }, true);
+      });
+    });
+    document.querySelectorAll("[data-sound-test]").forEach((button) => {
+      button.addEventListener("click", () => playTicketSound({ event: "test" }, true));
+    });
+    document.addEventListener(
+      "pointerdown",
+      () => {
+        if (currentSoundMode() !== "off") ensureAudioContext();
+      },
+      { once: true }
+    );
+  }
+
+  function ensureAudioContext() {
+    if (!window.AudioContext && !window.webkitAudioContext) return null;
+    if (!audioContext) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContextClass();
+    }
+    if (audioContext.state === "suspended") audioContext.resume();
+    return audioContext;
+  }
+
+  function soundKind(payload) {
+    const action = payload && payload.action ? payload.action.action : "";
+    const ticket = payload && payload.ticket ? payload.ticket : {};
+    if (payload && payload.event === "test") return "test";
+    if (action === "closed" || action === "reopened" || ticket.status === "Done" || ticket.status === "Closed") return "success";
+    if (action === "status_changed") return "status";
+    if (action === "commented" || payload.event === "ticket_commented") return "comment";
+    if (action === "assigned") return "assigned";
+    if (payload.event === "ticket_created" || action === "ticket_created") return "created";
+    if (payload.event === "ticket_linked" || payload.event === "ticket_unlinked" || action === "linked" || action === "unlinked") return "linked";
+    return "changed";
+  }
+
+  function shouldPlayTicketSound(payload, forced = false) {
+    const mode = currentSoundMode();
+    if (mode === "off" && !forced) return false;
+    if (forced) return true;
+    if (mode === "soft") return true;
+    const ticket = payload && payload.ticket ? payload.ticket : {};
+    const action = payload && payload.action ? payload.action : {};
+    const userId = document.body.dataset.userId || "";
+    if (!userId) return false;
+    const ticketPage = document.querySelector("[data-ticket-page]");
+    if (ticketPage && ticketPage.dataset.ticketKey === ticket.key) return true;
+    if (ticket.assignee_id && String(ticket.assignee_id) === userId) return true;
+    if (action.action === "assigned" && String(action.new_value || "") === userId) return true;
+    return false;
+  }
+
+  function playTone(ctx, start, frequency, duration, gainValue, type = "sine") {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  }
+
+  function playTicketSound(payload, forced = false) {
+    if (!shouldPlayTicketSound(payload, forced)) return;
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime + 0.01;
+    const volume = 0.035;
+    const kind = soundKind(payload);
+    if (kind === "success") {
+      playTone(ctx, now, 523.25, 0.12, volume, "sine");
+      playTone(ctx, now + 0.07, 659.25, 0.14, volume * 0.9, "sine");
+      playTone(ctx, now + 0.14, 783.99, 0.18, volume * 0.8, "triangle");
+    } else if (kind === "status") {
+      playTone(ctx, now, 392, 0.09, volume, "triangle");
+      playTone(ctx, now + 0.08, 587.33, 0.12, volume * 0.85, "triangle");
+    } else if (kind === "comment") {
+      playTone(ctx, now, 740, 0.06, volume * 0.65, "sine");
+      playTone(ctx, now + 0.09, 660, 0.08, volume * 0.55, "sine");
+    } else if (kind === "assigned") {
+      playTone(ctx, now, 330, 0.11, volume * 0.9, "triangle");
+      playTone(ctx, now + 0.1, 440, 0.12, volume * 0.75, "triangle");
+    } else if (kind === "created") {
+      playTone(ctx, now, 880, 0.06, volume * 0.55, "sine");
+      playTone(ctx, now + 0.05, 1174.66, 0.08, volume * 0.45, "sine");
+    } else if (kind === "linked") {
+      playTone(ctx, now, 494, 0.04, volume * 0.45, "square");
+    } else {
+      playTone(ctx, now, 440, 0.08, volume * 0.55, "sine");
+    }
   }
 
   function setupPreferences() {
@@ -1316,8 +1450,10 @@
     const handleTicketEvent = (event) => {
       try {
         const payload = JSON.parse(event.data || "{}");
+        payload.event = payload.event || event.type;
         applyLiveTicket(payload.ticket);
         applyLiveTicketPage(payload);
+        playTicketSound(payload);
       } catch (error) {
         // Ignore malformed live events; the next reload/resync will recover.
       }
@@ -1325,6 +1461,8 @@
     source.addEventListener("ticket_created", handleTicketEvent);
     source.addEventListener("ticket_changed", handleTicketEvent);
     source.addEventListener("ticket_commented", handleTicketEvent);
+    source.addEventListener("ticket_linked", handleTicketEvent);
+    source.addEventListener("ticket_unlinked", handleTicketEvent);
     window.addEventListener("beforeunload", () => source.close());
   }
 
@@ -1842,6 +1980,7 @@
     setupBoardTitleEditors();
     setupTypePickers();
     setupTicketSearchInputs();
+    setupSoundPreferences();
     setupTicketAutosave();
     setupMenus();
     setupConfirms();

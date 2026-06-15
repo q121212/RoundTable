@@ -9,7 +9,7 @@
     <script defer src="/static/vendor/lucide.min.js"></script>
     <script defer src="/static/app.js?v={{ static_version }}"></script>
   </head>
-  <body data-current-project-url="{{ current_project_url }}">
+  <body data-current-project-url="{{ current_project_url }}" {% if user %}data-user-id="{{ user.id }}"{% endif %}>
     <header class="topbar">
       <a class="brand" href="/" data-home-link><img class="brand-mark" src="/static/favicon.svg" alt="" width="22" height="22">RoundTable</a>
       <nav class="topnav">

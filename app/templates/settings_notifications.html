@@ -33,6 +33,18 @@
       <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
       <button class="secondary" type="submit" data-icon="send" data-i18n="notifications.test">Send test</button>
     </form>
+    <div class="device-sound-settings" data-sound-settings>
+      <div>
+        <h3 data-i18n="sound.title">Sounds on this device</h3>
+        <p class="muted" data-i18n="sound.copy">Short local sounds for board events. Different event types use different cues.</p>
+      </div>
+      <div class="segmented-control" role="group" aria-label="Sound mode">
+        <button type="button" data-sound-mode="off" data-i18n="sound.off">Off</button>
+        <button type="button" data-sound-mode="soft" data-i18n="sound.soft">Soft</button>
+        <button type="button" data-sound-mode="focused" data-i18n="sound.focused">Focused</button>
+      </div>
+      <button class="secondary tiny" type="button" data-sound-test data-icon="volume-2" data-i18n="sound.test">Test sound</button>
+    </div>
   </div>
   <div class="panel">
     <h2>Telegram</h2>
