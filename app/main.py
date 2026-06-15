@@ -70,6 +70,13 @@ from .store import (
 
 logger = logging.getLogger("roundtable")
 
+TICKET_TYPE_ICONS = {
+    "Task": "circle-check",
+    "Epic": "layers-3",
+    "Bug": "bug",
+    "Story": "book-open",
+}
+
 
 def static_version() -> str:
     candidates = ("app/static/app.js", "app/static/styles.css", "app/static/favicon.svg")
@@ -176,6 +183,7 @@ def render(
         "priorities": PRIORITIES,
         "ticket_types": TICKET_TYPES,
         "ticket_link_types": TICKET_LINK_TYPES,
+        "ticket_type_icons": TICKET_TYPE_ICONS,
     }
     data.update(context or {})
     project_key = None

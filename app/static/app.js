@@ -503,6 +503,19 @@
     });
   }
 
+  function ticketTypeIcon(type) {
+    return {
+      Task: "circle-check",
+      Epic: "layers-3",
+      Bug: "bug",
+      Story: "book-open",
+    }[type] || "circle-dot";
+  }
+
+  function ticketTypeClass(type) {
+    return `type-${String(type || "Task").toLowerCase()}`;
+  }
+
   function setupPreferences() {
     applyTheme(currentTheme());
     applyLanguage(currentLang());
@@ -1056,7 +1069,9 @@
     setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
     setChipValue(card, "priority", ticket.priority, translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority);
     updateAssigneeChip(card, ticket);
+    updateLinkedTickets(card, ticket);
     refreshColumnCounts();
+    renderIcons();
   }
 
   function setChipValue(card, field, value, label) {
@@ -1076,6 +1091,13 @@
         .filter((name) => name && !name.startsWith("priority-chip-"))
         .join(" ");
       chip.classList.add(`priority-chip-${String(value).toLowerCase()}`);
+    }
+    if (field === "ticket_type") {
+      const icon = chip.querySelector(".type-icon");
+      if (icon) {
+        icon.className = `type-icon ${ticketTypeClass(value)}`;
+        icon.dataset.icon = ticketTypeIcon(value);
+      }
     }
   }
 
@@ -1106,6 +1128,34 @@
         label.dataset.i18n = "ticket.unassigned";
         label.textContent = translate("ticket.unassigned", currentLang()) || "Unassigned";
       }
+    }
+  }
+
+  function updateLinkedTickets(card, ticket) {
+    const links = card.querySelector(".ticket-card-links");
+    if (!links) return;
+    const linked = Array.isArray(ticket.linked_tickets) ? ticket.linked_tickets : [];
+    links.innerHTML = "";
+    links.classList.toggle("is-empty", linked.length === 0);
+    if (!linked.length) return;
+    const icon = document.createElement("span");
+    icon.className = "ticket-links-icon";
+    icon.dataset.icon = "link";
+    icon.setAttribute("aria-hidden", "true");
+    links.appendChild(icon);
+    linked.slice(0, 3).forEach((item) => {
+      const pill = document.createElement("a");
+      pill.className = "linked-ticket-pill";
+      pill.href = `/t/${item.other_key}`;
+      pill.textContent = item.other_key;
+      if (item.other_title) pill.title = item.other_title;
+      links.appendChild(pill);
+    });
+    if (linked.length > 3) {
+      const more = document.createElement("span");
+      more.className = "linked-ticket-more";
+      more.textContent = `+${linked.length - 3}`;
+      links.appendChild(more);
     }
   }
 
@@ -1154,6 +1204,7 @@
       </div>
       <div class="ticket-card-chips">
         <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" aria-haspopup="true">
+          <span class="type-icon" aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
         <button type="button" class="chip chip-edit chip-status" data-edit="status" aria-haspopup="true">
@@ -1170,6 +1221,7 @@
         <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description"></button>
         <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment"></button>
       </div>
+      <div class="ticket-card-links is-empty"></div>
     `;
     card.addEventListener("pointerdown", startTicketDrag);
     const titleButton = card.querySelector("[data-title-edit]");
@@ -1325,6 +1377,30 @@
         control.addEventListener("input", () => saveSoon(650));
         control.addEventListener("blur", () => saveSoon(0));
       }
+    });
+    const typeSelect = form.elements.ticket_type;
+    const typeIcon = form.querySelector("[data-ticket-type-icon]");
+    if (typeSelect && typeIcon) {
+      typeSelect.addEventListener("change", () => {
+        typeIcon.className = `type-icon ${ticketTypeClass(typeSelect.value)}`;
+        typeIcon.dataset.icon = ticketTypeIcon(typeSelect.value);
+        renderIcons();
+      });
+    }
+  }
+
+  function setupTypeSelectIcons() {
+    document.querySelectorAll(".select-with-icon").forEach((shell) => {
+      const select = shell.querySelector('select[name="ticket_type"]');
+      const icon = shell.querySelector(".type-icon");
+      if (!select || !icon) return;
+      const update = () => {
+        icon.className = `type-icon ${ticketTypeClass(select.value)}`;
+        icon.dataset.icon = ticketTypeIcon(select.value);
+        renderIcons();
+      };
+      select.addEventListener("change", update);
+      update();
     });
   }
 
@@ -1529,6 +1605,7 @@
     setupChipEditors();
     setupBoardTitleEditors();
     setupTicketAutosave();
+    setupTypeSelectIcons();
     setupMenus();
     setupConfirms();
     setupCopyButtons();

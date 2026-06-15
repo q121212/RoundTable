@@ -646,6 +646,7 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
     )
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    attach_ticket_link_summaries_conn(conn, [ticket])
     return ticket
 
 
@@ -802,6 +803,49 @@ def list_ticket_links_conn(conn: Any, ticket_id: int) -> List[Dict[str, Any]]:
     return rows
 
 
+def attach_ticket_link_summaries_conn(conn: Any, tickets: List[Dict[str, Any]]) -> None:
+    ids = [int(ticket["id"]) for ticket in tickets if ticket.get("id")]
+    for ticket in tickets:
+        ticket["linked_tickets"] = []
+        ticket["linked_ticket_count"] = 0
+    if not ids:
+        return
+    placeholders = ",".join("?" for _ in ids)
+    rows = rows_to_dicts(
+        conn.execute(
+            """
+            SELECT ticket_links.source_ticket_id AS ticket_id,
+                   target.key AS other_key,
+                   target.title AS other_title,
+                   target.ticket_type AS other_ticket_type,
+                   ticket_links.link_type AS link_type
+            FROM ticket_links
+            JOIN tickets target ON target.id = ticket_links.target_ticket_id
+            WHERE ticket_links.source_ticket_id IN (%s)
+            UNION ALL
+            SELECT ticket_links.target_ticket_id AS ticket_id,
+                   source.key AS other_key,
+                   source.title AS other_title,
+                   source.ticket_type AS other_ticket_type,
+                   ticket_links.link_type AS link_type
+            FROM ticket_links
+            JOIN tickets source ON source.id = ticket_links.source_ticket_id
+            WHERE ticket_links.target_ticket_id IN (%s)
+            ORDER BY other_key
+            """
+            % (placeholders, placeholders),
+            tuple(ids + ids),
+        ).fetchall()
+    )
+    by_id: Dict[int, List[Dict[str, Any]]] = {ticket_id: [] for ticket_id in ids}
+    for row in rows:
+        by_id.setdefault(int(row["ticket_id"]), []).append(row)
+    for ticket in tickets:
+        linked = by_id.get(int(ticket["id"]), [])
+        ticket["linked_tickets"] = linked
+        ticket["linked_ticket_count"] = len(linked)
+
+
 def link_ticket(
     user: Dict[str, Any],
     source_key: str,
@@ -920,6 +964,7 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                 (project["id"],),
             ).fetchall()
         )
+        attach_ticket_link_summaries_conn(conn, rows)
     columns = {status_name: [] for status_name in statuses}
     for ticket in rows:
         columns.setdefault(ticket["status"], []).append(ticket)

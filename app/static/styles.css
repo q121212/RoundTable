@@ -735,6 +735,25 @@ button,
   gap: 12px;
 }
 
+.select-with-icon {
+  position: relative;
+  display: block;
+}
+
+.select-with-icon select {
+  width: 100%;
+  padding-left: 42px;
+}
+
+.select-with-icon > .type-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
 .head-actions {
   display: flex;
   gap: 10px;
@@ -813,6 +832,23 @@ button,
 
 .compact-link-form {
   margin-top: 12px;
+}
+
+.compact-link-form .ticket-link-form-row {
+  grid-template-columns: minmax(110px, 0.7fr) minmax(150px, 1.3fr);
+  gap: 8px;
+}
+
+.compact-link-form label {
+  min-width: 0;
+}
+
+.compact-link-form select {
+  min-width: 0;
+  width: 100%;
+  font-size: 0.92rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
 }
 
 .comment-list {
@@ -1488,6 +1524,39 @@ a.ticket-key:hover {
   text-overflow: ellipsis;
 }
 
+.type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+}
+
+.type-icon .icon {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+
+.type-epic {
+  color: #7357a8;
+  background: color-mix(in srgb, #7357a8 11%, var(--surface));
+}
+
+.type-bug {
+  color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 11%, var(--surface));
+}
+
+.type-story {
+  color: #2f7292;
+  background: color-mix(in srgb, #2f7292 11%, var(--surface));
+}
+
 .chip-assignee .chip-label {
   max-width: 104px;
 }
@@ -1517,6 +1586,67 @@ a.ticket-key:hover {
 .chip-type {
   color: var(--green);
   background: color-mix(in srgb, var(--green) 8%, var(--surface));
+}
+
+.ticket-type-badge {
+  gap: 5px;
+}
+
+.ticket-type-badge .type-icon {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+  border-radius: 5px;
+}
+
+.ticket-type-badge .type-icon .icon {
+  width: 11px;
+  height: 11px;
+}
+
+.ticket-card-links {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  color: var(--muted);
+}
+
+.ticket-card-links.is-empty {
+  display: none;
+}
+
+.ticket-links-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.ticket-links-icon .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.linked-ticket-pill,
+.linked-ticket-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.linked-ticket-pill:hover,
+.linked-ticket-pill:focus-visible {
+  border-color: color-mix(in srgb, var(--green) 42%, var(--line));
+  color: var(--green);
 }
 
 .chip-priority.priority-chip-high {
@@ -2520,6 +2650,10 @@ button.is-copied {
 
   .copy-card button {
     justify-self: stretch;
+  }
+
+  .compact-link-form .ticket-link-form-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

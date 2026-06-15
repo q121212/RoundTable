@@ -122,6 +122,21 @@ def test_ticket_links_are_project_scoped_and_logged(temp_db):
     assert get_ticket_bundle(first["key"])["ticket_links"] == []
 
 
+def test_board_includes_ticket_link_summary(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "Epic", ticket_type="Epic")
+    second = create_ticket(user, "RT", "Task")
+
+    link_ticket(user, first["key"], second["key"], "relates")
+    board = board_for_project("RT", user)
+    tickets = {ticket["key"]: ticket for column in board["columns"].values() for ticket in column}
+
+    assert tickets[first["key"]]["linked_ticket_count"] == 1
+    assert tickets[first["key"]]["linked_tickets"][0]["other_key"] == second["key"]
+    assert tickets[second["key"]]["linked_tickets"][0]["other_key"] == first["key"]
+
+
 def test_ticket_links_reject_self_and_cross_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "ONE", "One")

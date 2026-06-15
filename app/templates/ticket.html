@@ -38,11 +38,14 @@
             <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
           </span>
-          <select name="ticket_type">
-            {% for ticket_type in ticket_types %}
-              <option value="{{ ticket_type }}" {% if ticket_type == ticket.ticket_type %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
-            {% endfor %}
-          </select>
+          <span class="select-with-icon">
+            <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-ticket-type-icon data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+            <select name="ticket_type">
+              {% for ticket_type in ticket_types %}
+                <option value="{{ ticket_type }}" {% if ticket_type == ticket.ticket_type %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
+              {% endfor %}
+            </select>
+          </span>
         </label>
         <label>
           <span class="label-row">
@@ -150,7 +153,10 @@
           {% for link in ticket_links %}
             <li>
               <a href="/t/{{ link.other_key }}">
-                <span class="field-badge" data-i18n="type.{{ link.other_ticket_type }}">{{ link.other_ticket_type }}</span>
+                <span class="field-badge ticket-type-badge">
+                  <span class="type-icon type-{{ link.other_ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(link.other_ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+                  <span data-i18n="type.{{ link.other_ticket_type }}">{{ link.other_ticket_type }}</span>
+                </span>
                 <strong>{{ link.other_key }}</strong>
                 <span>{{ link.other_title }}</span>
               </a>
@@ -168,7 +174,7 @@
       {% if linkable_tickets %}
         <form class="stacked-form compact-link-form" method="post" action="/api/tickets/{{ ticket.key }}/links">
           <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-          <div class="form-row">
+          <div class="form-row ticket-link-form-row">
             <label>
               <span class="label-row">
                 <span data-i18n="field.link_type">Link type</span>

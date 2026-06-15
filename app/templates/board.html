@@ -47,11 +47,14 @@
             <span data-i18n="field.ticket_type">Type</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
           </span>
-          <select name="ticket_type" aria-label="Type">
-            {% for ticket_type in ticket_types %}
-              <option value="{{ ticket_type }}" {% if ticket_type == "Task" %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
-            {% endfor %}
-          </select>
+          <span class="select-with-icon">
+            <span class="type-icon type-task" data-icon="{{ ticket_type_icons.get('Task') }}" aria-hidden="true"></span>
+            <select name="ticket_type" aria-label="Type">
+              {% for ticket_type in ticket_types %}
+                <option value="{{ ticket_type }}" {% if ticket_type == "Task" %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
+              {% endfor %}
+            </select>
+          </span>
         </label>
         <label class="field-shell">
           <span class="label-row">
@@ -131,6 +134,7 @@
             </div>
             <div class="ticket-card-chips">
               <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" data-value="{{ ticket.ticket_type }}" aria-haspopup="true">
+                <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
               </button>
               <button type="button" class="chip chip-edit chip-status" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true">
@@ -156,6 +160,17 @@
               </button>
               <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description"></button>
               <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment"></button>
+            </div>
+            <div class="ticket-card-links {% if not ticket.linked_tickets %}is-empty{% endif %}">
+              {% if ticket.linked_tickets %}
+                <span class="ticket-links-icon" data-icon="link" aria-hidden="true"></span>
+                {% for linked in ticket.linked_tickets[:3] %}
+                  <a class="linked-ticket-pill" href="/t/{{ linked.other_key }}" title="{{ linked.other_title }}">{{ linked.other_key }}</a>
+                {% endfor %}
+                {% if ticket.linked_ticket_count > 3 %}
+                  <span class="linked-ticket-more">+{{ ticket.linked_ticket_count - 3 }}</span>
+                {% endif %}
+              {% endif %}
             </div>
           </article>
         {% endfor %}

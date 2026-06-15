@@ -104,6 +104,7 @@
             {% for ticket_type in all_ticket_types %}
               <label class="check-row status-choice ticket-type-choice">
                 <input type="checkbox" name="ticket_types" value="{{ ticket_type }}" {% if ticket_type in active_ticket_types %}checked{% endif %}>
+                <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
                 <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
               </label>
             {% endfor %}
