@@ -565,6 +565,8 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         priority=payload.get("priority"),
         assignee_id=payload.get("assignee_id"),
         assignee_touched="assignee_id" in payload,
+        position_after_key=payload.get("position_after_key"),
+        position_touched="position_after_key" in payload,
     )
     action = await publish_ticket_event(ticket)
     return JSONResponse({**ticket, "_action": action})

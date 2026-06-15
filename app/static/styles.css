@@ -856,6 +856,12 @@ button,
   color: var(--green-dark);
 }
 
+.popover-option .type-icon,
+.type-choice .type-icon,
+.type-select-button .type-icon {
+  background: transparent;
+}
+
 .head-actions {
   display: flex;
   gap: 10px;
@@ -1700,21 +1706,6 @@ a.ticket-key:hover {
   width: 13px;
   height: 13px;
   stroke-width: 2.4;
-}
-
-.type-epic {
-  color: #7357a8;
-  background: color-mix(in srgb, #7357a8 11%, var(--surface));
-}
-
-.type-bug {
-  color: var(--coral);
-  background: color-mix(in srgb, var(--coral) 11%, var(--surface));
-}
-
-.type-story {
-  color: #2f7292;
-  background: color-mix(in srgb, #2f7292 11%, var(--surface));
 }
 
 .chip-assignee .chip-label {

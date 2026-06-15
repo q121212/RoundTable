@@ -40,6 +40,53 @@ def test_project_prefixed_ticket_sequence(temp_db):
     assert board_for_project("CRM", user)["columns"]["Backlog"][0]["key"] == "CRM-2"
 
 
+def test_ticket_board_order_can_be_changed_within_status(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "First")
+    second = create_ticket(user, "RT", "Second")
+    third = create_ticket(user, "RT", "Third")
+
+    assert [ticket["key"] for ticket in board_for_project("RT", user)["columns"]["Backlog"]] == [
+        third["key"],
+        second["key"],
+        first["key"],
+    ]
+
+    update_ticket(user, first["key"], position_after_key="", position_touched=True)
+    update_ticket(user, third["key"], position_after_key=first["key"], position_touched=True)
+
+    assert [ticket["key"] for ticket in board_for_project("RT", user)["columns"]["Backlog"]] == [
+        first["key"],
+        third["key"],
+        second["key"],
+    ]
+
+
+def test_ticket_board_order_can_be_changed_via_api(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "First")
+    second = create_ticket(user, "RT", "Second")
+    third = create_ticket(user, "RT", "Third")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.patch(
+        f"/api/tickets/{first['key']}",
+        json={"status": "Backlog", "position_after_key": third["key"]},
+        headers={"x-csrf-token": session["csrf"]},
+    )
+
+    assert response.status_code == 200
+    assert [ticket["key"] for ticket in board_for_project("RT", user)["columns"]["Backlog"]] == [
+        third["key"],
+        first["key"],
+        second["key"],
+    ]
+
+
 def test_project_accepts_github_repo_url(temp_db):
     user = upsert_user("alice", email="alice@example.com")
 

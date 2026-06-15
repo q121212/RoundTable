@@ -561,6 +561,7 @@ def create_ticket(
             require_project_member_conn(conn, int(project["id"]), assignee_id)
         ticket_type = validate_project_ticket_type(project, ticket_type)
         initial_status = project_statuses(project)[0]
+        sort_order = first_ticket_sort_order_conn(conn, int(project["id"]), initial_status)
         number = int(project["next_ticket_number"])
         ticket_key = "%s-%s" % (project["key"], number)
         conn.execute(
@@ -571,8 +572,8 @@ def create_ticket(
             """
             INSERT INTO tickets
                 (project_id, number, key, title, description, ticket_type, status, priority,
-                 assignee_id, reporter_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 sort_order, assignee_id, reporter_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project["id"],
@@ -583,6 +584,7 @@ def create_ticket(
                 ticket_type,
                 initial_status,
                 priority,
+                sort_order,
                 assignee_id,
                 user["id"],
                 now,
@@ -1022,6 +1024,7 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                         WHEN 'Done' THEN 5
                         ELSE 6
                     END,
+                    sort_order ASC,
                     updated_at DESC,
                     number DESC
                 """,
@@ -1033,6 +1036,65 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
     for ticket in rows:
         columns.setdefault(ticket["status"], []).append(ticket)
     return {"project": project, "statuses": statuses, "columns": columns}
+
+
+def next_ticket_sort_order_conn(conn: Any, project_id: int, status_value: str) -> float:
+    value = conn.execute(
+        "SELECT COALESCE(MAX(sort_order), 0) + 1000 FROM tickets WHERE project_id = ? AND status = ?",
+        (project_id, status_value),
+    ).fetchone()[0]
+    return float(value)
+
+
+def first_ticket_sort_order_conn(conn: Any, project_id: int, status_value: str) -> float:
+    value = conn.execute(
+        "SELECT COALESCE(MIN(sort_order), 1000) - 1000 FROM tickets WHERE project_id = ? AND status = ?",
+        (project_id, status_value),
+    ).fetchone()[0]
+    return float(value)
+
+
+def ticket_sort_order_after_conn(
+    conn: Any,
+    project_id: int,
+    status_value: str,
+    ticket_id: int,
+    after_ticket_key: Optional[str],
+) -> float:
+    if not after_ticket_key:
+        return first_ticket_sort_order_conn(conn, project_id, status_value)
+    previous = row_to_dict(
+        conn.execute(
+            """
+            SELECT id, sort_order
+            FROM tickets
+            WHERE project_id = ? AND status = ? AND key = ? AND id != ?
+            """,
+            (project_id, status_value, after_ticket_key, ticket_id),
+        ).fetchone()
+    )
+    if not previous:
+        return next_ticket_sort_order_conn(conn, project_id, status_value)
+    next_row = conn.execute(
+        """
+        SELECT sort_order
+        FROM tickets
+        WHERE project_id = ?
+          AND status = ?
+          AND id != ?
+          AND sort_order > ?
+        ORDER BY sort_order ASC, updated_at DESC, number DESC
+        LIMIT 1
+        """,
+        (project_id, status_value, ticket_id, previous["sort_order"]),
+    ).fetchone()
+    previous_order = float(previous["sort_order"] or 0)
+    if not next_row:
+        return previous_order + 1000
+    next_order = float(next_row["sort_order"] or previous_order + 1000)
+    if next_order <= previous_order:
+        return previous_order + 1000
+    return previous_order + ((next_order - previous_order) / 2)
 
 
 def search_tickets(user: Dict[str, Any], query: str = "", project_key: str = "") -> List[Dict[str, Any]]:
@@ -1078,6 +1140,8 @@ def update_ticket(
     priority: Optional[str] = None,
     assignee_id: Optional[int] = None,
     assignee_touched: bool = False,
+    position_after_key: Optional[str] = None,
+    position_touched: bool = False,
 ) -> Dict[str, Any]:
     now = utcnow()
     with get_conn() as conn:
@@ -1111,7 +1175,21 @@ def update_ticket(
                 require_project_member_conn(conn, int(ticket["project_id"]), assignee_id)
             changes.append(("assignee_id", ticket["assignee_id"], assignee_id))
 
-        if not changes:
+        target_status = status_value if status_value is not None else ticket["status"]
+        target_sort_order = ticket["sort_order"]
+        if position_touched:
+            target_sort_order = ticket_sort_order_after_conn(
+                conn,
+                int(ticket["project_id"]),
+                str(target_status),
+                int(ticket["id"]),
+                position_after_key,
+            )
+        elif status_value is not None and status_value != ticket["status"]:
+            target_sort_order = next_ticket_sort_order_conn(conn, int(ticket["project_id"]), str(target_status))
+        sort_changed = target_sort_order != ticket["sort_order"]
+
+        if not changes and not sort_changed:
             return get_ticket_by_id_conn(conn, ticket["id"])
 
         values = {
@@ -1122,6 +1200,7 @@ def update_ticket(
             "priority": ticket["priority"],
             "assignee_id": ticket["assignee_id"],
             "closed_at": ticket["closed_at"],
+            "sort_order": ticket["sort_order"],
         }
         for field, _old, new in changes:
             if field == "status":
@@ -1136,7 +1215,7 @@ def update_ticket(
             """
             UPDATE tickets
             SET title = ?, description = ?, ticket_type = ?, status = ?, priority = ?,
-                assignee_id = ?, closed_at = ?, updated_at = ?
+                sort_order = ?, assignee_id = ?, closed_at = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -1145,6 +1224,7 @@ def update_ticket(
                 values["ticket_type"],
                 values["status"],
                 values["priority"],
+                target_sort_order,
                 values["assignee_id"],
                 values["closed_at"],
                 now,

@@ -597,6 +597,8 @@
     document.body.appendChild(preview);
     Object.assign(dragState, {
       hiddenColumns,
+      originalZone: card.closest(".dropzone"),
+      originalAfterKey: ticketKeyBefore(card),
       offsetX: event.clientX - rect.left,
       offsetY: event.clientY - rect.top,
       placeholder,
@@ -627,6 +629,47 @@
     });
     if (zone) zone.classList.add("drag-over");
     dragState.currentZone = zone;
+    if (zone && dragState.placeholder) {
+      const before = cardBeforePointer(zone, clientY);
+      if (before) {
+        zone.insertBefore(dragState.placeholder, before);
+      } else {
+        zone.appendChild(dragState.placeholder);
+      }
+    }
+  }
+
+  function cardBeforePointer(zone, clientY) {
+    const cards = Array.from(zone.querySelectorAll(".ticket-card:not(.drag-source)"));
+    return cards.find((card) => {
+      const rect = card.getBoundingClientRect();
+      return clientY < rect.top + rect.height / 2;
+    }) || null;
+  }
+
+  function ticketKeyBefore(element) {
+    let previous = element.previousElementSibling;
+    while (previous) {
+      if (previous.classList && previous.classList.contains("ticket-card") && !previous.classList.contains("drag-source")) {
+        return previous.dataset.ticketKey || "";
+      }
+      previous = previous.previousElementSibling;
+    }
+    return "";
+  }
+
+  function restoreCardPosition(card, zone, afterKey) {
+    if (!zone) return;
+    if (!afterKey) {
+      zone.insertBefore(card, zone.querySelector(".ticket-card"));
+      return;
+    }
+    const previous = zone.querySelector(`.ticket-card[data-ticket-key="${cssEscape(afterKey)}"]`);
+    if (previous && previous.nextSibling) {
+      zone.insertBefore(card, previous.nextSibling);
+    } else {
+      zone.appendChild(card);
+    }
   }
 
   function updateDragAutoScroll(clientX, clientY) {
@@ -692,22 +735,25 @@
     state.preview.remove();
     const zone = state.currentZone || document.elementFromPoint(event.clientX, event.clientY)?.closest(".dropzone");
     const status = zone ? zone.dataset.status : "";
-    const previousZone = state.placeholder.closest(".dropzone");
+    const previousZone = state.originalZone;
     const previousStatus = previousZone ? previousZone.dataset.status : "";
-    if (!zone || !status || status === previousStatus) {
+    const afterKey = ticketKeyBefore(state.placeholder);
+    if (!zone || !status) {
       state.card.classList.remove("drag-source");
-      state.placeholder.replaceWith(state.card);
+      restoreCardPosition(state.card, previousZone, state.originalAfterKey);
+      state.placeholder.remove();
+      refreshColumnCounts();
       return;
     }
-    zone.appendChild(state.card);
-    state.placeholder.remove();
+    state.placeholder.replaceWith(state.card);
     state.card.classList.remove("drag-source");
     refreshColumnCounts();
+    if (status === previousStatus && afterKey === state.originalAfterKey) return;
     try {
-      const ticket = await patchTicket(state.card.dataset.ticketKey, { status });
+      const ticket = await patchTicket(state.card.dataset.ticketKey, { status, position_after_key: afterKey });
       applyTicketUpdate(state.card, ticket);
     } catch (error) {
-      if (previousZone) previousZone.appendChild(state.card);
+      restoreCardPosition(state.card, previousZone, state.originalAfterKey);
       refreshColumnCounts();
       window.alert(error.message || "Could not move ticket");
     }
@@ -732,7 +778,8 @@
     });
     state.preview.remove();
     state.card.classList.remove("drag-source");
-    state.placeholder.replaceWith(state.card);
+    restoreCardPosition(state.card, state.originalZone, state.originalAfterKey);
+    state.placeholder.remove();
   }
 
   function csrfToken() {

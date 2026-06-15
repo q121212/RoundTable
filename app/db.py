@@ -105,6 +105,7 @@ def init_db() -> None:
                 description TEXT NOT NULL DEFAULT '',
                 ticket_type TEXT NOT NULL DEFAULT 'Task',
                 status TEXT NOT NULL DEFAULT 'Backlog',
+                sort_order REAL,
                 priority TEXT NOT NULL DEFAULT 'Medium',
                 assignee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -242,7 +243,7 @@ def init_db() -> None:
             );
 
             CREATE INDEX IF NOT EXISTS idx_tickets_project_status
-                ON tickets(project_id, status, updated_at);
+                ON tickets(project_id, status, sort_order, updated_at);
             CREATE INDEX IF NOT EXISTS idx_action_log_ticket
                 ON action_log(ticket_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_ticket_links_source
@@ -269,12 +270,30 @@ def init_db() -> None:
         _add_column_if_missing(conn, "projects", "statuses_json", "TEXT")
         _add_column_if_missing(conn, "projects", "ticket_types_json", "TEXT")
         _add_column_if_missing(conn, "tickets", "ticket_type", "TEXT NOT NULL DEFAULT 'Task'")
+        _add_column_if_missing(conn, "tickets", "sort_order", "REAL")
+        _backfill_ticket_sort_order(conn)
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
     existing = [row["name"] for row in conn.execute("PRAGMA table_info(%s)" % table)]
     if column not in existing:
         conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, decl))
+
+
+def _backfill_ticket_sort_order(conn: sqlite3.Connection) -> None:
+    rows = conn.execute(
+        """
+        SELECT id, project_id, status
+        FROM tickets
+        WHERE sort_order IS NULL
+        ORDER BY project_id, status, updated_at DESC, number DESC
+        """
+    ).fetchall()
+    counters = {}
+    for row in rows:
+        key = (row["project_id"], row["status"])
+        counters[key] = counters.get(key, 0) + 1000
+        conn.execute("UPDATE tickets SET sort_order = ? WHERE id = ?", (float(counters[key]), row["id"]))
 
 
 def json_dumps(value: Any) -> str:
