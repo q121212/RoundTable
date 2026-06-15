@@ -76,7 +76,8 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 - Quick display preferences: `en`/`ru` language switch and light/dark themes.
 - GitHub App OAuth login and webhook-based linking for branches, commits, and PRs.
 - MCP-style JSON-RPC endpoint for ticket automation.
-- Email and Telegram notifications through a SQLite outbox with retries.
+- Telegram notifications through a SQLite outbox with retries. SMTP support exists
+  for teams that configure it, but Telegram is the primary phone-friendly channel.
 
 ## Web Routes
 
@@ -278,7 +279,7 @@ Included:
 - GitHub OAuth/webhook integration
 - basic roles
 - MCP-style endpoint and token management
-- Email and Telegram notifications
+- Telegram notifications, with optional SMTP email when configured
 - mobile-friendly responsive UI
 - quick `en`/`ru` and light/dark display preferences
 

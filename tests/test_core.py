@@ -64,6 +64,13 @@ def test_ticket_board_order_can_be_changed_within_status(temp_db):
         third["key"],
         second["key"],
     ]
+    with get_conn() as conn:
+        row = row_to_dict(
+            conn.execute(
+                "SELECT action, field FROM action_log WHERE action = 'reordered' ORDER BY id DESC LIMIT 1",
+            ).fetchone()
+        )
+    assert row == {"action": "reordered", "field": "sort_order"}
 
 
 def test_ticket_board_order_can_be_changed_via_api(temp_db):
@@ -109,6 +116,18 @@ def test_project_sprints_filter_board_and_update_tickets(temp_db):
     assert updated["sprint_name"] == "Sprint 1"
 
 
+def test_active_sprint_filter_is_empty_without_active_sprint(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    ticket = create_ticket(user, "RT", "Unscoped work")
+
+    active_board = board_for_project("RT", user, sprint_filter="active")
+    no_sprint_board = board_for_project("RT", user, sprint_filter="none")
+
+    assert active_board["columns"]["Backlog"] == []
+    assert [item["key"] for item in no_sprint_board["columns"]["Backlog"]] == [ticket["key"]]
+
+
 def test_only_one_sprint_can_be_active_per_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
@@ -120,6 +139,19 @@ def test_only_one_sprint_can_be_active_per_project(temp_db):
 
     assert sprints["Sprint 1"] == "planned"
     assert sprints["Sprint 2"] == "active"
+
+
+def test_sprint_dates_are_validated(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+
+    with pytest.raises(HTTPException) as bad_format:
+        create_sprint(user, "RT", "Sprint 1", starts_on="tomorrow")
+    assert bad_format.value.status_code == 400
+
+    with pytest.raises(HTTPException) as bad_order:
+        create_sprint(user, "RT", "Sprint 2", starts_on="2026-06-20", ends_on="2026-06-10")
+    assert bad_order.value.status_code == 400
 
 
 def test_project_accepts_github_repo_url(temp_db):

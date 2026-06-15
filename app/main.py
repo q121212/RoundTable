@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
+from json import JSONDecodeError
 from typing import Any, AsyncIterator, Dict, Optional
 from urllib.parse import urlencode
 
@@ -106,6 +107,10 @@ def warn_insecure_config() -> None:
             )
     if is_https and not settings.session_cookie_secure:
         logger.warning("BASE_URL is https but SESSION_COOKIE_SECURE is off; session cookies may leak.")
+    if is_https and not settings.github_webhook_secret:
+        logger.warning("BASE_URL is https but GITHUB_WEBHOOK_SECRET is empty; GitHub webhooks will be disabled.")
+    if is_https and settings.telegram_bot_token and not settings.telegram_webhook_secret:
+        logger.warning("BASE_URL is https but TELEGRAM_WEBHOOK_SECRET is empty; Telegram webhooks will be disabled.")
 
 
 @asynccontextmanager
@@ -517,6 +522,11 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
     require_project_access(user, int(bundle["ticket"]["project_id"]))
     members = project_members(int(bundle["ticket"]["project_id"]))
     project = get_project_by_key(str(bundle["ticket"]["project_key"]))
+    sprints = [
+        sprint
+        for sprint in list_project_sprints(int(project["id"]))
+        if sprint.get("status") != "closed" or sprint.get("id") == bundle["ticket"].get("sprint_id")
+    ]
     return render(
         request,
         "ticket.html",
@@ -525,7 +535,7 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
             "members": members,
             "statuses": project_statuses(project),
             "ticket_types": project_ticket_types(project),
-            "sprints": list_project_sprints(int(project["id"]), include_closed=False),
+            "sprints": sprints,
             "link_types": TICKET_LINK_TYPES,
         },
     )
@@ -588,7 +598,10 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
 @app.patch("/api/tickets/{ticket_key}")
 async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONResponse:
     user = await validate_csrf_request(request)
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body") from exc
     ticket = update_ticket(
         user,
         ticket_key,
@@ -597,9 +610,9 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         ticket_type=payload.get("ticket_type"),
         status_value=payload.get("status"),
         priority=payload.get("priority"),
-        assignee_id=payload.get("assignee_id"),
+        assignee_id=parse_optional_int(payload.get("assignee_id")),
         assignee_touched="assignee_id" in payload,
-        sprint_id=payload.get("sprint_id"),
+        sprint_id=parse_optional_int(payload.get("sprint_id")),
         sprint_touched="sprint_id" in payload,
         position_after_key=payload.get("position_after_key"),
         position_touched="position_after_key" in payload,
@@ -771,24 +784,35 @@ async def github_settings(request: Request) -> HTMLResponse:
 @app.post("/integrations/github/webhook")
 async def github_webhook(request: Request) -> JSONResponse:
     body = await request.body()
-    if settings.github_webhook_secret:
-        signature = request.headers.get("x-hub-signature-256", "")
-        if not verify_hmac_signature(settings.github_webhook_secret, body, signature):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid GitHub signature")
+    if not settings.github_webhook_secret:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="GitHub webhook secret is not configured")
+    signature = request.headers.get("x-hub-signature-256", "")
+    if not verify_hmac_signature(settings.github_webhook_secret, body, signature):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid GitHub signature")
     event = request.headers.get("x-github-event", "")
     delivery_id = request.headers.get("x-github-delivery", "")
-    payload = json.loads(body.decode("utf-8") or "{}")
+    try:
+        payload = json.loads(body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GitHub webhook JSON") from exc
     result = handle_webhook(event, delivery_id, payload)
+    # GitHub webhook linking is stored by the data layer. Clients will see the
+    # resulting GitHub links on refresh; per-ticket live publication is handled
+    # for direct RoundTable mutations where we already have the changed ticket.
     return JSONResponse(result)
 
 
 @app.post("/integrations/telegram/webhook")
 async def telegram_webhook(request: Request) -> JSONResponse:
-    if settings.telegram_webhook_secret:
-        provided = request.headers.get("x-telegram-bot-api-secret-token", "")
-        if not secrets.compare_digest(provided, settings.telegram_webhook_secret):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram webhook secret")
-    payload = await request.json()
+    if not settings.telegram_webhook_secret:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Telegram webhook secret is not configured")
+    provided = request.headers.get("x-telegram-bot-api-secret-token", "")
+    if not secrets.compare_digest(provided, settings.telegram_webhook_secret):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram webhook secret")
+    try:
+        payload = await request.json()
+    except JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Telegram webhook JSON") from exc
     message = payload.get("message") or {}
     text = message.get("text") or ""
     chat = message.get("chat") or {}
@@ -806,7 +830,7 @@ async def telegram_webhook(request: Request) -> JSONResponse:
 
 @app.post("/mcp")
 async def mcp_endpoint(request: Request) -> Response:
-    result = await handle_mcp(request)
+    result = await handle_mcp(request, on_ticket_changed=publish_ticket_event)
     if result is None:
         # JSON-RPC notifications get an empty 202 (no response body).
         return Response(status_code=status.HTTP_202_ACCEPTED)
@@ -839,4 +863,7 @@ async def mcp_endpoint_get() -> Response:
 def parse_optional_int(value: Any) -> Optional[int]:
     if value is None or str(value).strip() == "":
         return None
-    return int(value)
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected an integer value") from exc

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -140,6 +142,49 @@ def test_mcp_link_github_ref_rejects_wrong_project_repo(temp_db):
     assert "does not match" in response.json()["error"]["message"]
 
 
+def test_mcp_can_create_ticket_in_sprint(temp_db):
+    user = upsert_user("alice")
+    project = create_project(user, "GT", "GigaTool")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    sprint_response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "create_sprint",
+                "arguments": {"project_key": "GT", "name": "Sprint 1", "status": "active"},
+            },
+        },
+    )
+    sprint_payload = json.loads(sprint_response.json()["result"]["content"][0]["text"])
+    sprint_id = sprint_payload["id"]
+
+    ticket_response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "create_ticket",
+                "arguments": {"project_key": "GT", "title": "Scoped via MCP", "sprint_id": sprint_id},
+            },
+        },
+    )
+
+    assert sprint_response.status_code == 200
+    assert ticket_response.status_code == 200
+    assert sprint_payload["project_id"] == project["id"]
+    ticket_payload = json.loads(ticket_response.json()["result"]["content"][0]["text"])
+    assert ticket_payload["sprint_id"] == sprint_id
+
+
 def test_mcp_token_exposes_prefix_and_suffix(temp_db):
     user = upsert_user("alice")
     created = create_mcp_token(user, "laptop")
@@ -215,6 +260,35 @@ def test_telegram_webhook_secret_is_checked_when_configured(temp_db):
         "/integrations/telegram/webhook",
         json=payload,
         headers={"X-Telegram-Bot-Api-Secret-Token": "telegram-secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+
+
+def test_webhooks_are_disabled_without_secrets(temp_db):
+    client = TestClient(app)
+
+    github = client.post("/integrations/github/webhook", json={"repository": {"full_name": "acme/app"}})
+    telegram = client.post("/integrations/telegram/webhook", json={"message": {"text": "/start nope"}})
+
+    assert github.status_code == 503
+    assert telegram.status_code == 503
+
+
+def test_github_webhook_signature_is_checked(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "github_webhook_secret", "github-secret")
+    body = json.dumps({"repository": {"full_name": "acme/app"}}).encode("utf-8")
+    signature = "sha256=" + hmac.new(b"github-secret", body, hashlib.sha256).hexdigest()
+    client = TestClient(app)
+
+    denied = client.post("/integrations/github/webhook", content=body, headers={"X-GitHub-Event": "push"})
+    allowed = client.post(
+        "/integrations/github/webhook",
+        content=body,
+        headers={"X-GitHub-Event": "push", "X-Hub-Signature-256": signature},
     )
 
     assert denied.status_code == 401

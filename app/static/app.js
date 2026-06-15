@@ -185,6 +185,7 @@
       "sprint.ends_on": "Ends",
       "sprint.goal": "Goal",
       "sprint.manage": "Sprint planning",
+      "sprint.manage_link": "Manage sprints",
       "sprint.none": "No sprint",
       "sprint.planned": "Planned",
       "sprint.sprints": "Sprints",
@@ -208,8 +209,12 @@
       "ticket.action.linked": "linked ticket",
       "ticket.action.project_created": "created project",
       "ticket.action.project_updated": "updated project",
+      "ticket.action.github_linked": "linked GitHub",
+      "ticket.action.reordered": "reordered",
       "ticket.action.reopened": "reopened",
+      "ticket.action.sprint_changed": "changed sprint",
       "ticket.action.status_changed": "moved",
+      "ticket.action.ticket_created": "created ticket",
       "ticket.action.ticket_updated": "updated",
       "ticket.action.type_changed": "changed type",
       "ticket.action.unlinked": "removed ticket link",
@@ -420,6 +425,7 @@
       "sprint.ends_on": "Конец",
       "sprint.goal": "Цель",
       "sprint.manage": "Планирование спринтов",
+      "sprint.manage_link": "Управлять спринтами",
       "sprint.none": "Без спринта",
       "sprint.planned": "План",
       "sprint.sprints": "Спринты",
@@ -443,8 +449,12 @@
       "ticket.action.linked": "связал тикет",
       "ticket.action.project_created": "создал проект",
       "ticket.action.project_updated": "обновил проект",
+      "ticket.action.github_linked": "связал GitHub",
+      "ticket.action.reordered": "изменил порядок",
       "ticket.action.reopened": "открыл тикет снова",
+      "ticket.action.sprint_changed": "изменил спринт",
       "ticket.action.status_changed": "изменил статус",
+      "ticket.action.ticket_created": "создал тикет",
       "ticket.action.ticket_updated": "обновил тикет",
       "ticket.action.type_changed": "изменил тип",
       "ticket.action.unlinked": "удалил связь",
@@ -1953,7 +1963,8 @@
     if (field === "priority") return translate(`priority.${value}`, currentLang()) || value;
     if (field === "ticket_type") return translate(`type.${value}`, currentLang()) || value;
     if (field === "ticket_link") return value;
-    if (field === "sprint_id") return "";
+    if (field === "sprint_id") return `#${value}`;
+    if (field === "sort_order") return "";
     if (field === "title") return value;
     if (field === "description") return "";
     if (field === "assignee_id") return "";

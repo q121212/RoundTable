@@ -1,6 +1,6 @@
 import re
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -111,6 +111,17 @@ def validate_ticket_link_type(value: str) -> str:
     if value not in TICKET_LINK_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket link type")
     return value
+
+
+def validate_date_string(value: str, label: str) -> str:
+    clean = value.strip()
+    if not clean:
+        return ""
+    try:
+        date.fromisoformat(clean)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="%s must be YYYY-MM-DD" % label) from exc
+    return clean
 
 
 def normalize_github_repo(value: str) -> str:
@@ -346,6 +357,10 @@ def create_sprint(
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint name is required")
     status_value = status_value if status_value in SPRINT_STATUSES else "planned"
+    starts_on = validate_date_string(starts_on, "Sprint start date")
+    ends_on = validate_date_string(ends_on, "Sprint end date")
+    if starts_on and ends_on and ends_on < starts_on:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint end date cannot be before start date")
     now = utcnow()
     with get_conn() as conn:
         if status_value == "active":
@@ -362,8 +377,8 @@ def create_sprint(
                     name,
                     goal.strip(),
                     status_value,
-                    starts_on.strip() or None,
-                    ends_on.strip() or None,
+                    starts_on or None,
+                    ends_on or None,
                     user["id"],
                     now,
                 ),
@@ -1144,7 +1159,7 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
                 where.append("tickets.sprint_id = ?")
                 params.append(current_sprint["id"])
             else:
-                where.append("tickets.sprint_id IS NULL")
+                where.append("1 = 0")
         elif sprint_filter:
             current_sprint = row_to_dict(
                 conn.execute(
@@ -1430,6 +1445,18 @@ def update_ticket(
                 field=field,
                 old_value="" if old is None else str(old),
                 new_value="" if new is None else str(new),
+            )
+        status_changed = any(field == "status" for field, _old, _new in changes)
+        if sort_changed and not status_changed:
+            log_action(
+                conn,
+                ticket["project_id"],
+                ticket["id"],
+                user["id"],
+                "reordered",
+                field="sort_order",
+                old_value="" if ticket["sort_order"] is None else str(ticket["sort_order"]),
+                new_value=str(target_sort_order),
             )
         return get_ticket_by_id_conn(conn, ticket["id"])
 

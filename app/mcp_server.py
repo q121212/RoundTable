@@ -1,24 +1,33 @@
 import json
-from typing import Any, Callable, Dict, List, Optional
+from json import JSONDecodeError
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
-from .db import get_conn, row_to_dict, rows_to_dicts, utcnow
+from .db import get_conn, row_to_dict, utcnow
 from .security import hash_token
 from .store import (
     add_comment,
+    board_for_project,
     close_ticket,
+    create_sprint,
     create_ticket,
+    get_project_by_key,
     get_ticket_bundle,
     link_ticket,
     link_github_ref,
+    list_project_sprints,
     list_projects,
     reopen_ticket,
     require_project_access,
     search_tickets,
     unlink_ticket,
+    update_sprint_status,
     update_ticket,
 )
+
+
+TicketChangedCallback = Callable[[Dict[str, Any], str], Awaitable[Any]]
 
 
 def authenticate_bearer(request: Request) -> Dict[str, Any]:
@@ -43,16 +52,27 @@ def authenticate_bearer(request: Request) -> Dict[str, Any]:
         return user
 
 
-async def handle_mcp(request: Request) -> Optional[Any]:
+async def handle_mcp(request: Request, on_ticket_changed: Optional[TicketChangedCallback] = None) -> Optional[Any]:
     user = authenticate_bearer(request)
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body") from exc
     if isinstance(payload, list):
-        responses = [item for item in (dispatch_rpc(entry, user) for entry in payload) if item is not None]
+        responses = []
+        for entry in payload:
+            item = await dispatch_rpc(entry, user, on_ticket_changed)
+            if item is not None:
+                responses.append(item)
         return responses or None
-    return dispatch_rpc(payload, user)
+    return await dispatch_rpc(payload, user, on_ticket_changed)
 
 
-def dispatch_rpc(payload: Dict[str, Any], user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def dispatch_rpc(
+    payload: Dict[str, Any],
+    user: Dict[str, Any],
+    on_ticket_changed: Optional[TicketChangedCallback] = None,
+) -> Optional[Dict[str, Any]]:
     request_id = payload.get("id")
     method = payload.get("method")
     params = payload.get("params") or {}
@@ -71,7 +91,7 @@ def dispatch_rpc(payload: Dict[str, Any], user: Dict[str, Any]) -> Optional[Dict
         elif method == "tools/list":
             result = {"tools": tool_specs()}
         elif method == "tools/call":
-            result = call_tool(user, params.get("name"), params.get("arguments") or {})
+            result = await call_tool(user, params.get("name"), params.get("arguments") or {}, on_ticket_changed)
         elif method == "resources/list":
             result = {"resources": resource_list(user)}
         elif method == "resources/read":
@@ -120,13 +140,14 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "description": {"type": "string"},
                     "ticket_type": {"type": "string"},
                     "priority": {"type": "string"},
+                    "sprint_id": {"type": "integer"},
                 },
                 ["project_key", "title"],
             ),
         },
         {
             "name": "update_ticket",
-            "description": "Update title, description, type, status, priority, or assignee.",
+            "description": "Update title, description, type, status, priority, assignee, or sprint.",
             "inputSchema": schema(
                 {
                     "ticket_key": {"type": "string"},
@@ -136,6 +157,7 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "status": {"type": "string"},
                     "priority": {"type": "string"},
                     "assignee_id": {"type": "integer"},
+                    "sprint_id": {"type": "integer"},
                 },
                 ["ticket_key"],
             ),
@@ -168,6 +190,38 @@ def tool_specs() -> List[Dict[str, Any]]:
                     },
                 },
                 ["source_ticket_key", "target_ticket_key"],
+            ),
+        },
+        {
+            "name": "list_sprints",
+            "description": "List sprints for a project visible to this token's user.",
+            "inputSchema": schema({"project_key": {"type": "string"}, "include_closed": {"type": "boolean"}}, ["project_key"]),
+        },
+        {
+            "name": "create_sprint",
+            "description": "Create a sprint. Requires project admin access.",
+            "inputSchema": schema(
+                {
+                    "project_key": {"type": "string"},
+                    "name": {"type": "string"},
+                    "goal": {"type": "string"},
+                    "starts_on": {"type": "string"},
+                    "ends_on": {"type": "string"},
+                    "status": {"type": "string", "description": "planned or active"},
+                },
+                ["project_key", "name"],
+            ),
+        },
+        {
+            "name": "update_sprint_status",
+            "description": "Set a sprint status to planned, active, or closed. Requires project admin access.",
+            "inputSchema": schema(
+                {
+                    "project_key": {"type": "string"},
+                    "sprint_id": {"type": "integer"},
+                    "status": {"type": "string"},
+                },
+                ["project_key", "sprint_id", "status"],
             ),
         },
         {
@@ -208,18 +262,24 @@ def tool_specs() -> List[Dict[str, Any]]:
     ]
 
 
-def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+async def call_tool(
+    user: Dict[str, Any],
+    name: str,
+    args: Dict[str, Any],
+    on_ticket_changed: Optional[TicketChangedCallback] = None,
+) -> Dict[str, Any]:
     tools: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]] = {
         "list_projects": lambda u, a: list_projects(u),
         "search_tickets": lambda u, a: search_tickets(u, a.get("query", ""), a.get("project_key", "")),
         "get_ticket": lambda u, a: read_ticket_checked(u, a["ticket_key"]),
         "create_ticket": lambda u, a: create_ticket(
-            u,
-            a["project_key"],
-            a["title"],
-            a.get("description", ""),
-            a.get("priority", "Medium"),
-            a.get("ticket_type", "Task"),
+            user=u,
+            project_key=a["project_key"],
+            title=a["title"],
+            description=a.get("description", ""),
+            priority=a.get("priority", "Medium"),
+            ticket_type=a.get("ticket_type", "Task"),
+            sprint_id=a.get("sprint_id"),
         ),
         "update_ticket": lambda u, a: update_ticket(
             u,
@@ -231,6 +291,8 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
             priority=a.get("priority"),
             assignee_id=a.get("assignee_id"),
             assignee_touched="assignee_id" in a,
+            sprint_id=a.get("sprint_id"),
+            sprint_touched="sprint_id" in a,
         ),
         "move_ticket": lambda u, a: update_ticket(u, a["ticket_key"], status_value=a["status"]),
         "assign_ticket": lambda u, a: update_ticket(
@@ -240,6 +302,17 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
         "link_ticket": lambda u, a: link_ticket(
             u, a["source_ticket_key"], a["target_ticket_key"], a.get("link_type", "relates")
         ),
+        "list_sprints": lambda u, a: list_sprints_for_mcp(u, a["project_key"], bool(a.get("include_closed", True))),
+        "create_sprint": lambda u, a: create_sprint(
+            u,
+            a["project_key"],
+            a["name"],
+            a.get("goal", ""),
+            a.get("starts_on", ""),
+            a.get("ends_on", ""),
+            a.get("status", "planned"),
+        ),
+        "update_sprint_status": lambda u, a: update_sprint_status(u, a["project_key"], int(a["sprint_id"]), a["status"]),
         "unlink_ticket": lambda u, a: (unlink_ticket(u, a["ticket_key"], int(a["link_id"])) or {"ok": True}),
         "close_ticket": lambda u, a: close_ticket(u, a["ticket_key"]),
         "reopen_ticket": lambda u, a: reopen_ticket(u, a["ticket_key"]),
@@ -248,7 +321,39 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
     if name not in tools:
         raise ValueError("Unknown tool: %s" % name)
     result = tools[name](user, args)
+    if on_ticket_changed:
+        event_name = {
+            "create_ticket": "ticket_created",
+            "update_ticket": "ticket_changed",
+            "move_ticket": "ticket_changed",
+            "assign_ticket": "ticket_changed",
+            "add_comment": "ticket_commented",
+            "link_ticket": "ticket_linked",
+            "unlink_ticket": "ticket_unlinked",
+            "close_ticket": "ticket_changed",
+            "reopen_ticket": "ticket_changed",
+            "link_github_ref": "ticket_changed",
+        }.get(name)
+        if event_name:
+            ticket = result if isinstance(result, dict) and result.get("key") else None
+            if not ticket and name == "add_comment":
+                ticket = get_ticket_bundle(args["ticket_key"])["ticket"]
+            if not ticket and name == "link_ticket":
+                ticket = get_ticket_bundle(args["source_ticket_key"])["ticket"]
+            if not ticket and name == "unlink_ticket":
+                ticket = get_ticket_bundle(args["ticket_key"])["ticket"]
+            if ticket:
+                await on_ticket_changed(ticket, event_name)
     return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, default=str)}]}
+
+
+def list_sprints_for_mcp(user: Dict[str, Any], project_key: str, include_closed: bool = True) -> Dict[str, Any]:
+    project = get_project_by_key(project_key)
+    require_project_access(user, int(project["id"]))
+    return {
+        "project": project,
+        "sprints": list_project_sprints(int(project["id"]), include_closed=include_closed),
+    }
 
 
 def link_github_ref_for_mcp(user: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
@@ -303,20 +408,13 @@ def read_resource(user: Dict[str, Any], uri: str) -> Dict[str, Any]:
         }
     if uri.startswith("roundtable://projects/") and uri.endswith("/board"):
         project_key = uri.replace("roundtable://projects/", "").replace("/board", "")
-        with get_conn() as conn:
-            project = row_to_dict(conn.execute("SELECT * FROM projects WHERE key = ?", (project_key,)).fetchone())
-            if not project:
-                raise ValueError("Project not found")
-            require_project_access(user, project["id"])
-            tickets = rows_to_dicts(
-                conn.execute("SELECT * FROM tickets WHERE project_id = ? ORDER BY updated_at DESC", (project["id"],)).fetchall()
-            )
+        board = board_for_project(project_key, user)
         return {
             "contents": [
                 {
                     "uri": uri,
                     "mimeType": "application/json",
-                    "text": json.dumps({"project": project, "tickets": tickets}, ensure_ascii=False, default=str),
+                    "text": json.dumps(board, ensure_ascii=False, default=str),
                 }
             ]
         }

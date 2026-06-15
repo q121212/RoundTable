@@ -1194,6 +1194,11 @@ time {
   font-size: 0.9rem;
 }
 
+.sprint-manage-link {
+  align-self: end;
+  min-height: 38px;
+}
+
 .sprint-row {
   grid-template-columns: minmax(0, 1.2fr) auto auto auto;
 }
