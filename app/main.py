@@ -340,14 +340,12 @@ async def project_events_stream(request: Request, project_key: str) -> Streaming
         queue = await project_events.subscribe(str(project["key"]))
         try:
             yield sse_message("ready", {"project_key": project["key"]})
-            while True:
+            while not await request.is_disconnected():
                 try:
-                    item = await asyncio.wait_for(queue.get(), timeout=25)
+                    item = await asyncio.wait_for(queue.get(), timeout=10)
                     yield sse_message(str(item.get("event") or "ticket_changed"), item)
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
-                if await request.is_disconnected():
-                    break
         finally:
             await project_events.unsubscribe(str(project["key"]), queue)
 
