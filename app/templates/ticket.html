@@ -29,7 +29,7 @@
           <span data-i18n="field.description">Description</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
         </span>
-        <textarea name="description" rows="8">{{ ticket.description }}</textarea>
+        <textarea name="description" rows="8" data-mention-input data-mention-project="{{ ticket.project_key }}">{{ ticket.description }}</textarea>
       </label>
       <div class="form-row">
         <label>
@@ -259,7 +259,7 @@
           <span class="required-mark" aria-hidden="true">*</span>
           <button class="help-dot" type="button" data-i18n-tooltip="help.comment" data-tooltip="Visible update for everyone watching the ticket.">?</button>
         </span>
-        <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment"></textarea>
+        <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment" data-mention-input data-mention-project="{{ ticket.project_key }}"></textarea>
       </label>
       <button class="secondary" type="submit" data-icon="message-square" data-i18n="action.comment">Comment</button>
     </form>
@@ -279,7 +279,7 @@
             </span>
             <time>{{ comment.created_at }}</time>
           </div>
-          <p>{{ comment.body }}</p>
+          <p>{{ comment.body_html }}</p>
         </article>
       {% endfor %}
     </div>

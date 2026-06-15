@@ -90,6 +90,7 @@
             {% for status in all_statuses %}
               <label class="check-row status-choice">
                 <input type="checkbox" name="statuses" value="{{ status }}" {% if status in active_statuses %}checked{% endif %}>
+                <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
                 <span data-i18n="status.{{ status }}">{{ status }}</span>
               </label>
             {% endfor %}
@@ -168,6 +169,18 @@
             <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
             <div class="sprint-actions">
               {% if sprint.status != "active" and sprint.status != "closed" %}
+                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                  <input type="hidden" name="status" value="active">
+                  <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
+                </form>
+              {% endif %}
+              {% if sprint.status == "closed" %}
+                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                  <input type="hidden" name="status" value="planned">
+                  <button class="secondary tiny" type="submit" data-icon="rotate-ccw" data-i18n="sprint.reopen">Reopen</button>
+                </form>
                 <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
                   <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
                   <input type="hidden" name="status" value="active">

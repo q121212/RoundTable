@@ -138,6 +138,16 @@ def init_db() -> None:
                 created_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS ticket_mentions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+                comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+                mentioned_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                source_type TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE (ticket_id, comment_id, mentioned_user_id, source_type)
+            );
+
             CREATE TABLE IF NOT EXISTS watchers (
                 ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -267,6 +277,10 @@ def init_db() -> None:
                 ON ticket_links(source_ticket_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_ticket_links_target
                 ON ticket_links(target_ticket_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_ticket_mentions_ticket
+                ON ticket_mentions(ticket_id, mentioned_user_id);
+            CREATE INDEX IF NOT EXISTS idx_ticket_mentions_user
+                ON ticket_mentions(mentioned_user_id, created_at);
             CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_links_unique_pair
                 ON ticket_links(
                     CASE

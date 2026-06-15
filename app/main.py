@@ -1,7 +1,9 @@
 import asyncio
+import html
 import json
 import logging
 import os
+import re
 import secrets
 from contextlib import asynccontextmanager
 from json import JSONDecodeError
@@ -12,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 
 from .config import settings
 from .db import PRIORITIES, TICKET_LINK_TYPES, TICKET_STATUSES, TICKET_TYPES, get_conn, init_db
@@ -60,6 +63,7 @@ from .store import (
     require_project_admin,
     revoke_mcp_token,
     search_linkable_tickets,
+    search_project_users,
     set_watch,
     sync_configured_admin_roles,
     unlink_ticket,
@@ -80,6 +84,13 @@ TICKET_TYPE_ICONS = {
     "Epic": "layers-3",
     "Bug": "bug",
     "Story": "book-open",
+}
+
+PRIORITY_ICONS = {
+    "Low": "arrow-down",
+    "Medium": "minus",
+    "High": "arrow-up",
+    "Urgent": "flame",
 }
 
 
@@ -134,6 +145,8 @@ async def lifespan(fastapi_app: FastAPI):
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+MENTION_RE = re.compile(r"(?<![\w.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)")
 
 
 CONTENT_SECURITY_POLICY = "; ".join(
@@ -193,6 +206,7 @@ def render(
         "ticket_types": TICKET_TYPES,
         "ticket_link_types": TICKET_LINK_TYPES,
         "ticket_type_icons": TICKET_TYPE_ICONS,
+        "priority_icons": PRIORITY_ICONS,
     }
     data.update(context or {})
     project_key = None
@@ -210,6 +224,25 @@ def render(
 
 def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+def render_mentions(text: str, members: list[Dict[str, Any]]) -> Markup:
+    member_by_login = {str(member.get("login") or "").lower(): member for member in members}
+    pieces: list[str] = []
+    last = 0
+    for match in MENTION_RE.finditer(text or ""):
+        pieces.append(html.escape((text or "")[last:match.start()]))
+        login = match.group(1)
+        member = member_by_login.get(login.lower())
+        if member:
+            label = "@%s" % html.escape(str(member.get("login") or login))
+            title = html.escape(str(member.get("name") or member.get("login") or login))
+            pieces.append('<span class="mention" title="%s">%s</span>' % (title, label))
+        else:
+            pieces.append(html.escape(match.group(0)))
+        last = match.end()
+    pieces.append(html.escape((text or "")[last:]))
+    return Markup("".join(pieces))
 
 
 async def publish_ticket_event(
@@ -521,6 +554,8 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
     bundle = get_ticket_bundle(ticket_key)
     require_project_access(user, int(bundle["ticket"]["project_id"]))
     members = project_members(int(bundle["ticket"]["project_id"]))
+    for comment in bundle["comments"]:
+        comment["body_html"] = render_mentions(str(comment.get("body") or ""), members)
     project = get_project_by_key(str(bundle["ticket"]["project_key"]))
     sprints = [
         sprint
@@ -548,6 +583,15 @@ async def api_search_project_tickets(request: Request, project_key: str, q: str 
     require_project_access(user, int(project["id"]))
     tickets = search_linkable_tickets(int(project["id"]), exclude, q)
     return JSONResponse({"tickets": tickets})
+
+
+@app.get("/api/projects/{project_key}/users/search")
+async def api_search_project_users(request: Request, project_key: str, q: str = "") -> JSONResponse:
+    user = require_page_user(request)
+    project = get_project_by_key(project_key)
+    require_project_access(user, int(project["id"]))
+    users = search_project_users(int(project["id"]), q)
+    return JSONResponse({"users": users})
 
 
 @app.post("/api/tickets/{ticket_key}")

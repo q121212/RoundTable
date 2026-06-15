@@ -52,7 +52,7 @@
             <span data-i18n="field.description">Description</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
           </span>
-          <textarea name="description" rows="3" placeholder="Optional description" data-i18n-placeholder="placeholder.ticket_description"></textarea>
+          <textarea name="description" rows="3" placeholder="Optional description" data-i18n-placeholder="placeholder.ticket_description" data-mention-input data-mention-project="{{ project.key }}"></textarea>
         </label>
       </div>
       <div class="quick-create-side">
@@ -79,10 +79,11 @@
           </div>
         </label>
         <label class="field-shell">
-          <span class="label-row">
-            <span data-i18n="field.priority">Priority</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
-          </span>
+            <span class="label-row">
+              <span class="priority-icon priority-medium-icon" data-icon="{{ priority_icons.get('Medium', 'minus') }}" aria-hidden="true"></span>
+              <span data-i18n="field.priority">Priority</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
+            </span>
           <select name="priority" aria-label="Priority">
             {% for priority in priorities %}
               <option value="{{ priority }}" {% if priority == "Medium" %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
@@ -139,9 +140,15 @@
 </div>
 
 <div class="mobile-status-tabs" role="tablist" aria-label="Statuses">
-  <button class="status-tab active" data-status-filter="all" type="button" data-i18n="status.all">All</button>
+  <button class="status-tab active" data-status-filter="all" type="button">
+    <span class="status-dot status-all-dot" aria-hidden="true"></span>
+    <span data-i18n="status.all">All</span>
+  </button>
   {% for status in statuses %}
-    <button class="status-tab" data-status-filter="{{ status }}" type="button" data-i18n="status.{{ status }}">{{ status }}</button>
+    <button class="status-tab" data-status-filter="{{ status }}" type="button">
+      <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
+      <span data-i18n="status.{{ status }}">{{ status }}</span>
+    </button>
   {% endfor %}
 </div>
 
@@ -149,7 +156,10 @@
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
-        <h2 data-i18n="status.{{ status }}">{{ status }}</h2>
+        <h2>
+          <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
+          <span data-i18n="status.{{ status }}">{{ status }}</span>
+        </h2>
         <span>{{ columns[status]|length }}</span>
       </header>
       <div class="dropzone" data-status="{{ status }}">
@@ -166,18 +176,19 @@
               <a class="ticket-open-link" href="/t/{{ ticket.key }}" data-icon="external-link" aria-label="Open ticket"></a>
             </div>
             <div class="ticket-card-chips">
-              <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" data-value="{{ ticket.ticket_type }}" aria-haspopup="true">
+              <button type="button" class="chip chip-edit chip-type tooltip-anchor" data-edit="ticket_type" data-value="{{ ticket.ticket_type }}" aria-haspopup="true" data-i18n-tooltip="field.ticket_type" data-tooltip="Type" title="{{ ticket.ticket_type }}">
                 <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
               </button>
-              <button type="button" class="chip chip-edit chip-status" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true">
-                <span class="chip-dot" aria-hidden="true"></span>
+              <button type="button" class="chip chip-edit chip-status tooltip-anchor" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true" data-i18n-tooltip="field.status" data-tooltip="Status" title="{{ ticket.status }}">
+                <span class="status-dot status-{{ ticket.status|lower|replace(' ', '-') }}-dot" data-status-dot aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</span>
               </button>
-              <button type="button" class="chip chip-edit chip-priority priority-chip-{{ ticket.priority|lower }}" data-edit="priority" data-value="{{ ticket.priority }}" aria-haspopup="true">
+              <button type="button" class="chip chip-edit chip-priority priority-chip-{{ ticket.priority|lower }} tooltip-anchor" data-edit="priority" data-value="{{ ticket.priority }}" aria-haspopup="true" data-i18n-tooltip="field.priority" data-tooltip="Priority" title="{{ ticket.priority }}">
+                <span class="priority-icon priority-{{ ticket.priority|lower }}-icon" data-priority-icon data-icon="{{ priority_icons.get(ticket.priority, 'minus') }}" aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
               </button>
-              <button type="button" class="chip chip-edit chip-assignee" data-edit="assignee_id" data-value="{{ ticket.assignee_id or '' }}" aria-haspopup="true">
+              <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" data-value="{{ ticket.assignee_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee" title="{{ ticket.assignee_name or ticket.assignee_login or 'Unassigned' }}">
                 <span class="avatar-dot" aria-hidden="true">
                   {% if ticket.assignee_avatar_url %}
                     <img src="{{ ticket.assignee_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
@@ -191,11 +202,11 @@
                   <span class="chip-label assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
                 {% endif %}
               </button>
-              <button type="button" class="chip chip-edit chip-sprint" data-edit="sprint_id" data-value="{{ ticket.sprint_id or '' }}" aria-haspopup="true">
+              <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" data-value="{{ ticket.sprint_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint" title="{{ ticket.sprint_name or 'No sprint' }}">
                 <span class="chip-label" {% if not ticket.sprint_name %}data-i18n="sprint.none"{% endif %}>{{ ticket.sprint_name or "No sprint" }}</span>
               </button>
-              <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description"></button>
-              <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment"></button>
+              <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
+              <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>
             </div>
             <div class="ticket-card-links {% if not ticket.linked_tickets %}is-empty{% endif %}">
               {% if ticket.linked_tickets %}

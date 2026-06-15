@@ -329,8 +329,12 @@ button,
   color: var(--coral);
 }
 
-.help-dot {
+.help-dot,
+.tooltip-anchor {
   position: relative;
+}
+
+.help-dot {
   width: 24px;
   min-width: 24px;
   min-height: 24px;
@@ -345,7 +349,8 @@ button,
   line-height: 1;
 }
 
-.help-dot::after {
+.help-dot::after,
+.tooltip-anchor::after {
   content: attr(data-tooltip);
   display: none;
   position: absolute;
@@ -369,7 +374,8 @@ button,
   white-space: normal;
 }
 
-.help-dot::before {
+.help-dot::before,
+.tooltip-anchor::before {
   content: "";
   display: none;
   position: absolute;
@@ -388,7 +394,11 @@ button,
 .help-dot:focus-visible::after,
 .help-dot:focus-visible::before,
 .help-dot.tooltip-open::after,
-.help-dot.tooltip-open::before {
+.help-dot.tooltip-open::before,
+.tooltip-anchor:hover::after,
+.tooltip-anchor:hover::before,
+.tooltip-anchor:focus-visible::after,
+.tooltip-anchor:focus-visible::before {
   display: block;
   opacity: 1;
   transform: translate(-50%, 0);
@@ -396,7 +406,9 @@ button,
 
 .help-dot:hover::before,
 .help-dot:focus-visible::before,
-.help-dot.tooltip-open::before {
+.help-dot.tooltip-open::before,
+.tooltip-anchor:hover::before,
+.tooltip-anchor:focus-visible::before {
   transform: translateX(-50%);
 }
 
@@ -616,11 +628,14 @@ button,
 }
 
 .column-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
   font-size: 0.95rem;
 }
 
-.column-head span {
+.column-head > span {
   color: var(--muted);
   font-weight: 800;
 }
@@ -1030,6 +1045,69 @@ button,
 
 .comment p {
   white-space: pre-wrap;
+}
+
+.mention {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 0.28em;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green-dark);
+  font-weight: 750;
+}
+
+.mention-menu {
+  z-index: 120;
+  display: grid;
+  gap: 3px;
+  max-height: min(260px, 45vh);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.mention-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.mention-option:hover,
+.mention-option:focus-visible,
+.mention-option.is-active {
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+
+.mention-option-text {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.mention-option-text strong,
+.mention-option-text small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-option-text small {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 time {
@@ -1578,6 +1656,8 @@ button,
 .ticket-card {
   padding: 10px;
   gap: 8px;
+  min-height: 152px;
+  align-content: start;
 }
 
 .ticket-card-top {
@@ -1764,6 +1844,8 @@ a.ticket-key:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  max-height: 58px;
+  overflow: hidden;
 }
 
 .chip {
@@ -1781,6 +1863,7 @@ a.ticket-key:hover {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .chip-edit:hover,
@@ -1790,11 +1873,35 @@ a.ticket-key:hover {
 }
 
 .chip .chip-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.type-icon {
+.chip-type {
+  max-width: 118px;
+}
+
+.chip-status {
+  max-width: 130px;
+}
+
+.chip-priority {
+  max-width: 108px;
+}
+
+.chip-assignee {
+  max-width: 136px;
+}
+
+.chip-sprint {
+  max-width: 142px;
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--green) 36%, var(--line));
+}
+
+.type-icon,
+.priority-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1806,10 +1913,35 @@ a.ticket-key:hover {
   background: color-mix(in srgb, var(--green) 10%, var(--surface));
 }
 
-.type-icon .icon {
+.type-icon .icon,
+.priority-icon .icon {
   width: 13px;
   height: 13px;
   stroke-width: 2.4;
+}
+
+.priority-icon {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 10%, var(--surface));
+}
+
+.priority-low-icon {
+  color: var(--muted);
+}
+
+.priority-medium-icon {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+}
+
+.priority-high-icon {
+  color: #8a5d1f;
+  background: color-mix(in srgb, var(--amber) 16%, var(--surface));
+}
+
+.priority-urgent-icon {
+  color: var(--coral);
+  background: color-mix(in srgb, var(--coral) 12%, var(--surface));
 }
 
 .chip-assignee .chip-label {
@@ -1823,7 +1955,8 @@ a.ticket-key:hover {
   font-size: 0.62rem;
 }
 
-.chip-status .chip-dot {
+.status-dot {
+  display: inline-flex;
   width: 7px;
   height: 7px;
   flex: 0 0 7px;
@@ -1831,12 +1964,13 @@ a.ticket-key:hover {
   background: var(--muted);
 }
 
-.status-backlog .chip-status .chip-dot { background: #8ba98a; }
-.status-todo .chip-status .chip-dot { background: var(--sky); }
-.status-in-progress .chip-status .chip-dot { background: var(--amber); }
-.status-review .chip-status .chip-dot { background: #9b7cc0; }
-.status-done .chip-status .chip-dot { background: var(--green); }
-.status-closed .chip-status .chip-dot { background: var(--muted); }
+.status-all-dot { background: var(--green); }
+.status-backlog-dot { background: #8ba98a; }
+.status-todo-dot { background: var(--sky); }
+.status-in-progress-dot { background: var(--amber); }
+.status-review-dot { background: #9b7cc0; }
+.status-done-dot { background: var(--green); }
+.status-closed-dot { background: var(--muted); }
 
 .chip-type {
   color: var(--green);
@@ -1919,7 +2053,14 @@ a.ticket-key:hover {
   min-width: 26px;
   padding: 2px;
   justify-content: center;
-  margin-left: auto;
+  margin-left: 0;
+}
+
+.chip-desc {
+  width: 26px;
+  min-width: 26px;
+  padding: 2px;
+  justify-content: center;
 }
 
 .autosave-status {
@@ -2385,6 +2526,7 @@ a.ticket-key:hover {
     padding: 8px;
     gap: 5px;
     border-radius: 8px;
+    min-height: 164px;
   }
 
   .ticket-card-top {
@@ -2418,12 +2560,21 @@ a.ticket-key:hover {
 
   .ticket-card-chips {
     gap: 5px;
+    max-height: 92px;
   }
 
   .chip {
     min-height: 40px;
     padding: 7px 10px;
     font-size: 0.82rem;
+  }
+
+  .chip-type,
+  .chip-status,
+  .chip-priority,
+  .chip-assignee,
+  .chip-sprint {
+    max-width: min(46vw, 190px);
   }
 
   .chip-desc,

@@ -91,6 +91,7 @@
       "mcp.title": "MCP access",
       "mcp.tokens": "Tokens",
       "mcp.transport_note": "RoundTable exposes a JSON-RPC HTTP endpoint. External clients must trust the HTTPS certificate; self-signed certificates are rejected by many MCP clients.",
+      "mentions.empty": "No matching people",
       "link.blocked_by": "blocked by",
       "link.blocks": "blocks",
       "link.duplicates": "duplicates",
@@ -165,7 +166,7 @@
       "projects.save_board_settings": "Save board settings",
       "projects.title": "Projects",
       "sound.copy": "Short local sounds for board events. Different event types use different cues.",
-      "sound.events_copy": "New tickets, comments, assignments, status changes, Done/Closed, and ticket links.",
+      "sound.events_copy": "New tickets, comments, assignments, status changes, sprint changes, Done/Closed, and ticket links.",
       "sound.events_title": "Events with sound",
       "sound.focused": "Focused",
       "sound.off": "Off",
@@ -188,6 +189,7 @@
       "sprint.manage_link": "Manage sprints",
       "sprint.none": "No sprint",
       "sprint.planned": "Planned",
+      "sprint.reopen": "Reopen",
       "sprint.sprints": "Sprints",
       "sprint.starts_on": "Starts",
       "sprint.status": "Status",
@@ -331,6 +333,7 @@
       "mcp.title": "Доступ MCP",
       "mcp.tokens": "Токены",
       "mcp.transport_note": "RoundTable отдаёт JSON-RPC HTTP endpoint. Внешние клиенты должны доверять HTTPS-сертификату; самоподписанные сертификаты многие MCP-клиенты отклоняют.",
+      "mentions.empty": "Никого не нашли",
       "link.blocked_by": "заблокирован",
       "link.blocks": "блокирует",
       "link.duplicates": "дублирует",
@@ -405,7 +408,7 @@
       "projects.save_board_settings": "Сохранить настройки доски",
       "projects.title": "Проекты",
       "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
-      "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, Done/Closed и связи тикетов.",
+      "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, смена спринта, Done/Closed и связи тикетов.",
       "sound.events_title": "Какие события звучат",
       "sound.focused": "Важное",
       "sound.off": "Выкл",
@@ -428,6 +431,7 @@
       "sprint.manage_link": "Управлять спринтами",
       "sprint.none": "Без спринта",
       "sprint.planned": "План",
+      "sprint.reopen": "Переоткрыть",
       "sprint.sprints": "Спринты",
       "sprint.starts_on": "Начало",
       "sprint.status": "Статус",
@@ -586,7 +590,25 @@
     return `type-${String(type || "Task").toLowerCase()}`;
   }
 
+  function statusDotClass(status) {
+    return `status-${String(status || "Backlog").toLowerCase().replace(/\s+/g, "-")}-dot`;
+  }
+
+  function priorityIcon(priority) {
+    return {
+      Low: "arrow-down",
+      Medium: "minus",
+      High: "arrow-up",
+      Urgent: "flame",
+    }[priority] || "minus";
+  }
+
+  function priorityClass(priority) {
+    return `priority-${String(priority || "Medium").toLowerCase()}-icon`;
+  }
+
   let audioContext = null;
+  const mentionState = new WeakMap();
 
   function currentSoundMode() {
     return localStorage.getItem(STORAGE_SOUND_MODE) || "off";
@@ -661,6 +683,7 @@
     if (payload && payload.event === "test") return "test";
     if (action === "closed" || action === "reopened" || ticket.status === "Done" || ticket.status === "Closed") return "success";
     if (action === "status_changed") return "status";
+    if (action === "sprint_changed") return "sprint";
     if (action === "commented" || payload.event === "ticket_commented") return "comment";
     if (action === "assigned") return "assigned";
     if (payload.event === "ticket_created" || action === "ticket_created") return "created";
@@ -719,6 +742,13 @@
     } else if (kind === "status") {
       playTone(ctx, now, 392, 0.09, volume, "triangle");
       playTone(ctx, now + 0.08, 587.33, 0.12, volume * 0.85, "triangle");
+    } else if (bright && kind === "sprint") {
+      playTone(ctx, now, 587.33, 0.045, volume * 0.65, "triangle");
+      playTone(ctx, now + 0.06, 440, 0.055, volume * 0.5, "sine");
+      playTone(ctx, now + 0.115, 587.33, 0.065, volume * 0.45, "triangle");
+    } else if (kind === "sprint") {
+      playTone(ctx, now, 349.23, 0.07, volume * 0.55, "sine");
+      playTone(ctx, now + 0.075, 523.25, 0.1, volume * 0.5, "triangle");
     } else if (bright && kind === "comment") {
       playTone(ctx, now, 880, 0.035, volume * 0.55, "sine");
       playTone(ctx, now + 0.055, 880, 0.035, volume * 0.5, "sine");
@@ -1210,7 +1240,11 @@
     const current = chip.dataset.value || "";
     let options = [];
     if (field === "status") {
-      options = boardData("statuses", []).map((s) => ({ value: s, label: translate(`status.${s}`, currentLang()) || s }));
+      options = boardData("statuses", []).map((s) => ({
+        value: s,
+        label: translate(`status.${s}`, currentLang()) || s,
+        statusDot: true,
+      }));
     } else if (field === "ticket_type") {
       options = boardData("ticketTypes", []).map((t) => ({
         value: t,
@@ -1218,7 +1252,12 @@
         icon: ticketTypeIcon(t),
       }));
     } else if (field === "priority") {
-      options = boardData("priorities", []).map((p) => ({ value: p, label: translate(`priority.${p}`, currentLang()) || p }));
+      options = boardData("priorities", []).map((p) => ({
+        value: p,
+        label: translate(`priority.${p}`, currentLang()) || p,
+        icon: priorityIcon(p),
+        priorityIcon: true,
+      }));
     } else if (field === "sprint_id") {
       options = [{ value: "", label: translate("sprint.none", currentLang()) || "No sprint" }];
       boardData("sprints", [])
@@ -1233,9 +1272,16 @@
       button.type = "button";
       button.className = "popover-option";
       if (String(opt.value) === String(current)) button.classList.add("is-current");
-      if (opt.icon) {
+      if (opt.statusDot) {
+        const dot = document.createElement("span");
+        dot.className = `status-dot ${statusDotClass(opt.value)}`;
+        dot.setAttribute("aria-hidden", "true");
+        button.appendChild(dot);
+      } else if (opt.icon) {
         const icon = document.createElement("span");
-        icon.className = `type-icon ${ticketTypeClass(opt.value)}`;
+        icon.className = opt.priorityIcon
+          ? `priority-icon ${priorityClass(opt.value)}`
+          : `type-icon ${ticketTypeClass(opt.value)}`;
         icon.dataset.icon = opt.icon;
         icon.setAttribute("aria-hidden", "true");
         button.appendChild(icon);
@@ -1270,6 +1316,9 @@
     const textarea = document.createElement("textarea");
     textarea.rows = 3;
     textarea.placeholder = translate("placeholder.quick_comment", currentLang()) || "Optional comment";
+    const projectKey = document.querySelector(".board")?.dataset.projectKey || "";
+    textarea.dataset.mentionInput = "true";
+    textarea.dataset.mentionProject = projectKey;
     const actions = document.createElement("div");
     actions.className = "popover-actions";
     const button = document.createElement("button");
@@ -1308,6 +1357,7 @@
     textarea.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit();
     });
+    setupMentionInput(textarea);
   }
 
   function buildDescriptionPopover(pop, card) {
@@ -1316,6 +1366,9 @@
     textarea.rows = 6;
     textarea.value = card.dataset.description || "";
     textarea.placeholder = translate("help.ticket_description", currentLang()) || "Description";
+    const projectKey = document.querySelector(".board")?.dataset.projectKey || "";
+    textarea.dataset.mentionInput = "true";
+    textarea.dataset.mentionProject = projectKey;
     const actions = document.createElement("div");
     actions.className = "popover-actions";
     const button = document.createElement("button");
@@ -1346,6 +1399,7 @@
     textarea.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit();
     });
+    setupMentionInput(textarea);
   }
 
   function applyTicketUpdate(card, ticket) {
@@ -1377,6 +1431,7 @@
     const chip = card.querySelector(`.chip-edit[data-edit="${field}"]`);
     if (!chip) return;
     chip.dataset.value = value || "";
+    chip.title = label || "";
     const labelEl = chip.querySelector(".chip-label");
     if (labelEl) {
       if (field === "status") labelEl.dataset.i18n = `status.${value}`;
@@ -1392,12 +1447,23 @@
         .filter((name) => name && !name.startsWith("priority-chip-"))
         .join(" ");
       chip.classList.add(`priority-chip-${String(value).toLowerCase()}`);
+      const icon = chip.querySelector("[data-priority-icon]");
+      if (icon) {
+        icon.className = `priority-icon ${priorityClass(value)}`;
+        icon.dataset.icon = priorityIcon(value);
+      }
     }
     if (field === "ticket_type") {
       const icon = chip.querySelector(".type-icon");
       if (icon) {
         icon.className = `type-icon ${ticketTypeClass(value)}`;
         icon.dataset.icon = ticketTypeIcon(value);
+      }
+    }
+    if (field === "status") {
+      const dot = chip.querySelector("[data-status-dot]");
+      if (dot) {
+        dot.className = `status-dot ${statusDotClass(value)}`;
       }
     }
   }
@@ -1419,6 +1485,7 @@
     const chip = card.querySelector('.chip-edit[data-edit="assignee_id"]');
     if (!chip) return;
     chip.dataset.value = ticket.assignee_id ? String(ticket.assignee_id) : "";
+    chip.title = ticket.assignee_name || ticket.assignee_login || translate("ticket.unassigned", currentLang()) || "Unassigned";
     renderAvatar(chip.querySelector(".avatar-dot"), ticket.assignee_avatar_url, ticket.assignee_login);
     const label = chip.querySelector(".assignee-label");
     if (label) {
@@ -1504,26 +1571,27 @@
         <a class="ticket-open-link" data-icon="external-link" aria-label="Open ticket"></a>
       </div>
       <div class="ticket-card-chips">
-        <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" aria-haspopup="true">
+        <button type="button" class="chip chip-edit chip-type tooltip-anchor" data-edit="ticket_type" aria-haspopup="true" data-i18n-tooltip="field.ticket_type" data-tooltip="Type">
           <span class="type-icon" aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-status" data-edit="status" aria-haspopup="true">
-          <span class="chip-dot" aria-hidden="true"></span>
+        <button type="button" class="chip chip-edit chip-status tooltip-anchor" data-edit="status" aria-haspopup="true" data-i18n-tooltip="field.status" data-tooltip="Status">
+          <span class="status-dot" data-status-dot aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-priority" data-edit="priority" aria-haspopup="true">
+        <button type="button" class="chip chip-edit chip-priority tooltip-anchor" data-edit="priority" aria-haspopup="true" data-i18n-tooltip="field.priority" data-tooltip="Priority">
+          <span class="priority-icon" data-priority-icon aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-assignee" data-edit="assignee_id" aria-haspopup="true">
+        <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee">
           <span class="avatar-dot" aria-hidden="true"></span>
           <span class="chip-label assignee-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-sprint" data-edit="sprint_id" aria-haspopup="true">
+        <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint">
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description"></button>
-        <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment"></button>
+        <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
+        <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>
       </div>
       <div class="ticket-card-links is-empty"></div>
     `;
@@ -1886,6 +1954,148 @@
     });
   }
 
+  function activeMentionQuery(input) {
+    const cursor = input.selectionStart || 0;
+    const before = input.value.slice(0, cursor);
+    const match = before.match(/(?:^|[\s(])@([A-Za-z0-9-]{0,39})$/);
+    if (!match) return null;
+    const query = match[1] || "";
+    return {
+      query,
+      start: cursor - query.length - 1,
+      end: cursor,
+    };
+  }
+
+  function closeMentionMenu(input) {
+    const state = mentionState.get(input);
+    if (!state) return;
+    state.menu.remove();
+    mentionState.delete(input);
+  }
+
+  function positionMentionMenu(input, menu) {
+    const rect = input.getBoundingClientRect();
+    menu.style.position = "fixed";
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    const bottomTop = rect.bottom + 6;
+    const top = bottomTop + menu.offsetHeight > window.innerHeight - 8
+      ? Math.max(8, rect.top - menu.offsetHeight - 6)
+      : bottomTop;
+    menu.style.top = `${top}px`;
+    menu.style.width = `${Math.min(rect.width, window.innerWidth - 16)}px`;
+  }
+
+  function selectMention(input, user) {
+    const state = mentionState.get(input);
+    if (!state || !state.range) return;
+    const before = input.value.slice(0, state.range.start);
+    const after = input.value.slice(state.range.end);
+    const mention = `@${user.login} `;
+    input.value = `${before}${mention}${after}`;
+    const cursor = before.length + mention.length;
+    input.setSelectionRange(cursor, cursor);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    closeMentionMenu(input);
+    input.focus();
+  }
+
+  function renderMentionMenu(input, users, range) {
+    closeMentionMenu(input);
+    if (!users.length) return;
+    const menu = document.createElement("div");
+    menu.className = "mention-menu";
+    menu.setAttribute("role", "listbox");
+    users.forEach((user, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "mention-option";
+      if (index === 0) button.classList.add("is-active");
+      button.dataset.userId = user.id;
+      const avatar = document.createElement("span");
+      avatar.className = "avatar-dot";
+      avatar.setAttribute("aria-hidden", "true");
+      renderAvatar(avatar, user.avatar_url || "", user.login || "");
+      const text = document.createElement("span");
+      text.className = "mention-option-text";
+      const name = document.createElement("strong");
+      name.textContent = user.name || user.login;
+      const login = document.createElement("small");
+      login.textContent = `@${user.login}`;
+      text.append(name, login);
+      button.append(avatar, text);
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        selectMention(input, user);
+      });
+      menu.appendChild(button);
+    });
+    document.body.appendChild(menu);
+    mentionState.set(input, { menu, users, range });
+    positionMentionMenu(input, menu);
+  }
+
+  function setupMentionInput(input) {
+    if (!input || input.dataset.mentionReady === "true") return;
+    input.dataset.mentionReady = "true";
+    let timer = null;
+    let controller = null;
+
+    const search = async () => {
+      const range = activeMentionQuery(input);
+      if (!range || !input.dataset.mentionProject) {
+        closeMentionMenu(input);
+        return;
+      }
+      if (controller) controller.abort();
+      controller = new AbortController();
+      const url = new URL(`/api/projects/${encodeURIComponent(input.dataset.mentionProject)}/users/search`, window.location.origin);
+      url.searchParams.set("q", range.query);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error("mention search failed");
+        const data = await response.json();
+        renderMentionMenu(input, Array.isArray(data.users) ? data.users : [], range);
+      } catch (error) {
+        if (error.name !== "AbortError") closeMentionMenu(input);
+      }
+    };
+
+    input.addEventListener("input", () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(search, 120);
+    });
+    input.addEventListener("click", search);
+    input.addEventListener("blur", () => window.setTimeout(() => closeMentionMenu(input), 120));
+    input.addEventListener("keydown", (event) => {
+      const state = mentionState.get(input);
+      if (!state) return;
+      const options = Array.from(state.menu.querySelectorAll(".mention-option"));
+      const currentIndex = Math.max(0, options.findIndex((option) => option.classList.contains("is-active")));
+      if (event.key === "Escape") {
+        closeMentionMenu(input);
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const nextIndex = event.key === "ArrowDown"
+          ? Math.min(options.length - 1, currentIndex + 1)
+          : Math.max(0, currentIndex - 1);
+        options.forEach((option, index) => option.classList.toggle("is-active", index === nextIndex));
+      }
+      if (event.key === "Enter" && options.length) {
+        event.preventDefault();
+        const active = options.find((option) => option.classList.contains("is-active")) || options[0];
+        const user = state.users.find((item) => String(item.id) === active.dataset.userId);
+        if (user) selectMention(input, user);
+      }
+    });
+  }
+
+  function setupMentionInputs(root = document) {
+    root.querySelectorAll("[data-mention-input]").forEach((input) => setupMentionInput(input));
+  }
+
   function cssEscape(value) {
     if (window.CSS && window.CSS.escape) return window.CSS.escape(value);
     return String(value).replace(/"/g, '\\"');
@@ -2100,6 +2310,7 @@
     setupActionDetails();
     setupMemberRoleForms();
     setupAssigneePickers();
+    setupMentionInputs();
     setupOpenCreate();
     setupMobileStatusTabs();
     setupTooltips();

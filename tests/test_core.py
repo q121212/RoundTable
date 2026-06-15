@@ -7,6 +7,7 @@ from app.main import app
 from app.security import SESSION_COOKIE, create_session
 from app.store import (
     add_project_member,
+    add_comment,
     board_for_project,
     close_ticket,
     create_project,
@@ -21,6 +22,7 @@ from app.store import (
     project_ticket_types,
     remove_project_member,
     search_linkable_tickets,
+    search_project_users,
     sync_configured_admin_roles,
     update_project_member,
     update_project_settings,
@@ -139,6 +141,31 @@ def test_only_one_sprint_can_be_active_per_project(temp_db):
 
     assert sprints["Sprint 1"] == "planned"
     assert sprints["Sprint 2"] == "active"
+
+
+def test_project_admin_can_reopen_closed_sprint(temp_db):
+    admin = upsert_user("alice")
+    member = upsert_user("bob")
+    project = create_project(admin, "SPR", "Sprints")
+    add_project_member(int(project["id"]), "bob", "member")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET role = 'member' WHERE id = ?", (member["id"],))
+    member = {**member, "role": "member"}
+    sprint = create_sprint(admin, "SPR", "Sprint 1", status_value="active")
+
+    closed = update_sprint_status(admin, "SPR", int(sprint["id"]), "closed")
+    reopened = update_sprint_status(admin, "SPR", int(sprint["id"]), "planned")
+    active = update_sprint_status(admin, "SPR", int(sprint["id"]), "active")
+
+    assert closed["status"] == "closed"
+    assert closed["closed_at"] is not None
+    assert reopened["status"] == "planned"
+    assert reopened["closed_at"] is None
+    assert active["status"] == "active"
+
+    with pytest.raises(HTTPException) as exc:
+        update_sprint_status(member, "SPR", int(sprint["id"]), "closed")
+    assert exc.value.status_code == 403
 
 
 def test_sprint_dates_are_validated(temp_db):
@@ -324,6 +351,82 @@ def test_assignment_notification_outbox(temp_db):
     assert row is not None
     assert row["user_id"] == assignee["id"]
     assert row["channel"] == "email"
+
+
+def test_comment_mentions_project_member_by_login_or_name(temp_db):
+    reporter = upsert_user("alice", email="alice@example.com")
+    mentioned = upsert_user("bob", name="Robert Builder", email="bob@example.com")
+    project = create_project(reporter, "MEN", "Mentions")
+    add_project_member(int(project["id"]), "bob", "member")
+    ticket = create_ticket(reporter, "MEN", "Wire mentions")
+
+    add_comment(reporter, ticket["key"], "Can you check this, @bob?")
+
+    with get_conn() as conn:
+        mention = row_to_dict(conn.execute("SELECT * FROM ticket_mentions").fetchone())
+        watcher = row_to_dict(
+            conn.execute(
+                "SELECT * FROM watchers WHERE ticket_id = ? AND user_id = ?",
+                (ticket["id"], mentioned["id"]),
+            ).fetchone()
+        )
+        notification = row_to_dict(
+            conn.execute("SELECT * FROM notification_outbox WHERE user_id = ?", (mentioned["id"],)).fetchone()
+        )
+    assert mention is not None
+    assert mention["mentioned_user_id"] == mentioned["id"]
+    assert mention["source_type"] == "comment"
+    assert watcher is not None
+    assert notification is not None
+
+    by_name = search_project_users(int(project["id"]), "Builder")
+    assert by_name[0]["login"] == "bob"
+
+
+def test_empty_mention_search_lists_small_project_members_only(temp_db):
+    owner = upsert_user("alice", name="Alice")
+    project = create_project(owner, "AT", "At Mentions")
+    upsert_user("bob", name="Bob")
+    add_project_member(int(project["id"]), "bob", "member")
+
+    small = search_project_users(int(project["id"]), "")
+    assert [user["login"] for user in small] == ["alice", "bob"]
+
+    for index in range(13):
+        login = f"user{index}"
+        upsert_user(login)
+        add_project_member(int(project["id"]), login, "member")
+
+    assert search_project_users(int(project["id"]), "") == []
+    assert search_project_users(int(project["id"]), "user1")
+
+
+def test_description_mentions_are_refreshed_on_update(temp_db):
+    reporter = upsert_user("alice", email="alice@example.com")
+    upsert_user("bob", name="Bob Stone")
+    upsert_user("carol", name="Carol Stone")
+    project = create_project(reporter, "TXT", "Text")
+    add_project_member(int(project["id"]), "bob", "member")
+    add_project_member(int(project["id"]), "carol", "member")
+    ticket = create_ticket(reporter, "TXT", "Describe", description="@bob please")
+
+    update_ticket(reporter, ticket["key"], description="@carol now")
+
+    with get_conn() as conn:
+        rows = [
+            row["login"]
+            for row in conn.execute(
+                """
+                SELECT users.login
+                FROM ticket_mentions
+                JOIN users ON users.id = ticket_mentions.mentioned_user_id
+                WHERE ticket_mentions.ticket_id = ? AND ticket_mentions.source_type = 'description'
+                ORDER BY users.login
+                """,
+                (ticket["id"],),
+            ).fetchall()
+        ]
+    assert rows == ["carol"]
 
 
 def test_assignee_must_be_project_member(temp_db):

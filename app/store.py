@@ -24,6 +24,7 @@ from .security import hash_token, new_token
 
 PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
 TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
+MENTION_RE = re.compile(r"(?<![\w.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)")
 GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
@@ -572,6 +573,117 @@ def project_members(project_id: int) -> List[Dict[str, Any]]:
         )
 
 
+def search_project_users(project_id: int, query: str, limit: int = 8, small_project_limit: int = 12) -> List[Dict[str, Any]]:
+    clean = query.strip().lstrip("@")
+    with get_conn() as conn:
+        if not clean:
+            count = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS c FROM project_members WHERE project_id = ?",
+                    (project_id,),
+                ).fetchone()["c"]
+            )
+            if count > small_project_limit:
+                return []
+            return rows_to_dicts(
+                conn.execute(
+                    """
+                    SELECT users.id,
+                           users.login,
+                           users.name,
+                           users.avatar_url,
+                           project_members.role AS project_role
+                    FROM project_members
+                    JOIN users ON users.id = project_members.user_id
+                    WHERE project_members.project_id = ?
+                    ORDER BY users.login
+                    LIMIT ?
+                    """,
+                    (project_id, small_project_limit),
+                ).fetchall()
+            )
+        like = clean.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return rows_to_dicts(
+            conn.execute(
+                """
+                SELECT users.id,
+                       users.login,
+                       users.name,
+                       users.avatar_url,
+                       project_members.role AS project_role
+                FROM project_members
+                JOIN users ON users.id = project_members.user_id
+                WHERE project_members.project_id = ?
+                  AND (
+                    users.login LIKE ? ESCAPE '\\'
+                    OR COALESCE(users.name, '') LIKE ? ESCAPE '\\'
+                  )
+                ORDER BY
+                  CASE WHEN users.login LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END,
+                  users.login
+                LIMIT ?
+                """,
+                (project_id, f"%{like}%", f"%{like}%", f"{like}%", limit),
+            ).fetchall()
+        )
+
+
+def mentioned_user_ids_conn(conn: Any, project_id: int, text: str) -> List[int]:
+    logins = {match.group(1).lower() for match in MENTION_RE.finditer(text or "")}
+    if not logins:
+        return []
+    placeholders = ",".join("?" for _ in logins)
+    rows = conn.execute(
+        f"""
+        SELECT users.id
+        FROM users
+        JOIN project_members ON project_members.user_id = users.id
+        WHERE project_members.project_id = ?
+          AND lower(users.login) IN ({placeholders})
+        """,
+        (project_id, *sorted(logins)),
+    ).fetchall()
+    return [int(row["id"]) for row in rows]
+
+
+def refresh_ticket_mentions_conn(
+    conn: Any,
+    ticket_id: int,
+    project_id: int,
+    text: str,
+    source_type: str,
+    comment_id: Optional[int] = None,
+) -> List[int]:
+    if source_type not in {"description", "comment"}:
+        raise ValueError("Unsupported mention source type")
+    mentioned_ids = mentioned_user_ids_conn(conn, project_id, text)
+    now = utcnow()
+    if source_type == "description":
+        conn.execute(
+            "DELETE FROM ticket_mentions WHERE ticket_id = ? AND source_type = 'description'",
+            (ticket_id,),
+        )
+    else:
+        conn.execute(
+            "DELETE FROM ticket_mentions WHERE ticket_id = ? AND comment_id = ? AND source_type = 'comment'",
+            (ticket_id, comment_id),
+        )
+    for user_id in mentioned_ids:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO ticket_mentions
+                (ticket_id, comment_id, mentioned_user_id, source_type, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (ticket_id, comment_id, user_id, source_type, now),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO watchers (ticket_id, user_id, created_at) VALUES (?, ?, ?)",
+            (ticket_id, user_id, now),
+        )
+    return mentioned_ids
+
+
 def require_project_member_conn(conn: Any, project_id: int, user_id: int) -> None:
     row = conn.execute(
         """
@@ -737,6 +849,7 @@ def create_ticket(
                 "INSERT OR IGNORE INTO watchers (ticket_id, user_id, created_at) VALUES (?, ?, ?)",
                 (ticket_id, assignee_id, now),
             )
+        refresh_ticket_mentions_conn(conn, ticket_id, int(project["id"]), description, "description")
         log_action(
             conn,
             project["id"],
@@ -1426,6 +1539,14 @@ def update_ticket(
                 "INSERT OR IGNORE INTO watchers (ticket_id, user_id, created_at) VALUES (?, ?, ?)",
                 (ticket["id"], values["assignee_id"], now),
             )
+        if any(field == "description" for field, _old, _new in changes):
+            refresh_ticket_mentions_conn(
+                conn,
+                int(ticket["id"]),
+                int(ticket["project_id"]),
+                str(values["description"] or ""),
+                "description",
+            )
         for field, old, new in changes:
             action = "ticket_updated"
             if field == "status":
@@ -1495,6 +1616,14 @@ def add_comment(user: Dict[str, Any], ticket_key: str, body: str) -> Dict[str, A
         conn.execute(
             "INSERT OR IGNORE INTO watchers (ticket_id, user_id, created_at) VALUES (?, ?, ?)",
             (ticket["id"], user["id"], now),
+        )
+        refresh_ticket_mentions_conn(
+            conn,
+            int(ticket["id"]),
+            int(ticket["project_id"]),
+            body,
+            "comment",
+            int(cur.lastrowid),
         )
         log_action(conn, ticket["project_id"], ticket["id"], user["id"], "commented")
         return row_to_dict(conn.execute("SELECT * FROM comments WHERE id = ?", (cur.lastrowid,)).fetchone()) or {}
@@ -1618,9 +1747,11 @@ def notification_recipients(conn: Any, ticket_id: int) -> List[Dict[str, Any]]:
             SELECT reporter_id FROM tickets WHERE id = ? AND reporter_id IS NOT NULL
             UNION
             SELECT user_id FROM watchers WHERE ticket_id = ?
+            UNION
+            SELECT mentioned_user_id FROM ticket_mentions WHERE ticket_id = ?
         )
         """,
-        (ticket_id, ticket_id, ticket_id),
+        (ticket_id, ticket_id, ticket_id, ticket_id),
     ).fetchall()
     return rows_to_dicts(rows)
 
