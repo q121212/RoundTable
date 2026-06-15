@@ -13,6 +13,7 @@
       "action.move": "Move",
       "action.reopen": "Reopen",
       "action.reopen_ticket": "Reopen ticket",
+      "action.remove": "Remove",
       "action.save": "Save",
       "action.update": "Update",
       "action.unwatch": "Unwatch",
@@ -31,6 +32,9 @@
       "field.reporter": "Reporter",
       "field.role": "Role",
       "field.status": "Status",
+      "field.ticket_type": "Type",
+      "field.link_type": "Link type",
+      "field.target_ticket": "Target ticket",
       "field.title": "Title",
       "footer.tagline": "A round table for your tickets.",
       "github.create_project_first": "Create a project first.",
@@ -56,6 +60,7 @@
       "help.project_name": "Human-readable project name shown in the UI.",
       "help.role": "member can edit, viewer can only read, admin can manage project access.",
       "help.status": "Where the ticket currently is on the board.",
+      "help.ticket_type": "Type of work. Epics are bigger containers; tasks, bugs, and stories are regular tickets.",
       "help.ticket_description": "Add context, acceptance criteria, links, or notes. Markdown-style text is fine.",
       "help.ticket_title": "Short human-readable task name.",
       "language.switch": "Switch language",
@@ -83,6 +88,11 @@
       "mcp.title": "MCP access",
       "mcp.tokens": "Tokens",
       "mcp.transport_note": "RoundTable exposes a JSON-RPC HTTP endpoint. External clients must trust the HTTPS certificate; self-signed certificates are rejected by many MCP clients.",
+      "link.blocked_by": "blocked by",
+      "link.blocks": "blocks",
+      "link.duplicates": "duplicates",
+      "link.parent": "parent of",
+      "link.relates": "relates to",
       "nav.logout": "Log out",
       "nav.board": "Board",
       "nav.menu": "Menu",
@@ -146,6 +156,9 @@
       "projects.statuses_help": "Only selected statuses appear on the board and in ticket status menus. Move tickets out before disabling a status.",
       "projects.statuses_selected": "Statuses used by this project",
       "projects.save_statuses": "Save statuses",
+      "projects.ticket_types_help": "Selected types are available when creating and editing tickets. Move existing tickets before disabling a type.",
+      "projects.ticket_types_selected": "Ticket types used by this project",
+      "projects.save_board_settings": "Save board settings",
       "projects.title": "Projects",
       "status.all": "All",
       "status.Backlog": "Backlog",
@@ -161,11 +174,14 @@
       "ticket.action.assigned": "assigned",
       "ticket.action.closed": "closed",
       "ticket.action.commented": "commented",
+      "ticket.action.linked": "linked ticket",
       "ticket.action.project_created": "created project",
       "ticket.action.project_updated": "updated project",
       "ticket.action.reopened": "reopened",
       "ticket.action.status_changed": "moved",
       "ticket.action.ticket_updated": "updated",
+      "ticket.action.type_changed": "changed type",
+      "ticket.action.unlinked": "removed ticket link",
       "ticket.action.unwatching": "stopped watching",
       "ticket.action.watching": "started watching",
       "ticket.autosave_error": "Could not save",
@@ -175,7 +191,10 @@
       "ticket.details": "Details",
       "ticket.live_connected": "Live updates on",
       "ticket.live_reconnecting": "Reconnecting...",
+      "ticket.add_link": "Link ticket",
+      "ticket.links": "Ticket links",
       "ticket.new": "New ticket",
+      "ticket.no_links": "No linked tickets yet.",
       "ticket.quick_edit": "Quick edit",
       "ticket.quick_create": "Quick create",
       "ticket.quick_create_help": "Create a ticket fast; details can be edited after opening it.",
@@ -186,6 +205,10 @@
       "ticket.watchers": "Watchers",
       "ticket.watch": "Watch ticket",
       "ticket.workflow_help": "These actions change ticket state; they do not close this page.",
+      "type.Bug": "Bug",
+      "type.Epic": "Epic",
+      "type.Story": "Story",
+      "type.Task": "Task",
     },
     ru: {
       "action.close": "Закрыть",
@@ -196,6 +219,7 @@
       "action.move": "Переместить",
       "action.reopen": "Открыть снова",
       "action.reopen_ticket": "Открыть тикет снова",
+      "action.remove": "Удалить",
       "action.save": "Сохранить",
       "action.update": "Обновить",
       "action.unwatch": "Не следить",
@@ -214,6 +238,9 @@
       "field.reporter": "Автор",
       "field.role": "Роль",
       "field.status": "Статус",
+      "field.ticket_type": "Тип",
+      "field.link_type": "Тип связи",
+      "field.target_ticket": "Связанный тикет",
       "field.title": "Заголовок",
       "footer.tagline": "Круглый стол для ваших тикетов.",
       "github.create_project_first": "Сначала создайте проект.",
@@ -239,6 +266,7 @@
       "help.project_name": "Человеческое название проекта, которое видно в интерфейсе.",
       "help.role": "member может редактировать, viewer только читать, admin управляет доступом к проекту.",
       "help.status": "Где тикет сейчас находится на доске.",
+      "help.ticket_type": "Тип работы. Эпик — крупный контейнер; задачи, баги и истории — обычные тикеты.",
       "help.ticket_description": "Добавьте контекст, критерии приемки, ссылки или заметки. Можно писать markdown-подобный текст.",
       "help.ticket_title": "Короткое человеческое название задачи.",
       "language.switch": "Сменить язык",
@@ -266,6 +294,11 @@
       "mcp.title": "Доступ MCP",
       "mcp.tokens": "Токены",
       "mcp.transport_note": "RoundTable отдаёт JSON-RPC HTTP endpoint. Внешние клиенты должны доверять HTTPS-сертификату; самоподписанные сертификаты многие MCP-клиенты отклоняют.",
+      "link.blocked_by": "заблокирован",
+      "link.blocks": "блокирует",
+      "link.duplicates": "дублирует",
+      "link.parent": "родитель для",
+      "link.relates": "связан с",
       "nav.logout": "Выйти",
       "nav.board": "Доска",
       "nav.menu": "Меню",
@@ -329,6 +362,9 @@
       "projects.statuses_help": "На доске и в меню тикетов будут только выбранные статусы. Перед отключением статуса перенесите из него тикеты.",
       "projects.statuses_selected": "Статусы этого проекта",
       "projects.save_statuses": "Сохранить статусы",
+      "projects.ticket_types_help": "Выбранные типы доступны при создании и редактировании тикетов. Перед отключением типа переведите существующие тикеты.",
+      "projects.ticket_types_selected": "Типы тикетов этого проекта",
+      "projects.save_board_settings": "Сохранить настройки доски",
       "projects.title": "Проекты",
       "status.all": "Все",
       "status.Backlog": "Бэклог",
@@ -344,11 +380,14 @@
       "ticket.action.assigned": "назначил исполнителя",
       "ticket.action.closed": "закрыл тикет",
       "ticket.action.commented": "оставил комментарий",
+      "ticket.action.linked": "связал тикет",
       "ticket.action.project_created": "создал проект",
       "ticket.action.project_updated": "обновил проект",
       "ticket.action.reopened": "открыл тикет снова",
       "ticket.action.status_changed": "изменил статус",
       "ticket.action.ticket_updated": "обновил тикет",
+      "ticket.action.type_changed": "изменил тип",
+      "ticket.action.unlinked": "удалил связь",
       "ticket.action.unwatching": "перестал наблюдать",
       "ticket.action.watching": "начал наблюдать",
       "ticket.autosave_error": "Не удалось сохранить",
@@ -358,7 +397,10 @@
       "ticket.details": "Детали",
       "ticket.live_connected": "Живые обновления включены",
       "ticket.live_reconnecting": "Переподключаюсь...",
+      "ticket.add_link": "Связать тикет",
+      "ticket.links": "Связи тикета",
       "ticket.new": "Новый тикет",
+      "ticket.no_links": "Связанных тикетов пока нет.",
       "ticket.quick_edit": "Быстро изменить",
       "ticket.quick_create": "Быстрое создание",
       "ticket.quick_create_help": "Создайте тикет быстро; детали можно дописать после открытия.",
@@ -369,6 +411,10 @@
       "ticket.watchers": "Наблюдатели",
       "ticket.watch": "Следить за тикетом",
       "ticket.workflow_help": "Эти действия меняют состояние тикета, а не закрывают страницу.",
+      "type.Bug": "Баг",
+      "type.Epic": "Эпик",
+      "type.Story": "История",
+      "type.Task": "Задача",
     },
   };
 
@@ -873,6 +919,8 @@
     let options = [];
     if (field === "status") {
       options = boardData("statuses", []).map((s) => ({ value: s, label: translate(`status.${s}`, currentLang()) || s }));
+    } else if (field === "ticket_type") {
+      options = boardData("ticketTypes", []).map((t) => ({ value: t, label: translate(`type.${t}`, currentLang()) || t }));
     } else if (field === "priority") {
       options = boardData("priorities", []).map((p) => ({ value: p, label: translate(`priority.${p}`, currentLang()) || p }));
     } else if (field === "assignee_id") {
@@ -1004,6 +1052,7 @@
     if (openLink) openLink.href = `/t/${ticket.key}`;
     updateCardClasses(card, ticket);
     moveCardToStatus(card, ticket.status);
+    setChipValue(card, "ticket_type", ticket.ticket_type, translate(`type.${ticket.ticket_type}`, currentLang()) || ticket.ticket_type);
     setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
     setChipValue(card, "priority", ticket.priority, translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority);
     updateAssigneeChip(card, ticket);
@@ -1016,7 +1065,9 @@
     chip.dataset.value = value || "";
     const labelEl = chip.querySelector(".chip-label");
     if (labelEl) {
-      labelEl.dataset.i18n = field === "status" ? `status.${value}` : `priority.${value}`;
+      if (field === "status") labelEl.dataset.i18n = `status.${value}`;
+      if (field === "priority") labelEl.dataset.i18n = `priority.${value}`;
+      if (field === "ticket_type") labelEl.dataset.i18n = `type.${value}`;
       labelEl.textContent = label;
     }
     if (field === "priority") {
@@ -1031,9 +1082,9 @@
   function updateCardClasses(card, ticket) {
     card.className = card.className
       .split(/\s+/)
-      .filter((name) => name && !name.startsWith("priority-") && !name.startsWith("status-"))
+      .filter((name) => name && !name.startsWith("priority-") && !name.startsWith("status-") && !name.startsWith("type-"))
       .join(" ");
-    card.classList.add("ticket-card", `priority-${ticket.priority.toLowerCase()}`, `status-${ticket.status.toLowerCase().replace(/\s+/g, "-")}`);
+    card.classList.add("ticket-card", `priority-${ticket.priority.toLowerCase()}`, `status-${ticket.status.toLowerCase().replace(/\s+/g, "-")}`, `type-${String(ticket.ticket_type || "Task").toLowerCase()}`);
   }
 
   function moveCardToStatus(card, status) {
@@ -1102,6 +1153,9 @@
         <a class="ticket-open-link" data-icon="external-link" aria-label="Open ticket"></a>
       </div>
       <div class="ticket-card-chips">
+        <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" aria-haspopup="true">
+          <span class="chip-label"></span>
+        </button>
         <button type="button" class="chip chip-edit chip-status" data-edit="status" aria-haspopup="true">
           <span class="chip-dot" aria-hidden="true"></span>
           <span class="chip-label"></span>
@@ -1222,7 +1276,7 @@
     if (!form) return;
     const ticketKey = form.dataset.ticketKey;
     const status = form.querySelector("[data-autosave-status]");
-    const fields = ["title", "description", "status", "priority", "assignee_id"];
+    const fields = ["title", "description", "ticket_type", "status", "priority", "assignee_id"];
     const timers = new Map();
 
     form.addEventListener("submit", (event) => event.preventDefault());
@@ -1349,6 +1403,8 @@
     if (!value) return "";
     if (field === "status") return translate(`status.${value}`, currentLang()) || value;
     if (field === "priority") return translate(`priority.${value}`, currentLang()) || value;
+    if (field === "ticket_type") return translate(`type.${value}`, currentLang()) || value;
+    if (field === "ticket_link") return value;
     if (field === "title") return value;
     if (field === "description") return "";
     if (field === "assignee_id") return "";

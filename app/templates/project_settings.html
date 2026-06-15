@@ -61,6 +61,9 @@
         {% for status in active_statuses %}
           <input type="hidden" name="statuses" value="{{ status }}">
         {% endfor %}
+        {% for ticket_type in active_ticket_types %}
+          <input type="hidden" name="ticket_types" value="{{ ticket_type }}">
+        {% endfor %}
         <button class="primary" type="submit" data-icon="save" data-i18n="projects.save_details">Save project</button>
       </form>
     </div>
@@ -92,7 +95,22 @@
           </div>
           <p class="muted" data-i18n="projects.statuses_help">Only selected statuses appear on the board and in ticket status menus. Move tickets out before disabling a status.</p>
         </fieldset>
-        <button class="secondary" type="submit" data-icon="columns-3" data-i18n="projects.save_statuses">Save statuses</button>
+        <fieldset class="status-settings board-status-settings">
+          <legend>
+            <span data-i18n="projects.ticket_types_selected">Ticket types used by this project</span>
+            <span class="required-mark" aria-hidden="true">*</span>
+          </legend>
+          <div class="status-choice-grid">
+            {% for ticket_type in all_ticket_types %}
+              <label class="check-row status-choice ticket-type-choice">
+                <input type="checkbox" name="ticket_types" value="{{ ticket_type }}" {% if ticket_type in active_ticket_types %}checked{% endif %}>
+                <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <p class="muted" data-i18n="projects.ticket_types_help">Selected types are available when creating and editing tickets. Move existing tickets before disabling a type.</p>
+        </fieldset>
+        <button class="secondary" type="submit" data-icon="columns-3" data-i18n="projects.save_board_settings">Save board settings</button>
       </form>
     </div>
 

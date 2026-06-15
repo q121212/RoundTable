@@ -797,6 +797,24 @@ button,
   gap: 4px;
 }
 
+.ticket-link-list li {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-link-list a {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.compact-link-form {
+  margin-top: 12px;
+}
+
 .comment-list {
   display: grid;
   gap: 12px;
@@ -1495,6 +1513,11 @@ a.ticket-key:hover {
 .status-review .chip-status .chip-dot { background: #9b7cc0; }
 .status-done .chip-status .chip-dot { background: var(--green); }
 .status-closed .chip-status .chip-dot { background: var(--muted); }
+
+.chip-type {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 8%, var(--surface));
+}
 
 .chip-priority.priority-chip-high {
   color: #8a5d1f;

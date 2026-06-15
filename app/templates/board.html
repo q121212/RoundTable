@@ -44,6 +44,17 @@
       <div class="quick-create-side">
         <label class="field-shell">
           <span class="label-row">
+            <span data-i18n="field.ticket_type">Type</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
+          </span>
+          <select name="ticket_type" aria-label="Type">
+            {% for ticket_type in ticket_types %}
+              <option value="{{ ticket_type }}" {% if ticket_type == "Task" %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field-shell">
+          <span class="label-row">
             <span data-i18n="field.priority">Priority</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
           </span>
@@ -98,7 +109,7 @@
   {% endfor %}
 </div>
 
-<section class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-members='{{ members | tojson }}'>
+<section class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-ticket-types='{{ ticket_types | tojson }}' data-members='{{ members | tojson }}'>
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
@@ -107,7 +118,7 @@
       </header>
       <div class="dropzone" data-status="{{ status }}">
         {% for ticket in columns[status] %}
-          <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }}" data-ticket-key="{{ ticket.key }}" data-description="{{ ticket.description }}">
+          <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }} type-{{ ticket.ticket_type|lower }}" data-ticket-key="{{ ticket.key }}" data-description="{{ ticket.description }}">
             <div class="ticket-card-top">
               <span class="drag-handle" data-icon="grip-vertical" role="button" tabindex="0" data-i18n-aria="action.drag" aria-label="Move ticket"></span>
             </div>
@@ -119,6 +130,9 @@
               <a class="ticket-open-link" href="/t/{{ ticket.key }}" data-icon="external-link" aria-label="Open ticket"></a>
             </div>
             <div class="ticket-card-chips">
+              <button type="button" class="chip chip-edit chip-type" data-edit="ticket_type" data-value="{{ ticket.ticket_type }}" aria-haspopup="true">
+                <span class="chip-label" data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
+              </button>
               <button type="button" class="chip chip-edit chip-status" data-edit="status" data-value="{{ ticket.status }}" aria-haspopup="true">
                 <span class="chip-dot" aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="status.{{ ticket.status }}">{{ ticket.status }}</span>

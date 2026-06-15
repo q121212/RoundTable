@@ -12,14 +12,18 @@ from app.store import (
     create_project,
     create_ticket,
     delete_project,
+    get_project_by_key,
     get_ticket_bundle,
+    link_ticket,
     project_members,
+    project_ticket_types,
     remove_project_member,
     sync_configured_admin_roles,
     update_project_member,
     update_project_settings,
     update_ticket,
     upsert_user,
+    unlink_ticket,
 )
 
 
@@ -69,6 +73,69 @@ def test_project_status_with_tickets_cannot_be_disabled(temp_db):
 
     assert exc.value.status_code == 400
     assert "Backlog" in exc.value.detail
+
+
+def test_project_ticket_type_settings_and_updates(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    project = create_project(user, "RT", "RoundTable")
+
+    update_project_settings(user, "RT", "RoundTable", ticket_types=["Task", "Epic"])
+    project = get_project_by_key("RT")
+
+    ticket = create_ticket(user, "RT", "Planning", ticket_type="Epic")
+    updated = update_ticket(user, ticket["key"], ticket_type="Task")
+
+    assert project_ticket_types(project) == ["Task", "Epic"]
+    assert ticket["ticket_type"] == "Epic"
+    assert updated["ticket_type"] == "Task"
+    with pytest.raises(HTTPException) as exc:
+        create_ticket(user, "RT", "Broken type", ticket_type="Bug")
+    assert exc.value.status_code == 400
+
+
+def test_project_ticket_type_in_use_cannot_be_disabled(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "BUG", "Bugs")
+    create_ticket(user, "BUG", "Fix login", ticket_type="Bug")
+
+    with pytest.raises(HTTPException) as exc:
+        update_project_settings(user, "BUG", "Bugs", ticket_types=["Task", "Epic"])
+
+    assert exc.value.status_code == 400
+    assert "Bug" in exc.value.detail
+
+
+def test_ticket_links_are_project_scoped_and_logged(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "Epic", ticket_type="Epic")
+    second = create_ticket(user, "RT", "Task")
+
+    link_ticket(user, first["key"], second["key"], "parent")
+    bundle = get_ticket_bundle(first["key"])
+
+    assert bundle["ticket_links"][0]["other_key"] == second["key"]
+    assert bundle["ticket_links"][0]["link_type"] == "parent"
+    assert bundle["actions"][0]["action"] == "linked"
+
+    unlink_ticket(user, first["key"], int(bundle["ticket_links"][0]["id"]))
+    assert get_ticket_bundle(first["key"])["ticket_links"] == []
+
+
+def test_ticket_links_reject_self_and_cross_project(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "ONE", "One")
+    create_project(user, "TWO", "Two")
+    one = create_ticket(user, "ONE", "One task")
+    two = create_ticket(user, "TWO", "Two task")
+
+    with pytest.raises(HTTPException) as self_exc:
+        link_ticket(user, one["key"], one["key"])
+    assert self_exc.value.status_code == 400
+
+    with pytest.raises(HTTPException) as cross_exc:
+        link_ticket(user, one["key"], two["key"])
+    assert cross_exc.value.status_code == 400
 
 
 def test_close_ticket_logs_action(temp_db):

@@ -8,7 +8,9 @@ from fastapi import HTTPException, status
 from .config import settings
 from .db import (
     PRIORITIES,
+    TICKET_LINK_TYPES,
     TICKET_STATUSES,
+    TICKET_TYPES,
     get_conn,
     json_dumps,
     json_loads,
@@ -70,6 +72,42 @@ def validate_project_ticket_status(project: Dict[str, Any], value: str) -> str:
 def validate_priority(value: str) -> str:
     if value not in PRIORITIES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid priority")
+    return value
+
+
+def validate_ticket_type(value: str) -> str:
+    if value not in TICKET_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket type")
+    return value
+
+
+def normalize_project_ticket_types(values: List[str]) -> List[str]:
+    seen = set()
+    normalized = []
+    for value in values:
+        ticket_type = validate_ticket_type(str(value))
+        if ticket_type not in seen:
+            normalized.append(ticket_type)
+            seen.add(ticket_type)
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one ticket type")
+    return normalized
+
+
+def project_ticket_types(project: Dict[str, Any]) -> List[str]:
+    return normalize_project_ticket_types(json_loads(project.get("ticket_types_json"), TICKET_TYPES))
+
+
+def validate_project_ticket_type(project: Dict[str, Any], value: str) -> str:
+    ticket_type = validate_ticket_type(value)
+    if ticket_type not in project_ticket_types(project):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket type is not enabled for this project")
+    return ticket_type
+
+
+def validate_ticket_link_type(value: str) -> str:
+    if value not in TICKET_LINK_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket link type")
     return value
 
 
@@ -256,6 +294,7 @@ def update_project_settings(
     description: str = "",
     repo: str = "",
     statuses: Optional[List[str]] = None,
+    ticket_types: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
@@ -263,6 +302,9 @@ def update_project_settings(
     if not name:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Project name is required")
     enabled_statuses = project_statuses(project) if statuses is None else normalize_project_statuses(statuses)
+    enabled_ticket_types = (
+        project_ticket_types(project) if ticket_types is None else normalize_project_ticket_types(ticket_types)
+    )
     with get_conn() as conn:
         used_statuses = {
             row["status"]
@@ -277,10 +319,23 @@ def update_project_settings(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot disable statuses that still contain tickets: %s" % ", ".join(disabled_used),
             )
+        used_ticket_types = {
+            row["ticket_type"]
+            for row in conn.execute(
+                "SELECT DISTINCT ticket_type FROM tickets WHERE project_id = ?",
+                (project["id"],),
+            ).fetchall()
+        }
+        disabled_used_types = sorted(used_ticket_types.difference(enabled_ticket_types), key=TICKET_TYPES.index)
+        if disabled_used_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot disable ticket types that are still used: %s" % ", ".join(disabled_used_types),
+            )
         conn.execute(
             """
             UPDATE projects
-            SET name = ?, description = ?, github_repo_full_name = ?, statuses_json = ?
+            SET name = ?, description = ?, github_repo_full_name = ?, statuses_json = ?, ticket_types_json = ?
             WHERE id = ?
             """,
             (
@@ -288,6 +343,7 @@ def update_project_settings(
                 description.strip(),
                 normalize_github_repo(repo) or None,
                 json_dumps(enabled_statuses),
+                json_dumps(enabled_ticket_types),
                 project["id"],
             ),
         )
@@ -337,8 +393,8 @@ def create_project(
         cur = conn.execute(
             """
             INSERT INTO projects
-                (key, name, description, created_by, github_repo_full_name, statuses_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (key, name, description, created_by, github_repo_full_name, statuses_json, ticket_types_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 key,
@@ -347,6 +403,7 @@ def create_project(
                 user["id"],
                 normalize_github_repo(repo) or None,
                 json_dumps(TICKET_STATUSES),
+                json_dumps(TICKET_TYPES),
                 now,
             ),
         )
@@ -485,6 +542,7 @@ def create_ticket(
     title: str,
     description: str = "",
     priority: str = "Medium",
+    ticket_type: str = "Task",
     assignee_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     title = title.strip()
@@ -501,6 +559,7 @@ def create_ticket(
         require_project_access(user, int(project["id"]), write=True)
         if assignee_id:
             require_project_member_conn(conn, int(project["id"]), assignee_id)
+        ticket_type = validate_project_ticket_type(project, ticket_type)
         initial_status = project_statuses(project)[0]
         number = int(project["next_ticket_number"])
         ticket_key = "%s-%s" % (project["key"], number)
@@ -511,9 +570,9 @@ def create_ticket(
         cur = conn.execute(
             """
             INSERT INTO tickets
-                (project_id, number, key, title, description, status, priority,
+                (project_id, number, key, title, description, ticket_type, status, priority,
                  assignee_id, reporter_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project["id"],
@@ -521,6 +580,7 @@ def create_ticket(
                 ticket_key,
                 title,
                 description.strip(),
+                ticket_type,
                 initial_status,
                 priority,
                 assignee_id,
@@ -545,7 +605,7 @@ def create_ticket(
             ticket_id,
             user["id"],
             "ticket_created",
-            metadata={"key": ticket_key, "title": title},
+            metadata={"key": ticket_key, "title": title, "ticket_type": ticket_type},
         )
         if assignee_id:
             log_action(
@@ -676,14 +736,154 @@ def get_ticket_bundle(ticket_key: str) -> Dict[str, Any]:
                 (ticket["id"],),
             ).fetchall()
         )
+        ticket_links = list_ticket_links_conn(conn, int(ticket["id"]))
+        linkable_tickets = list_linkable_tickets_conn(conn, int(ticket["project_id"]), int(ticket["id"]))
         return {
             "ticket": ticket,
             "comments": comments,
             "actions": actions,
             "links": links,
+            "ticket_links": ticket_links,
+            "linkable_tickets": linkable_tickets,
             "watchers": watchers,
             "watcher_ids": [int(watcher["id"]) for watcher in watchers],
         }
+
+
+def list_linkable_tickets_conn(conn: Any, project_id: int, current_ticket_id: int) -> List[Dict[str, Any]]:
+    return rows_to_dicts(
+        conn.execute(
+            """
+            SELECT id, key, title, ticket_type, status
+            FROM tickets
+            WHERE project_id = ? AND id != ?
+            ORDER BY number DESC
+            LIMIT 200
+            """,
+            (project_id, current_ticket_id),
+        ).fetchall()
+    )
+
+
+def list_ticket_links_conn(conn: Any, ticket_id: int) -> List[Dict[str, Any]]:
+    rows = rows_to_dicts(
+        conn.execute(
+            """
+            SELECT ticket_links.*,
+                   source.key AS source_key,
+                   source.title AS source_title,
+                   source.ticket_type AS source_ticket_type,
+                   source.status AS source_status,
+                   target.key AS target_key,
+                   target.title AS target_title,
+                   target.ticket_type AS target_ticket_type,
+                   target.status AS target_status,
+                   users.login AS created_by_login,
+                   users.name AS created_by_name,
+                   users.avatar_url AS created_by_avatar_url
+            FROM ticket_links
+            JOIN tickets source ON source.id = ticket_links.source_ticket_id
+            JOIN tickets target ON target.id = ticket_links.target_ticket_id
+            LEFT JOIN users ON users.id = ticket_links.created_by
+            WHERE ticket_links.source_ticket_id = ? OR ticket_links.target_ticket_id = ?
+            ORDER BY ticket_links.created_at DESC
+            """,
+            (ticket_id, ticket_id),
+        ).fetchall()
+    )
+    for row in rows:
+        outgoing = int(row["source_ticket_id"]) == ticket_id
+        row["direction"] = "out" if outgoing else "in"
+        row["other_ticket_id"] = row["target_ticket_id"] if outgoing else row["source_ticket_id"]
+        row["other_key"] = row["target_key"] if outgoing else row["source_key"]
+        row["other_title"] = row["target_title"] if outgoing else row["source_title"]
+        row["other_ticket_type"] = row["target_ticket_type"] if outgoing else row["source_ticket_type"]
+        row["other_status"] = row["target_status"] if outgoing else row["source_status"]
+    return rows
+
+
+def link_ticket(
+    user: Dict[str, Any],
+    source_key: str,
+    target_key: str,
+    link_type: str = "relates",
+) -> Dict[str, Any]:
+    link_type = validate_ticket_link_type(link_type)
+    target_key = target_key.strip().upper()
+    if not target_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target ticket is required")
+    now = utcnow()
+    with get_conn() as conn:
+        source = get_ticket_by_key_conn(conn, source_key)
+        target = get_ticket_by_key_conn(conn, target_key)
+        require_project_access(user, int(source["project_id"]), write=True)
+        require_project_access(user, int(target["project_id"]), write=False)
+        if int(source["id"]) == int(target["id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A ticket cannot link to itself")
+        if int(source["project_id"]) != int(target["project_id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket links are project-scoped")
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO ticket_links
+                (project_id, source_ticket_id, target_ticket_id, link_type, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (source["project_id"], source["id"], target["id"], link_type, user["id"], now),
+        )
+        conn.execute("UPDATE tickets SET updated_at = ? WHERE id IN (?, ?)", (now, source["id"], target["id"]))
+        log_action(
+            conn,
+            source["project_id"],
+            source["id"],
+            user["id"],
+            "linked",
+            field="ticket_link",
+            old_value="",
+            new_value=target["key"],
+            metadata={"link_type": link_type},
+        )
+        return {
+            "source_key": source["key"],
+            "target_key": target["key"],
+            "link_type": link_type,
+        }
+
+
+def unlink_ticket(user: Dict[str, Any], ticket_key: str, link_id: int) -> None:
+    now = utcnow()
+    with get_conn() as conn:
+        ticket = get_ticket_by_key_conn(conn, ticket_key)
+        require_project_access(user, int(ticket["project_id"]), write=True)
+        link = row_to_dict(
+            conn.execute(
+                """
+                SELECT ticket_links.*, target.key AS target_key, source.key AS source_key
+                FROM ticket_links
+                JOIN tickets target ON target.id = ticket_links.target_ticket_id
+                JOIN tickets source ON source.id = ticket_links.source_ticket_id
+                WHERE ticket_links.id = ?
+                """,
+                (link_id,),
+            ).fetchone()
+        )
+        if not link or int(link["project_id"]) != int(ticket["project_id"]):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket link not found")
+        if int(ticket["id"]) not in {int(link["source_ticket_id"]), int(link["target_ticket_id"])}:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket link not found")
+        other_key = link["target_key"] if int(link["source_ticket_id"]) == int(ticket["id"]) else link["source_key"]
+        conn.execute("DELETE FROM ticket_links WHERE id = ?", (link_id,))
+        conn.execute("UPDATE tickets SET updated_at = ? WHERE id IN (?, ?)", (now, link["source_ticket_id"], link["target_ticket_id"]))
+        log_action(
+            conn,
+            ticket["project_id"],
+            ticket["id"],
+            user["id"],
+            "unlinked",
+            field="ticket_link",
+            old_value=other_key,
+            new_value="",
+            metadata={"link_type": link["link_type"]},
+        )
 
 
 def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
@@ -764,6 +964,7 @@ def update_ticket(
     ticket_key: str,
     title: Optional[str] = None,
     description: Optional[str] = None,
+    ticket_type: Optional[str] = None,
     status_value: Optional[str] = None,
     priority: Optional[str] = None,
     assignee_id: Optional[int] = None,
@@ -778,6 +979,13 @@ def update_ticket(
             changes.append(("title", ticket["title"], title.strip()))
         if description is not None and description.strip() != ticket["description"]:
             changes.append(("description", ticket["description"], description.strip()))
+        if ticket_type is not None:
+            project = row_to_dict(
+                conn.execute("SELECT * FROM projects WHERE id = ?", (ticket["project_id"],)).fetchone()
+            ) or {}
+            ticket_type = validate_project_ticket_type(project, ticket_type)
+            if ticket_type != ticket["ticket_type"]:
+                changes.append(("ticket_type", ticket["ticket_type"], ticket_type))
         if status_value is not None:
             project = row_to_dict(
                 conn.execute("SELECT * FROM projects WHERE id = ?", (ticket["project_id"],)).fetchone()
@@ -800,6 +1008,7 @@ def update_ticket(
         values = {
             "title": ticket["title"],
             "description": ticket["description"],
+            "ticket_type": ticket["ticket_type"],
             "status": ticket["status"],
             "priority": ticket["priority"],
             "assignee_id": ticket["assignee_id"],
@@ -817,13 +1026,14 @@ def update_ticket(
         conn.execute(
             """
             UPDATE tickets
-            SET title = ?, description = ?, status = ?, priority = ?,
+            SET title = ?, description = ?, ticket_type = ?, status = ?, priority = ?,
                 assignee_id = ?, closed_at = ?, updated_at = ?
             WHERE id = ?
             """,
             (
                 values["title"],
                 values["description"],
+                values["ticket_type"],
                 values["status"],
                 values["priority"],
                 values["assignee_id"],
@@ -841,6 +1051,8 @@ def update_ticket(
             action = "ticket_updated"
             if field == "status":
                 action = "closed" if new == "Closed" else "status_changed"
+            if field == "ticket_type":
+                action = "type_changed"
             if field == "assignee_id":
                 action = "assigned"
             log_action(

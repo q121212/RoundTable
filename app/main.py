@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import settings
-from .db import PRIORITIES, TICKET_STATUSES, get_conn, init_db
+from .db import PRIORITIES, TICKET_LINK_TYPES, TICKET_STATUSES, TICKET_TYPES, get_conn, init_db
 from .github_integration import exchange_oauth_code, github_oauth_configured, handle_webhook
 from .live import project_events, sse_message
 from .mcp_server import handle_mcp
@@ -43,11 +43,13 @@ from .store import (
     get_project_by_key,
     get_telegram_link,
     get_ticket_bundle,
+    link_ticket,
     list_mcp_tokens,
     list_projects,
     notification_preferences,
     normalize_github_repo,
     project_members,
+    project_ticket_types,
     project_statuses,
     remove_project_member,
     reopen_ticket,
@@ -56,6 +58,7 @@ from .store import (
     revoke_mcp_token,
     set_watch,
     sync_configured_admin_roles,
+    unlink_ticket,
     unlink_telegram,
     update_notification_preferences,
     update_project_member,
@@ -171,6 +174,8 @@ def render(
         "static_version": static_version(),
         "statuses": TICKET_STATUSES,
         "priorities": PRIORITIES,
+        "ticket_types": TICKET_TYPES,
+        "ticket_link_types": TICKET_LINK_TYPES,
     }
     data.update(context or {})
     project_key = None
@@ -305,7 +310,11 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
     user = require_page_user(request)
     board = board_for_project(project_key, user)
     members = project_members(int(board["project"]["id"]))
-    return render(request, "board.html", {**board, "members": members})
+    return render(
+        request,
+        "board.html",
+        {**board, "members": members, "ticket_types": project_ticket_types(board["project"])},
+    )
 
 
 @app.get("/events/projects/{project_key}")
@@ -354,6 +363,8 @@ async def project_settings_page(request: Request, project_key: str, error: str =
             "error": error,
             "all_statuses": TICKET_STATUSES,
             "active_statuses": project_statuses(project),
+            "all_ticket_types": TICKET_TYPES,
+            "active_ticket_types": project_ticket_types(project),
         },
     )
 
@@ -377,6 +388,7 @@ async def api_update_project_settings(request: Request, project_key: str) -> Red
         str(form.get("description") or ""),
         str(form.get("repo") or ""),
         [str(value) for value in form.getlist("statuses")],
+        [str(value) for value in form.getlist("ticket_types")],
     )
     return redirect("/p/%s/settings" % project_key.upper())
 
@@ -453,6 +465,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
         str(form.get("title") or ""),
         str(form.get("description") or ""),
         str(form.get("priority") or "Medium"),
+        str(form.get("ticket_type") or "Task"),
         assignee_id,
     )
     await publish_ticket_event(ticket, "ticket_created")
@@ -466,7 +479,17 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
     require_project_access(user, int(bundle["ticket"]["project_id"]))
     members = project_members(int(bundle["ticket"]["project_id"]))
     project = get_project_by_key(str(bundle["ticket"]["project_key"]))
-    return render(request, "ticket.html", {**bundle, "members": members, "statuses": project_statuses(project)})
+    return render(
+        request,
+        "ticket.html",
+        {
+            **bundle,
+            "members": members,
+            "statuses": project_statuses(project),
+            "ticket_types": project_ticket_types(project),
+            "link_types": TICKET_LINK_TYPES,
+        },
+    )
 
 
 @app.post("/api/tickets/{ticket_key}")
@@ -479,6 +502,7 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         ticket_key,
         title=str(form.get("title")) if "title" in form else None,
         description=str(form.get("description")) if "description" in form else None,
+        ticket_type=str(form.get("ticket_type")) if "ticket_type" in form else None,
         status_value=str(form.get("status")) if "status" in form else None,
         priority=str(form.get("priority")) if "priority" in form else None,
         assignee_id=parse_optional_int(form.get("assignee_id")),
@@ -495,6 +519,7 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
     ticket = update_ticket(
         user,
         ticket_key,
+        ticket_type=str(form.get("ticket_type")) if "ticket_type" in form else None,
         status_value=str(form.get("status")) if "status" in form else None,
         priority=str(form.get("priority")) if "priority" in form else None,
         assignee_id=parse_optional_int(form.get("assignee_id")),
@@ -517,6 +542,7 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         ticket_key,
         title=payload.get("title"),
         description=payload.get("description"),
+        ticket_type=payload.get("ticket_type"),
         status_value=payload.get("status"),
         priority=payload.get("priority"),
         assignee_id=payload.get("assignee_id"),
@@ -532,6 +558,28 @@ async def api_add_comment(request: Request, ticket_key: str) -> RedirectResponse
     form = await request.form()
     add_comment(user, ticket_key, str(form.get("body") or ""))
     await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_commented")
+    return redirect("/t/%s" % ticket_key)
+
+
+@app.post("/api/tickets/{ticket_key}/links")
+async def api_link_ticket(request: Request, ticket_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    link_ticket(
+        user,
+        ticket_key,
+        str(form.get("target_key") or ""),
+        str(form.get("link_type") or "relates"),
+    )
+    await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_linked")
+    return redirect("/t/%s" % ticket_key)
+
+
+@app.post("/api/tickets/{ticket_key}/links/{link_id}/delete")
+async def api_unlink_ticket(request: Request, ticket_key: str, link_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    unlink_ticket(user, ticket_key, link_id)
+    await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_unlinked")
     return redirect("/t/%s" % ticket_key)
 
 

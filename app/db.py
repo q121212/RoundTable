@@ -10,6 +10,8 @@ from .config import settings
 
 TICKET_STATUSES = ["Backlog", "Todo", "In Progress", "Review", "Done", "Closed"]
 PRIORITIES = ["Low", "Medium", "High", "Urgent"]
+TICKET_TYPES = ["Task", "Epic", "Bug", "Story"]
+TICKET_LINK_TYPES = ["relates", "blocks", "blocked_by", "duplicates", "parent"]
 
 
 def utcnow() -> str:
@@ -101,6 +103,7 @@ def init_db() -> None:
                 key TEXT NOT NULL UNIQUE,
                 title TEXT NOT NULL,
                 description TEXT NOT NULL DEFAULT '',
+                ticket_type TEXT NOT NULL DEFAULT 'Task',
                 status TEXT NOT NULL DEFAULT 'Backlog',
                 priority TEXT NOT NULL DEFAULT 'Medium',
                 assignee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -124,6 +127,18 @@ def init_db() -> None:
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 created_at TEXT NOT NULL,
                 PRIMARY KEY (ticket_id, user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS ticket_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                source_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+                target_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+                link_type TEXT NOT NULL DEFAULT 'relates',
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE (source_ticket_id, target_ticket_id, link_type),
+                CHECK (source_ticket_id != target_ticket_id)
             );
 
             CREATE TABLE IF NOT EXISTS action_log (
@@ -216,6 +231,10 @@ def init_db() -> None:
                 ON tickets(project_id, status, updated_at);
             CREATE INDEX IF NOT EXISTS idx_action_log_ticket
                 ON action_log(ticket_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_ticket_links_source
+                ON ticket_links(source_ticket_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_ticket_links_target
+                ON ticket_links(target_ticket_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_notification_outbox_due
                 ON notification_outbox(status, next_attempt_at);
             """
@@ -223,6 +242,8 @@ def init_db() -> None:
         # Additive, idempotent column migrations for existing databases.
         _add_column_if_missing(conn, "mcp_tokens", "suffix", "TEXT")
         _add_column_if_missing(conn, "projects", "statuses_json", "TEXT")
+        _add_column_if_missing(conn, "projects", "ticket_types_json", "TEXT")
+        _add_column_if_missing(conn, "tickets", "ticket_type", "TEXT NOT NULL DEFAULT 'Task'")
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:

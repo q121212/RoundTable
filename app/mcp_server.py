@@ -10,11 +10,13 @@ from .store import (
     close_ticket,
     create_ticket,
     get_ticket_bundle,
+    link_ticket,
     link_github_ref,
     list_projects,
     reopen_ticket,
     require_project_access,
     search_tickets,
+    unlink_ticket,
     update_ticket,
 )
 
@@ -105,7 +107,7 @@ def tool_specs() -> List[Dict[str, Any]]:
         },
         {
             "name": "get_ticket",
-            "description": "Read a ticket with comments, actions, and GitHub links.",
+            "description": "Read a ticket with comments, actions, ticket links, and GitHub links.",
             "inputSchema": schema({"ticket_key": {"type": "string"}}, ["ticket_key"]),
         },
         {
@@ -116,6 +118,7 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "project_key": {"type": "string"},
                     "title": {"type": "string"},
                     "description": {"type": "string"},
+                    "ticket_type": {"type": "string"},
                     "priority": {"type": "string"},
                 },
                 ["project_key", "title"],
@@ -123,12 +126,13 @@ def tool_specs() -> List[Dict[str, Any]]:
         },
         {
             "name": "update_ticket",
-            "description": "Update title, description, status, priority, or assignee.",
+            "description": "Update title, description, type, status, priority, or assignee.",
             "inputSchema": schema(
                 {
                     "ticket_key": {"type": "string"},
                     "title": {"type": "string"},
                     "description": {"type": "string"},
+                    "ticket_type": {"type": "string"},
                     "status": {"type": "string"},
                     "priority": {"type": "string"},
                     "assignee_id": {"type": "integer"},
@@ -150,6 +154,26 @@ def tool_specs() -> List[Dict[str, Any]]:
             "name": "add_comment",
             "description": "Add a comment to a ticket.",
             "inputSchema": schema({"ticket_key": {"type": "string"}, "body": {"type": "string"}}, ["ticket_key", "body"]),
+        },
+        {
+            "name": "link_ticket",
+            "description": "Create a project-scoped relationship between two RoundTable tickets.",
+            "inputSchema": schema(
+                {
+                    "source_ticket_key": {"type": "string"},
+                    "target_ticket_key": {"type": "string"},
+                    "link_type": {
+                        "type": "string",
+                        "description": "One of relates, blocks, blocked_by, duplicates, parent.",
+                    },
+                },
+                ["source_ticket_key", "target_ticket_key"],
+            ),
+        },
+        {
+            "name": "unlink_ticket",
+            "description": "Remove a RoundTable ticket relationship by link id from get_ticket.",
+            "inputSchema": schema({"ticket_key": {"type": "string"}, "link_id": {"type": "integer"}}, ["ticket_key", "link_id"]),
         },
         {
             "name": "close_ticket",
@@ -195,12 +219,14 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
             a["title"],
             a.get("description", ""),
             a.get("priority", "Medium"),
+            a.get("ticket_type", "Task"),
         ),
         "update_ticket": lambda u, a: update_ticket(
             u,
             a["ticket_key"],
             title=a.get("title"),
             description=a.get("description"),
+            ticket_type=a.get("ticket_type"),
             status_value=a.get("status"),
             priority=a.get("priority"),
             assignee_id=a.get("assignee_id"),
@@ -211,6 +237,10 @@ def call_tool(user: Dict[str, Any], name: str, args: Dict[str, Any]) -> Dict[str
             u, a["ticket_key"], assignee_id=a.get("assignee_id"), assignee_touched=True
         ),
         "add_comment": lambda u, a: add_comment(u, a["ticket_key"], a["body"]),
+        "link_ticket": lambda u, a: link_ticket(
+            u, a["source_ticket_key"], a["target_ticket_key"], a.get("link_type", "relates")
+        ),
+        "unlink_ticket": lambda u, a: (unlink_ticket(u, a["ticket_key"], int(a["link_id"])) or {"ok": True}),
         "close_ticket": lambda u, a: close_ticket(u, a["ticket_key"]),
         "reopen_ticket": lambda u, a: reopen_ticket(u, a["ticket_key"]),
         "link_github_ref": link_github_ref_for_mcp,

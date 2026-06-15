@@ -34,6 +34,18 @@
       <div class="form-row">
         <label>
           <span class="label-row">
+            <span data-i18n="field.ticket_type">Type</span>
+            <span class="required-mark" aria-hidden="true">*</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
+          </span>
+          <select name="ticket_type">
+            {% for ticket_type in ticket_types %}
+              <option value="{{ ticket_type }}" {% if ticket_type == ticket.ticket_type %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span class="label-row">
             <span data-i18n="field.status">Status</span>
             <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">?</button>
@@ -130,6 +142,57 @@
           <button class="secondary wide" type="submit" data-icon="eye" data-i18n="ticket.watch">Watch ticket</button>
         {% endif %}
       </form>
+    </div>
+    <div class="panel">
+      <h2 data-i18n="ticket.links">Ticket links</h2>
+      {% if ticket_links %}
+        <ul class="link-list ticket-link-list">
+          {% for link in ticket_links %}
+            <li>
+              <a href="/t/{{ link.other_key }}">
+                <span class="field-badge" data-i18n="type.{{ link.other_ticket_type }}">{{ link.other_ticket_type }}</span>
+                <strong>{{ link.other_key }}</strong>
+                <span>{{ link.other_title }}</span>
+              </a>
+              <span data-i18n="link.{{ link.link_type }}">{{ link.link_type }}</span>
+              <form method="post" action="/api/tickets/{{ ticket.key }}/links/{{ link.id }}/delete">
+                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                <button class="ghost tiny" type="submit" data-icon="unlink" data-i18n="action.remove">Remove</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted" data-i18n="ticket.no_links">No linked tickets yet.</p>
+      {% endif %}
+      {% if linkable_tickets %}
+        <form class="stacked-form compact-link-form" method="post" action="/api/tickets/{{ ticket.key }}/links">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <div class="form-row">
+            <label>
+              <span class="label-row">
+                <span data-i18n="field.link_type">Link type</span>
+              </span>
+              <select name="link_type">
+                {% for link_type in link_types %}
+                  <option value="{{ link_type }}" data-i18n="link.{{ link_type }}">{{ link_type }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span class="label-row">
+                <span data-i18n="field.target_ticket">Target ticket</span>
+              </span>
+              <select name="target_key">
+                {% for other in linkable_tickets %}
+                  <option value="{{ other.key }}">{{ other.key }} · {{ other.title }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+          <button class="secondary wide" type="submit" data-icon="link" data-i18n="ticket.add_link">Link ticket</button>
+        </form>
+      {% endif %}
     </div>
     <div class="panel">
       <h2 data-i18n="github.links">GitHub links</h2>
