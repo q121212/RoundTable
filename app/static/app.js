@@ -933,7 +933,11 @@
     if (field === "status") {
       options = boardData("statuses", []).map((s) => ({ value: s, label: translate(`status.${s}`, currentLang()) || s }));
     } else if (field === "ticket_type") {
-      options = boardData("ticketTypes", []).map((t) => ({ value: t, label: translate(`type.${t}`, currentLang()) || t }));
+      options = boardData("ticketTypes", []).map((t) => ({
+        value: t,
+        label: translate(`type.${t}`, currentLang()) || t,
+        icon: ticketTypeIcon(t),
+      }));
     } else if (field === "priority") {
       options = boardData("priorities", []).map((p) => ({ value: p, label: translate(`priority.${p}`, currentLang()) || p }));
     } else if (field === "assignee_id") {
@@ -945,10 +949,20 @@
       button.type = "button";
       button.className = "popover-option";
       if (String(opt.value) === String(current)) button.classList.add("is-current");
-      button.textContent = opt.label;
+      if (opt.icon) {
+        const icon = document.createElement("span");
+        icon.className = `type-icon ${ticketTypeClass(opt.value)}`;
+        icon.dataset.icon = opt.icon;
+        icon.setAttribute("aria-hidden", "true");
+        button.appendChild(icon);
+      }
+      const label = document.createElement("span");
+      label.textContent = opt.label;
+      button.appendChild(label);
       button.addEventListener("click", () => applyFieldChange(card, field, opt.value));
       pop.appendChild(button);
     });
+    renderIcons();
   }
 
   async function applyFieldChange(card, field, value) {
@@ -1371,36 +1385,32 @@
         window.clearTimeout(timers.get(field));
         timers.set(field, window.setTimeout(() => saveField(field), delay));
       };
-      if (control.tagName === "SELECT") {
+      if (control.tagName === "SELECT" || control.type === "hidden") {
         control.addEventListener("change", () => saveSoon(0));
       } else {
         control.addEventListener("input", () => saveSoon(650));
         control.addEventListener("blur", () => saveSoon(0));
       }
     });
-    const typeSelect = form.elements.ticket_type;
-    const typeIcon = form.querySelector("[data-ticket-type-icon]");
-    if (typeSelect && typeIcon) {
-      typeSelect.addEventListener("change", () => {
-        typeIcon.className = `type-icon ${ticketTypeClass(typeSelect.value)}`;
-        typeIcon.dataset.icon = ticketTypeIcon(typeSelect.value);
-        renderIcons();
-      });
-    }
   }
 
-  function setupTypeSelectIcons() {
-    document.querySelectorAll(".select-with-icon").forEach((shell) => {
-      const select = shell.querySelector('select[name="ticket_type"]');
-      const icon = shell.querySelector(".type-icon");
-      if (!select || !icon) return;
-      const update = () => {
-        icon.className = `type-icon ${ticketTypeClass(select.value)}`;
-        icon.dataset.icon = ticketTypeIcon(select.value);
-        renderIcons();
+  function setupTypePickers() {
+    document.querySelectorAll("[data-type-picker]").forEach((picker) => {
+      const field = picker.parentElement ? picker.parentElement.querySelector('input[name="ticket_type"]') : null;
+      if (!field) return;
+      const update = (value, notify = false) => {
+        field.value = value;
+        picker.querySelectorAll("[data-type-value]").forEach((button) => {
+          const selected = button.dataset.typeValue === value;
+          button.classList.toggle("is-selected", selected);
+          button.setAttribute("aria-pressed", selected ? "true" : "false");
+        });
+        if (notify) field.dispatchEvent(new Event("change", { bubbles: true }));
       };
-      select.addEventListener("change", update);
-      update();
+      picker.querySelectorAll("[data-type-value]").forEach((button) => {
+        button.addEventListener("click", () => update(button.dataset.typeValue || "Task", true));
+      });
+      update(field.value || "Task");
     });
   }
 
@@ -1604,8 +1614,8 @@
     setupBoardDnD();
     setupChipEditors();
     setupBoardTitleEditors();
+    setupTypePickers();
     setupTicketAutosave();
-    setupTypeSelectIcons();
     setupMenus();
     setupConfirms();
     setupCopyButtons();

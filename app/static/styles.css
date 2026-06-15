@@ -529,7 +529,7 @@ button,
 }
 
 .quick-create-side {
-  grid-template-columns: minmax(150px, 220px) minmax(220px, 320px) auto;
+  grid-template-columns: minmax(220px, 300px) minmax(130px, 180px) minmax(220px, 320px) auto;
   align-items: end;
   justify-content: start;
 }
@@ -752,6 +752,46 @@ button,
   z-index: 1;
   transform: translateY(-50%);
   pointer-events: none;
+}
+
+.type-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.type-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 38px;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-align: left;
+}
+
+.type-choice span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.type-choice:hover,
+.type-choice:focus-visible {
+  border-color: color-mix(in srgb, var(--green) 38%, var(--line));
+  color: var(--ink);
+}
+
+.type-choice.is-selected {
+  border-color: color-mix(in srgb, var(--green) 48%, var(--line));
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  color: var(--green-dark);
 }
 
 .head-actions {
@@ -1724,6 +1764,9 @@ a.ticket-key:hover {
 }
 
 .popover-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   justify-content: flex-start;
   width: 100%;
   min-height: 32px;

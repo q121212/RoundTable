@@ -866,14 +866,36 @@ def link_ticket(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A ticket cannot link to itself")
         if int(source["project_id"]) != int(target["project_id"]):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket links are project-scoped")
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO ticket_links
-                (project_id, source_ticket_id, target_ticket_id, link_type, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (source["project_id"], source["id"], target["id"], link_type, user["id"], now),
+        existing = row_to_dict(
+            conn.execute(
+                """
+                SELECT *
+                FROM ticket_links
+                WHERE
+                    (source_ticket_id = ? AND target_ticket_id = ?)
+                    OR (source_ticket_id = ? AND target_ticket_id = ?)
+                """,
+                (source["id"], target["id"], target["id"], source["id"]),
+            ).fetchone()
         )
+        if existing:
+            conn.execute(
+                """
+                UPDATE ticket_links
+                SET source_ticket_id = ?, target_ticket_id = ?, link_type = ?, created_by = ?, created_at = ?
+                WHERE id = ?
+                """,
+                (source["id"], target["id"], link_type, user["id"], now, existing["id"]),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO ticket_links
+                    (project_id, source_ticket_id, target_ticket_id, link_type, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (source["project_id"], source["id"], target["id"], link_type, user["id"], now),
+            )
         conn.execute("UPDATE tickets SET updated_at = ? WHERE id IN (?, ?)", (now, source["id"], target["id"]))
         log_action(
             conn,
@@ -884,7 +906,7 @@ def link_ticket(
             field="ticket_link",
             old_value="",
             new_value=target["key"],
-            metadata={"link_type": link_type},
+            metadata={"link_type": link_type, "updated_existing": bool(existing)},
         )
         return {
             "source_key": source["key"],

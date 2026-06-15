@@ -38,14 +38,15 @@
             <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
           </span>
-          <span class="select-with-icon">
-            <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-ticket-type-icon data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
-            <select name="ticket_type">
-              {% for ticket_type in ticket_types %}
-                <option value="{{ ticket_type }}" {% if ticket_type == ticket.ticket_type %}selected{% endif %} data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</option>
-              {% endfor %}
-            </select>
-          </span>
+          <input type="hidden" name="ticket_type" value="{{ ticket.ticket_type }}">
+          <div class="type-picker" data-type-picker>
+            {% for ticket_type in ticket_types %}
+              <button class="type-choice {% if ticket_type == ticket.ticket_type %}is-selected{% endif %}" type="button" data-type-value="{{ ticket_type }}" aria-pressed="{% if ticket_type == ticket.ticket_type %}true{% else %}false{% endif %}">
+                <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+                <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
+              </button>
+            {% endfor %}
+          </div>
         </label>
         <label>
           <span class="label-row">

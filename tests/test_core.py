@@ -137,6 +137,22 @@ def test_board_includes_ticket_link_summary(temp_db):
     assert tickets[second["key"]]["linked_tickets"][0]["other_key"] == first["key"]
 
 
+def test_ticket_link_pair_is_unique_even_when_reversed(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "Epic", ticket_type="Epic")
+    second = create_ticket(user, "RT", "Task")
+
+    link_ticket(user, first["key"], second["key"], "relates")
+    link_ticket(user, second["key"], first["key"], "blocks")
+    board = board_for_project("RT", user)
+    tickets = {ticket["key"]: ticket for column in board["columns"].values() for ticket in column}
+
+    assert tickets[first["key"]]["linked_ticket_count"] == 1
+    assert tickets[second["key"]]["linked_ticket_count"] == 1
+    assert get_ticket_bundle(first["key"])["ticket_links"][0]["link_type"] == "blocks"
+
+
 def test_ticket_links_reject_self_and_cross_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "ONE", "One")

@@ -137,8 +137,22 @@ def init_db() -> None:
                 link_type TEXT NOT NULL DEFAULT 'relates',
                 created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 created_at TEXT NOT NULL,
-                UNIQUE (source_ticket_id, target_ticket_id, link_type),
                 CHECK (source_ticket_id != target_ticket_id)
+            );
+
+            DELETE FROM ticket_links
+            WHERE id NOT IN (
+                SELECT MIN(id)
+                FROM ticket_links
+                GROUP BY
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
+                        ELSE target_ticket_id
+                    END,
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
+                        ELSE source_ticket_id
+                    END
             );
 
             CREATE TABLE IF NOT EXISTS action_log (
@@ -235,6 +249,17 @@ def init_db() -> None:
                 ON ticket_links(source_ticket_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_ticket_links_target
                 ON ticket_links(target_ticket_id, created_at);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_links_unique_pair
+                ON ticket_links(
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
+                        ELSE target_ticket_id
+                    END,
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
+                        ELSE source_ticket_id
+                    END
+                );
             CREATE INDEX IF NOT EXISTS idx_notification_outbox_due
                 ON notification_outbox(status, next_attempt_at);
             """
