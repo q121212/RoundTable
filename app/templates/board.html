@@ -79,16 +79,26 @@
           </div>
         </label>
         <label class="field-shell">
-            <span class="label-row">
-              <span class="priority-icon priority-medium-icon" data-icon="{{ priority_icons.get('Medium', 'minus') }}" aria-hidden="true"></span>
-              <span data-i18n="field.priority">Priority</span>
-              <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
-            </span>
-          <select name="priority" aria-label="Priority">
+          <span class="label-row">
+            <span data-i18n="field.priority">Priority</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
+          </span>
+          <input type="hidden" name="priority" value="Medium">
+          <div class="type-picker priority-picker" data-priority-picker>
+            <button class="type-select-button priority-select-button" type="button" data-priority-toggle aria-haspopup="listbox" aria-expanded="false">
+              <span class="priority-icon priority-medium-icon" data-selected-priority-icon data-icon="{{ priority_icons.get('Medium', 'minus') }}" aria-hidden="true"></span>
+              <span data-selected-priority-label data-i18n="priority.Medium">Medium</span>
+              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="type-picker-menu priority-picker-menu" role="listbox">
             {% for priority in priorities %}
-              <option value="{{ priority }}" {% if priority == "Medium" %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
+              <button class="type-choice priority-choice {% if priority == 'Medium' %}is-selected{% endif %}" type="button" role="option" data-priority-value="{{ priority }}" aria-selected="{% if priority == 'Medium' %}true{% else %}false{% endif %}">
+                <span class="priority-icon priority-{{ priority|lower }}-icon" data-icon="{{ priority_icons.get(priority, 'minus') }}" aria-hidden="true"></span>
+                <span data-i18n="priority.{{ priority }}">{{ priority }}</span>
+              </button>
             {% endfor %}
-          </select>
+            </div>
+          </div>
         </label>
         <div class="field-shell quick-assignee">
           <span class="label-row">
@@ -160,7 +170,7 @@
           <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
           <span data-i18n="status.{{ status }}">{{ status }}</span>
         </h2>
-        <span>{{ columns[status]|length }}</span>
+        <span class="column-count">{{ columns[status]|length }}</span>
       </header>
       <div class="dropzone" data-status="{{ status }}">
         {% for ticket in columns[status] %}

@@ -147,6 +147,72 @@ def test_board_sprint_filter_page_hides_no_sprint_tickets(temp_db):
     assert ticket["key"] in no_sprint_response.text
 
 
+def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    create_ticket(user, "RT", "High priority", priority="High")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get("/p/RT/board")
+
+    assert response.status_code == 200
+    assert 'class="column-count"' in response.text
+    assert 'data-sprint-filter-select' in response.text
+    assert 'data-priority-picker' in response.text
+    assert 'data-priority-value="High"' in response.text
+    assert '<select name="priority"' not in response.text
+
+
+def test_ticket_page_uses_priority_picker_contract(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    ticket = create_ticket(user, "RT", "Urgent work", priority="Urgent")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get(f"/t/{ticket['key']}")
+
+    assert response.status_code == 200
+    assert 'name="priority" value="Urgent"' in response.text
+    assert 'data-priority-picker' in response.text
+    assert 'data-selected-priority-icon' in response.text
+    assert 'data-priority-value="Urgent"' in response.text
+    assert '<select name="priority"' not in response.text
+
+
+def test_sprint_page_is_project_admin_only_and_actions_return_there(temp_db):
+    admin = upsert_user("alice", email="alice@example.com")
+    member = upsert_user("bob", email="bob@example.com")
+    project = create_project(admin, "SPR", "Sprint Project")
+    add_project_member(int(project["id"]), "bob", "member")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET role = 'member' WHERE id = ?", (member["id"],))
+    member = {**member, "role": "member"}
+    sprint = create_sprint(admin, "SPR", "Sprint 1", status_value="closed")
+    admin_session = create_session(int(admin["id"]))
+    member_session = create_session(int(member["id"]))
+    client = TestClient(app)
+
+    client.cookies.set(SESSION_COOKIE, admin_session["token"])
+    page = client.get("/p/SPR/sprints")
+    reopen = client.post(
+        f"/api/projects/SPR/sprints/{sprint['id']}/status",
+        data={"csrf_token": admin_session["csrf"], "status": "planned"},
+        follow_redirects=False,
+    )
+    assert page.status_code == 200
+    assert "Sprint 1" in page.text
+    assert reopen.status_code == 303
+    assert reopen.headers["location"] == "/p/SPR/sprints"
+
+    client.cookies.set(SESSION_COOKIE, member_session["token"])
+    forbidden = client.get("/p/SPR/sprints")
+    assert forbidden.status_code == 403
+
+
 def test_only_one_sprint_can_be_active_per_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")

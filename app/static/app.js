@@ -1218,6 +1218,7 @@
   }
 
   function onOutsidePointer(event) {
+    if (event.target.closest(".mention-menu")) return;
     if (activePopover && !activePopover.contains(event.target) && event.target !== activeChip && !activeChip.contains(event.target)) {
       closePopover();
     }
@@ -1550,7 +1551,7 @@
 
   function refreshColumnCounts() {
     document.querySelectorAll(".board-column").forEach((column) => {
-      const counter = column.querySelector(".column-head span");
+      const counter = column.querySelector(".column-count");
       if (counter) counter.textContent = column.querySelectorAll(".ticket-card").length;
     });
   }
@@ -1764,27 +1765,35 @@
   }
 
   function setupTypePickers() {
-    document.querySelectorAll("[data-type-picker]").forEach((picker) => {
-      const field = picker.parentElement ? picker.parentElement.querySelector('input[name="ticket_type"]') : null;
-      const toggle = picker.querySelector("[data-type-toggle]");
+    document.querySelectorAll("[data-type-picker], [data-priority-picker]").forEach((picker) => {
+      const isPriority = picker.hasAttribute("data-priority-picker");
+      const fieldName = isPriority ? "priority" : "ticket_type";
+      const field = picker.parentElement ? picker.parentElement.querySelector(`input[name="${fieldName}"]`) : null;
+      const toggle = picker.querySelector(isPriority ? "[data-priority-toggle]" : "[data-type-toggle]");
       const menu = picker.querySelector(".type-picker-menu");
-      const selectedIcon = picker.querySelector("[data-selected-type-icon]");
-      const selectedLabel = picker.querySelector("[data-selected-type-label]");
+      const selectedIcon = picker.querySelector(isPriority ? "[data-selected-priority-icon]" : "[data-selected-type-icon]");
+      const selectedLabel = picker.querySelector(isPriority ? "[data-selected-priority-label]" : "[data-selected-type-label]");
+      const valueAttr = isPriority ? "priorityValue" : "typeValue";
+      const valueSelector = isPriority ? "[data-priority-value]" : "[data-type-value]";
+      const choiceSelector = isPriority ? ".priority-choice" : ".type-choice";
       if (!field) return;
       const update = (value, notify = false) => {
         field.value = value;
-        picker.querySelectorAll("[data-type-value]").forEach((button) => {
-          const selected = button.dataset.typeValue === value;
+        picker.querySelectorAll(valueSelector).forEach((button) => {
+          const selected = button.dataset[valueAttr] === value;
           button.classList.toggle("is-selected", selected);
           button.setAttribute("aria-selected", selected ? "true" : "false");
         });
         if (selectedIcon) {
-          selectedIcon.className = `type-icon ${ticketTypeClass(value)}`;
-          selectedIcon.dataset.icon = ticketTypeIcon(value);
+          selectedIcon.className = isPriority
+            ? `priority-icon ${priorityClass(value)}`
+            : `type-icon ${ticketTypeClass(value)}`;
+          selectedIcon.dataset.icon = isPriority ? priorityIcon(value) : ticketTypeIcon(value);
         }
         if (selectedLabel) {
-          selectedLabel.dataset.i18n = `type.${value}`;
-          selectedLabel.textContent = translate(`type.${value}`, currentLang()) || value;
+          const key = isPriority ? `priority.${value}` : `type.${value}`;
+          selectedLabel.dataset.i18n = key;
+          selectedLabel.textContent = translate(key, currentLang()) || value;
         }
         renderIcons();
         if (notify) field.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1804,13 +1813,13 @@
           event.preventDefault();
           picker.classList.add("is-open");
           toggle.setAttribute("aria-expanded", "true");
-          const current = menu && menu.querySelector(".type-choice.is-selected");
+          const current = menu && menu.querySelector(`${choiceSelector}.is-selected`);
           if (current) current.focus();
         });
       }
-      picker.querySelectorAll("[data-type-value]").forEach((button) => {
+      picker.querySelectorAll(valueSelector).forEach((button) => {
         button.addEventListener("click", () => {
-          update(button.dataset.typeValue || "Task", true);
+          update(button.dataset[valueAttr] || (isPriority ? "Medium" : "Task"), true);
           close();
         });
         button.addEventListener("keydown", (event) => {
@@ -1821,13 +1830,13 @@
           }
         });
       });
-      update(field.value || "Task");
+      update(field.value || (isPriority ? "Medium" : "Task"));
     });
     document.addEventListener("click", (event) => {
-      document.querySelectorAll("[data-type-picker].is-open").forEach((picker) => {
+      document.querySelectorAll("[data-type-picker].is-open, [data-priority-picker].is-open").forEach((picker) => {
         if (picker.contains(event.target)) return;
         picker.classList.remove("is-open");
-        const toggle = picker.querySelector("[data-type-toggle]");
+        const toggle = picker.querySelector("[data-type-toggle], [data-priority-toggle]");
         if (toggle) toggle.setAttribute("aria-expanded", "false");
       });
     });

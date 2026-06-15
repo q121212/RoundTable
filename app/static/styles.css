@@ -799,7 +799,8 @@ button,
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 10%, transparent);
 }
 
-.type-select-button [data-selected-type-label] {
+.type-select-button [data-selected-type-label],
+.type-select-button [data-selected-priority-label] {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -873,7 +874,9 @@ button,
 
 .popover-option .type-icon,
 .type-choice .type-icon,
-.type-select-button .type-icon {
+.type-select-button .type-icon,
+.type-choice .priority-icon,
+.type-select-button .priority-icon {
   background: transparent;
 }
 
@@ -1508,7 +1511,7 @@ button,
 }
 
 .eyebrow,
-.column-head span,
+.column-head .column-count,
 .meta-list dd {
   font-weight: 700;
 }

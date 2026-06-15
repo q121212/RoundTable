@@ -73,11 +73,22 @@
             <span class="required-mark" aria-hidden="true">*</span>
             <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
           </span>
-          <select name="priority">
+          <input type="hidden" name="priority" value="{{ ticket.priority }}">
+          <div class="type-picker priority-picker" data-priority-picker>
+            <button class="type-select-button priority-select-button" type="button" data-priority-toggle aria-haspopup="listbox" aria-expanded="false">
+              <span class="priority-icon priority-{{ ticket.priority|lower }}-icon" data-selected-priority-icon data-icon="{{ priority_icons.get(ticket.priority, 'minus') }}" aria-hidden="true"></span>
+              <span data-selected-priority-label data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
+              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
+            </button>
+            <div class="type-picker-menu priority-picker-menu" role="listbox">
             {% for priority in priorities %}
-              <option value="{{ priority }}" {% if priority == ticket.priority %}selected{% endif %} data-i18n="priority.{{ priority }}">{{ priority }}</option>
+              <button class="type-choice priority-choice {% if priority == ticket.priority %}is-selected{% endif %}" type="button" role="option" data-priority-value="{{ priority }}" aria-selected="{% if priority == ticket.priority %}true{% else %}false{% endif %}">
+                <span class="priority-icon priority-{{ priority|lower }}-icon" data-icon="{{ priority_icons.get(priority, 'minus') }}" aria-hidden="true"></span>
+                <span data-i18n="priority.{{ priority }}">{{ priority }}</span>
+              </button>
             {% endfor %}
-          </select>
+            </div>
+          </div>
         </label>
         <label>
           <span class="label-row">
