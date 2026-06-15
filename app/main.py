@@ -73,6 +73,7 @@ from .store import (
     update_project_settings,
     update_sprint_status,
     update_ticket,
+    update_ticket_link,
     upsert_user,
 )
 
@@ -549,6 +550,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
     form = await request.form()
     assignee_id = parse_optional_int(form.get("assignee_id"))
     sprint_id = parse_optional_int(form.get("sprint_id"))
+    story_points = parse_optional_int(form.get("story_points")) or 0
     ticket = create_ticket(
         user,
         str(form.get("project_key") or ""),
@@ -558,6 +560,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
         str(form.get("ticket_type") or "Task"),
         assignee_id,
         sprint_id,
+        story_points,
     )
     await publish_ticket_event(ticket, "ticket_created")
     return redirect("/t/%s" % ticket["key"])
@@ -622,6 +625,8 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         ticket_type=str(form.get("ticket_type")) if "ticket_type" in form else None,
         status_value=str(form.get("status")) if "status" in form else None,
         priority=str(form.get("priority")) if "priority" in form else None,
+        story_points=parse_optional_int(form.get("story_points")),
+        story_points_touched="story_points" in form,
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched=assignee_present,
         sprint_id=parse_optional_int(form.get("sprint_id")),
@@ -641,6 +646,8 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
         ticket_type=str(form.get("ticket_type")) if "ticket_type" in form else None,
         status_value=str(form.get("status")) if "status" in form else None,
         priority=str(form.get("priority")) if "priority" in form else None,
+        story_points=parse_optional_int(form.get("story_points")),
+        story_points_touched="story_points" in form,
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched="assignee_id" in form,
         sprint_id=parse_optional_int(form.get("sprint_id")),
@@ -669,6 +676,8 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         ticket_type=payload.get("ticket_type"),
         status_value=payload.get("status"),
         priority=payload.get("priority"),
+        story_points=parse_optional_int(payload.get("story_points")),
+        story_points_touched="story_points" in payload,
         assignee_id=parse_optional_int(payload.get("assignee_id")),
         assignee_touched="assignee_id" in payload,
         sprint_id=parse_optional_int(payload.get("sprint_id")),
@@ -708,6 +717,21 @@ async def api_unlink_ticket(request: Request, ticket_key: str, link_id: int) -> 
     user = await validate_csrf_request(request)
     unlink_ticket(user, ticket_key, link_id)
     await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_unlinked")
+    return redirect("/t/%s" % ticket_key)
+
+
+@app.post("/api/tickets/{ticket_key}/links/{link_id}")
+async def api_update_ticket_link(request: Request, ticket_key: str, link_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    update_ticket_link(
+        user,
+        ticket_key,
+        link_id,
+        str(form.get("target_key") or ""),
+        str(form.get("link_type") or "relates"),
+    )
+    await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_linked")
     return redirect("/t/%s" % ticket_key)
 
 

@@ -35,6 +35,7 @@
       "field.role": "Role",
       "field.sprint": "Sprint",
       "field.status": "Status",
+      "field.story_points": "Story points",
       "field.ticket_type": "Type",
       "field.link_type": "Link type",
       "field.target_ticket": "Target ticket",
@@ -63,6 +64,7 @@
       "help.project_name": "Human-readable project name shown in the UI.",
       "help.role": "member can edit, viewer can only read, admin can manage project access.",
       "help.status": "Where the ticket currently is on the board.",
+      "help.story_points": "Small effort estimate. Use 0 when not estimated.",
       "help.ticket_type": "Type of work. Epics are bigger containers; tasks, bugs, and stories are regular tickets.",
       "help.ticket_description": "Add context, acceptance criteria, links, or notes. Markdown-style text is fine.",
       "help.ticket_title": "Short human-readable task name.",
@@ -197,7 +199,11 @@
       "sprint.starts_on": "Starts",
       "sprint.status": "Status",
       "sprint.ticket_count": "tickets",
+      "sprint.days_left": "days left",
+      "sprint.ended": "ended",
+      "sprint.ends_today": "ends today",
       "status.all": "All",
+      "story_points.none": "No SP",
       "status.Backlog": "Backlog",
       "status.Closed": "Closed",
       "status.Done": "Done",
@@ -280,6 +286,7 @@
       "field.role": "Роль",
       "field.sprint": "Спринт",
       "field.status": "Статус",
+      "field.story_points": "Сторипоинты",
       "field.ticket_type": "Тип",
       "field.link_type": "Тип связи",
       "field.target_ticket": "Связанный тикет",
@@ -308,6 +315,7 @@
       "help.project_name": "Человеческое название проекта, которое видно в интерфейсе.",
       "help.role": "member может редактировать, viewer только читать, admin управляет доступом к проекту.",
       "help.status": "Где тикет сейчас находится на доске.",
+      "help.story_points": "Короткая оценка объема работы. 0 означает, что оценки пока нет.",
       "help.ticket_type": "Тип работы. Эпик — крупный контейнер; задачи, баги и истории — обычные тикеты.",
       "help.ticket_description": "Добавьте контекст, критерии приемки, ссылки или заметки. Можно писать markdown-подобный текст.",
       "help.ticket_title": "Короткое человеческое название задачи.",
@@ -442,7 +450,11 @@
       "sprint.starts_on": "Начало",
       "sprint.status": "Статус",
       "sprint.ticket_count": "тикетов",
+      "sprint.days_left": "дн. осталось",
+      "sprint.ended": "завершился",
+      "sprint.ends_today": "закончится сегодня",
       "status.all": "Все",
+      "story_points.none": "Без SP",
       "status.Backlog": "Бэклог",
       "status.Closed": "Закрыто",
       "status.Done": "Готово",
@@ -534,6 +546,7 @@
     setupLocalTimes();
     setupActionLabels();
     setupActionDetails();
+    setupSprintProgress();
     renderIcons();
   }
 
@@ -1169,6 +1182,8 @@
       buildCommentPopover(pop, card);
     } else if (field === "description") {
       buildDescriptionPopover(pop, card);
+    } else if (field === "story_points") {
+      buildStoryPointsPopover(pop, card, chip);
     } else {
       buildOptionsPopover(pop, field, card, chip);
     }
@@ -1304,7 +1319,13 @@
 
   async function applyFieldChange(card, field, value) {
     const payload = {};
-    payload[field] = field === "assignee_id" || field === "sprint_id" ? (value ? Number(value) : null) : value;
+    if (field === "assignee_id" || field === "sprint_id") {
+      payload[field] = value ? Number(value) : null;
+    } else if (field === "story_points") {
+      payload[field] = Number(value || 0);
+    } else {
+      payload[field] = value;
+    }
     closePopover();
     card.classList.add("is-saving");
     try {
@@ -1367,6 +1388,37 @@
     setupMentionInput(textarea);
   }
 
+  function buildStoryPointsPopover(pop, card, chip) {
+    pop.classList.add("popover-points");
+    const label = document.createElement("label");
+    label.className = "popover-field-label";
+    label.textContent = translate("field.story_points", currentLang()) || "Story points";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = "999";
+    input.step = "1";
+    input.inputMode = "numeric";
+    input.value = chip.dataset.value || "0";
+    label.appendChild(input);
+    pop.appendChild(label);
+    let submitted = false;
+    const submit = () => {
+      if (submitted) return;
+      submitted = true;
+      const next = Math.max(0, Math.min(999, Number.parseInt(input.value || "0", 10) || 0));
+      applyFieldChange(card, "story_points", next);
+    };
+    input.addEventListener("change", submit);
+    input.addEventListener("blur", submit, { once: true });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      }
+    });
+  }
+
   function buildDescriptionPopover(pop, card) {
     pop.classList.add("popover-desc");
     const textarea = document.createElement("textarea");
@@ -1427,9 +1479,11 @@
     setChipValue(card, "ticket_type", ticket.ticket_type, translate(`type.${ticket.ticket_type}`, currentLang()) || ticket.ticket_type);
     setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
     setChipValue(card, "priority", ticket.priority, translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority);
+    setChipValue(card, "story_points", ticket.story_points || 0, storyPointsLabel(ticket.story_points));
     setChipValue(card, "sprint_id", ticket.sprint_id ? String(ticket.sprint_id) : "", ticket.sprint_name || translate("sprint.none", currentLang()) || "No sprint");
     updateAssigneeChip(card, ticket);
     updateLinkedTickets(card, ticket);
+    updateSprintProgress(card, ticket);
     refreshColumnCounts();
     renderIcons();
   }
@@ -1446,6 +1500,8 @@
       if (field === "ticket_type") labelEl.dataset.i18n = `type.${value}`;
       if (field === "sprint_id" && !value) labelEl.dataset.i18n = "sprint.none";
       if (field === "sprint_id" && value) labelEl.removeAttribute("data-i18n");
+      if (field === "story_points" && Number(value || 0) <= 0) labelEl.dataset.i18n = "story_points.none";
+      if (field === "story_points" && Number(value || 0) > 0) labelEl.removeAttribute("data-i18n");
       labelEl.textContent = label;
     }
     if (field === "priority") {
@@ -1473,6 +1529,69 @@
         dot.className = `status-dot ${statusDotClass(value)}`;
       }
     }
+  }
+
+  function storyPointsLabel(value) {
+    const points = Number(value || 0);
+    return points > 0 ? `${points} SP` : translate("story_points.none", currentLang()) || "No SP";
+  }
+
+  function parseDateOnly(value) {
+    if (!value) return null;
+    const parts = String(value).split("-").map((part) => Number.parseInt(part, 10));
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function dateDiffDays(from, to) {
+    const oneDay = 24 * 60 * 60 * 1000;
+    const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+    return Math.round((end - start) / oneDay);
+  }
+
+  function updateSprintProgress(card, ticket = {}) {
+    const progress = card.querySelector(".ticket-card-sprint-progress");
+    if (!progress) return;
+    if (Object.prototype.hasOwnProperty.call(ticket, "sprint_starts_on")) progress.dataset.sprintStart = ticket.sprint_starts_on || "";
+    if (Object.prototype.hasOwnProperty.call(ticket, "sprint_ends_on")) progress.dataset.sprintEnd = ticket.sprint_ends_on || "";
+    if (Object.prototype.hasOwnProperty.call(ticket, "sprint_status")) progress.dataset.sprintStatus = ticket.sprint_status || "";
+    const start = parseDateOnly(progress.dataset.sprintStart);
+    const end = parseDateOnly(progress.dataset.sprintEnd);
+    if (!start || !end) {
+      progress.hidden = true;
+      progress.textContent = "";
+      return;
+    }
+    const today = new Date();
+    const total = Math.max(1, dateDiffDays(start, end) + 1);
+    const elapsed = Math.min(total, Math.max(0, dateDiffDays(start, today) + 1));
+    const dotCount = 12;
+    const filled = Math.max(1, Math.min(dotCount, Math.ceil((elapsed / total) * dotCount)));
+    const left = dateDiffDays(today, end);
+    let label = `${left} ${translate("sprint.days_left", currentLang()) || "days left"}`;
+    if (left === 0) label = translate("sprint.ends_today", currentLang()) || "ends today";
+    if (left < 0) label = translate("sprint.ended", currentLang()) || "ended";
+    progress.hidden = false;
+    progress.title = `${progress.dataset.sprintStart} - ${progress.dataset.sprintEnd}: ${label}`;
+    progress.innerHTML = "";
+    const dots = document.createElement("span");
+    dots.className = "sprint-progress-dots";
+    for (let index = 0; index < dotCount; index += 1) {
+      const dot = document.createElement("span");
+      dot.className = "sprint-progress-dot";
+      if (index < filled) dot.classList.add("is-filled");
+      if (left < 0) dot.classList.add("is-ended");
+      dots.appendChild(dot);
+    }
+    const text = document.createElement("span");
+    text.className = "sprint-progress-label";
+    text.textContent = label;
+    progress.append(dots, text);
+  }
+
+  function setupSprintProgress() {
+    document.querySelectorAll(".ticket-card").forEach((card) => updateSprintProgress(card));
   }
 
   function updateCardClasses(card, ticket) {
@@ -1512,13 +1631,21 @@
     const linked = Array.isArray(ticket.linked_tickets) ? ticket.linked_tickets : [];
     links.innerHTML = "";
     links.classList.toggle("is-empty", linked.length === 0);
+    links.title = linked
+      .slice(0, 5)
+      .map((item) => `${item.other_key}${item.other_title ? ` · ${item.other_title}` : ""}`)
+      .join("; ");
+    if (linked.length > 5) {
+      const more = currentLang() === "ru" ? `ещё ${linked.length - 5}` : `+${linked.length - 5} more`;
+      links.title = `${links.title}; ${more}`;
+    }
     if (!linked.length) return;
     const icon = document.createElement("span");
     icon.className = "ticket-links-icon";
     icon.dataset.icon = "link";
     icon.setAttribute("aria-hidden", "true");
     links.appendChild(icon);
-    linked.slice(0, 3).forEach((item) => {
+    linked.slice(0, 2).forEach((item) => {
       const pill = document.createElement("a");
       pill.className = "linked-ticket-pill";
       pill.href = `/t/${item.other_key}`;
@@ -1526,10 +1653,10 @@
       if (item.other_title) pill.title = item.other_title;
       links.appendChild(pill);
     });
-    if (linked.length > 3) {
+    if (linked.length > 2) {
       const more = document.createElement("span");
       more.className = "linked-ticket-more";
-      more.textContent = `+${linked.length - 3}`;
+      more.textContent = `+${linked.length - 2}`;
       links.appendChild(more);
     }
   }
@@ -1590,6 +1717,10 @@
           <span class="priority-icon" data-priority-icon aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
+        <button type="button" class="chip chip-edit chip-story-points tooltip-anchor" data-edit="story_points" aria-haspopup="true" data-i18n-tooltip="field.story_points" data-tooltip="Story points">
+          <span class="story-points-icon" data-icon="gauge" aria-hidden="true"></span>
+          <span class="chip-label"></span>
+        </button>
         <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee">
           <span class="avatar-dot" aria-hidden="true"></span>
           <span class="chip-label assignee-label"></span>
@@ -1600,6 +1731,7 @@
         <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
         <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>
       </div>
+      <div class="ticket-card-sprint-progress" hidden></div>
       <div class="ticket-card-links is-empty"></div>
     `;
     card.addEventListener("pointerdown", startTicketDrag);
@@ -1712,7 +1844,7 @@
     if (!form) return;
     const ticketKey = form.dataset.ticketKey;
     const status = form.querySelector("[data-autosave-status]");
-    const fields = ["title", "description", "ticket_type", "status", "priority", "assignee_id", "sprint_id"];
+    const fields = ["title", "description", "ticket_type", "status", "priority", "story_points", "assignee_id", "sprint_id"];
     const timers = new Map();
 
     form.addEventListener("submit", (event) => event.preventDefault());
@@ -1728,6 +1860,7 @@
       const control = form.elements[field];
       if (!control) return undefined;
       if (field === "assignee_id" || field === "sprint_id") return control.value ? Number(control.value) : null;
+      if (field === "story_points") return Math.max(0, Math.min(999, Number.parseInt(control.value || "0", 10) || 0));
       return control.value;
     };
 
@@ -2343,6 +2476,7 @@
     setupOpenCreate();
     setupMobileStatusTabs();
     setupSprintFilter();
+    setupSprintProgress();
     setupTooltips();
     setupBoardLiveEvents();
   });

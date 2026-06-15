@@ -100,6 +100,13 @@
             </div>
           </div>
         </label>
+        <label class="field-shell quick-story-points">
+          <span class="label-row">
+            <span data-i18n="field.story_points">Story points</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.story_points" data-tooltip="Small effort estimate. Use 0 when not estimated.">?</button>
+          </span>
+          <input name="story_points" type="number" min="0" max="999" step="1" inputmode="numeric" value="0">
+        </label>
         <div class="field-shell quick-assignee">
           <span class="label-row">
             <span data-i18n="field.assignee">Assignee</span>
@@ -198,6 +205,10 @@
                 <span class="priority-icon priority-{{ ticket.priority|lower }}-icon" data-priority-icon data-icon="{{ priority_icons.get(ticket.priority, 'minus') }}" aria-hidden="true"></span>
                 <span class="chip-label" data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
               </button>
+              <button type="button" class="chip chip-edit chip-story-points tooltip-anchor" data-edit="story_points" data-value="{{ ticket.story_points or 0 }}" aria-haspopup="true" data-i18n-tooltip="field.story_points" data-tooltip="Story points" title="{{ ticket.story_points or 0 }} story points">
+                <span class="story-points-icon" data-icon="gauge" aria-hidden="true"></span>
+                <span class="chip-label" {% if not ticket.story_points %}data-i18n="story_points.none"{% endif %}>{{ (ticket.story_points ~ " SP") if ticket.story_points else "No SP" }}</span>
+              </button>
               <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" data-value="{{ ticket.assignee_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee" title="{{ ticket.assignee_name or ticket.assignee_login or 'Unassigned' }}">
                 <span class="avatar-dot" aria-hidden="true">
                   {% if ticket.assignee_avatar_url %}
@@ -218,14 +229,15 @@
               <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
               <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>
             </div>
-            <div class="ticket-card-links {% if not ticket.linked_tickets %}is-empty{% endif %}">
+            <div class="ticket-card-sprint-progress" data-sprint-start="{{ ticket.sprint_starts_on or '' }}" data-sprint-end="{{ ticket.sprint_ends_on or '' }}" data-sprint-status="{{ ticket.sprint_status or '' }}" hidden></div>
+            <div class="ticket-card-links {% if not ticket.linked_tickets %}is-empty{% endif %}" {% if ticket.linked_tickets %}title="{% for linked in ticket.linked_tickets[:5] %}{{ linked.other_key }} · {{ linked.other_title }}{% if not loop.last %}; {% endif %}{% endfor %}{% if ticket.linked_ticket_count > 5 %}; +{{ ticket.linked_ticket_count - 5 }} more{% endif %}"{% endif %}>
               {% if ticket.linked_tickets %}
                 <span class="ticket-links-icon" data-icon="link" aria-hidden="true"></span>
-                {% for linked in ticket.linked_tickets[:3] %}
+                {% for linked in ticket.linked_tickets[:2] %}
                   <a class="linked-ticket-pill" href="/t/{{ linked.other_key }}" title="{{ linked.other_title }}">{{ linked.other_key }}</a>
                 {% endfor %}
-                {% if ticket.linked_ticket_count > 3 %}
-                  <span class="linked-ticket-more">+{{ ticket.linked_ticket_count - 3 }}</span>
+                {% if ticket.linked_ticket_count > 2 %}
+                  <span class="linked-ticket-more">+{{ ticket.linked_ticket_count - 2 }}</span>
                 {% endif %}
               {% endif %}
             </div>

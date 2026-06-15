@@ -120,6 +120,7 @@ def init_db() -> None:
                 ticket_type TEXT NOT NULL DEFAULT 'Task',
                 status TEXT NOT NULL DEFAULT 'Backlog',
                 sprint_id INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
+                story_points INTEGER NOT NULL DEFAULT 0,
                 sort_order REAL,
                 priority TEXT NOT NULL DEFAULT 'Medium',
                 assignee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -303,6 +304,7 @@ def init_db() -> None:
         _add_column_if_missing(conn, "tickets", "ticket_type", "TEXT NOT NULL DEFAULT 'Task'")
         _add_column_if_missing(conn, "tickets", "sort_order", "REAL")
         _add_column_if_missing(conn, "tickets", "sprint_id", "INTEGER REFERENCES sprints(id) ON DELETE SET NULL")
+        _add_column_if_missing(conn, "tickets", "story_points", "INTEGER NOT NULL DEFAULT 0")
         conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_tickets_project_sprint

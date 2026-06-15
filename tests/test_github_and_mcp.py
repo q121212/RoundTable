@@ -173,7 +173,7 @@ def test_mcp_can_create_ticket_in_sprint(temp_db):
             "method": "tools/call",
             "params": {
                 "name": "create_ticket",
-                "arguments": {"project_key": "GT", "title": "Scoped via MCP", "sprint_id": sprint_id},
+                "arguments": {"project_key": "GT", "title": "Scoped via MCP", "sprint_id": sprint_id, "story_points": 13},
             },
         },
     )
@@ -183,6 +183,7 @@ def test_mcp_can_create_ticket_in_sprint(temp_db):
     assert sprint_payload["project_id"] == project["id"]
     ticket_payload = json.loads(ticket_response.json()["result"]["content"][0]["text"])
     assert ticket_payload["sprint_id"] == sprint_id
+    assert ticket_payload["story_points"] == 13
 
 
 def test_mcp_token_exposes_prefix_and_suffix(temp_db):

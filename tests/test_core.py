@@ -28,6 +28,7 @@ from app.store import (
     update_project_settings,
     update_sprint_status,
     update_ticket,
+    update_ticket_link,
     upsert_user,
     unlink_ticket,
 )
@@ -118,6 +119,29 @@ def test_project_sprints_filter_board_and_update_tickets(temp_db):
     assert updated["sprint_name"] == "Sprint 1"
 
 
+def test_ticket_story_points_create_update_and_validate(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    ticket = create_ticket(user, "RT", "Estimate work", story_points=5)
+
+    assert ticket["story_points"] == 5
+    updated = update_ticket(user, ticket["key"], story_points=8, story_points_touched=True)
+    assert updated["story_points"] == 8
+
+    with get_conn() as conn:
+        row = row_to_dict(
+            conn.execute(
+                "SELECT action, field, old_value, new_value FROM action_log WHERE field = 'story_points' ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        )
+    assert row == {"action": "ticket_updated", "field": "story_points", "old_value": "5", "new_value": "8"}
+
+    with pytest.raises(HTTPException):
+        update_ticket(user, ticket["key"], story_points=-1, story_points_touched=True)
+    with pytest.raises(HTTPException):
+        create_ticket(user, "RT", "Too large", story_points=1000)
+
+
 def test_active_sprint_filter_is_empty_without_active_sprint(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
@@ -150,7 +174,8 @@ def test_board_sprint_filter_page_hides_no_sprint_tickets(temp_db):
 def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
-    create_ticket(user, "RT", "High priority", priority="High")
+    sprint = create_sprint(user, "RT", "Sprint 1", starts_on="2026-06-10", ends_on="2026-06-24")
+    create_ticket(user, "RT", "High priority", priority="High", sprint_id=sprint["id"], story_points=3)
     session = create_session(int(user["id"]))
 
     client = TestClient(app)
@@ -162,6 +187,10 @@ def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
     assert 'data-sprint-filter-select' in response.text
     assert 'data-priority-picker' in response.text
     assert 'data-priority-value="High"' in response.text
+    assert 'data-edit="story_points"' in response.text
+    assert "3 SP" in response.text
+    assert 'data-sprint-start="2026-06-10"' in response.text
+    assert 'data-sprint-end="2026-06-24"' in response.text
     assert '<select name="priority"' not in response.text
 
 
@@ -177,6 +206,7 @@ def test_ticket_page_uses_priority_picker_contract(temp_db):
 
     assert response.status_code == 200
     assert 'name="priority" value="Urgent"' in response.text
+    assert 'name="story_points"' in response.text
     assert 'data-priority-picker' in response.text
     assert 'data-selected-priority-icon' in response.text
     assert 'data-priority-value="Urgent"' in response.text
@@ -345,6 +375,28 @@ def test_ticket_links_are_project_scoped_and_logged(temp_db):
 
     unlink_ticket(user, first["key"], int(bundle["ticket_links"][0]["id"]))
     assert get_ticket_bundle(first["key"])["ticket_links"] == []
+
+
+def test_ticket_links_can_be_edited_without_duplicates(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_ticket(user, "RT", "Epic", ticket_type="Epic")
+    second = create_ticket(user, "RT", "Task")
+    third = create_ticket(user, "RT", "Bug", ticket_type="Bug")
+
+    link_ticket(user, first["key"], second["key"], "relates")
+    link = get_ticket_bundle(first["key"])["ticket_links"][0]
+    update_ticket_link(user, first["key"], int(link["id"]), third["key"], "blocks")
+    edited = get_ticket_bundle(first["key"])["ticket_links"][0]
+
+    assert edited["other_key"] == third["key"]
+    assert edited["link_type"] == "blocks"
+    assert len(get_ticket_bundle(first["key"])["ticket_links"]) == 1
+
+    link_ticket(user, first["key"], second["key"], "parent")
+    with pytest.raises(HTTPException) as exc:
+        update_ticket_link(user, first["key"], int(edited["id"]), second["key"], "relates")
+    assert exc.value.status_code == 400
 
 
 def test_board_includes_ticket_link_summary(temp_db):

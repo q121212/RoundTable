@@ -78,6 +78,16 @@ def validate_priority(value: str) -> str:
     return value
 
 
+def validate_story_points(value: Any) -> int:
+    try:
+        points = int(value or 0)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Story points must be an integer") from exc
+    if points < 0 or points > 999:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Story points must be between 0 and 999")
+    return points
+
+
 def validate_ticket_type(value: str) -> str:
     if value not in TICKET_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket type")
@@ -790,11 +800,13 @@ def create_ticket(
     ticket_type: str = "Task",
     assignee_id: Optional[int] = None,
     sprint_id: Optional[int] = None,
+    story_points: int = 0,
 ) -> Dict[str, Any]:
     title = title.strip()
     if not title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket title is required")
     priority = validate_priority(priority)
+    story_points = validate_story_points(story_points)
     project_key = validate_project_key(project_key)
     now = utcnow()
     with get_conn() as conn:
@@ -819,8 +831,8 @@ def create_ticket(
             """
             INSERT INTO tickets
                 (project_id, number, key, title, description, ticket_type, status, priority,
-                 sprint_id, sort_order, assignee_id, reporter_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 sprint_id, story_points, sort_order, assignee_id, reporter_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project["id"],
@@ -832,6 +844,7 @@ def create_ticket(
                 initial_status,
                 priority,
                 sprint_id,
+                story_points,
                 sort_order,
                 assignee_id,
                 user["id"],
@@ -856,7 +869,13 @@ def create_ticket(
             ticket_id,
             user["id"],
             "ticket_created",
-            metadata={"key": ticket_key, "title": title, "ticket_type": ticket_type, "sprint_id": sprint_id},
+            metadata={
+                "key": ticket_key,
+                "title": title,
+                "ticket_type": ticket_type,
+                "sprint_id": sprint_id,
+                "story_points": story_points,
+            },
         )
         if assignee_id:
             log_action(
@@ -882,6 +901,8 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
                    projects.github_repo_full_name AS project_github_repo_full_name,
                    sprints.name AS sprint_name,
                    sprints.status AS sprint_status,
+                   sprints.starts_on AS sprint_starts_on,
+                   sprints.ends_on AS sprint_ends_on,
                    assignee.login AS assignee_login,
                    assignee.name AS assignee_name,
                    assignee.avatar_url AS assignee_avatar_url,
@@ -915,6 +936,8 @@ def get_ticket(ticket_key: str) -> Dict[str, Any]:
                        projects.github_repo_full_name AS project_github_repo_full_name,
                        sprints.name AS sprint_name,
                        sprints.status AS sprint_status,
+                       sprints.starts_on AS sprint_starts_on,
+                       sprints.ends_on AS sprint_ends_on,
                        assignee.login AS assignee_login,
                        assignee.name AS assignee_name,
                        assignee.avatar_url AS assignee_avatar_url,
@@ -1214,6 +1237,90 @@ def link_ticket(
         }
 
 
+def update_ticket_link(
+    user: Dict[str, Any],
+    ticket_key: str,
+    link_id: int,
+    target_key: str,
+    link_type: str,
+) -> Dict[str, Any]:
+    link_type = validate_ticket_link_type(link_type)
+    target_key = target_key.strip().upper()
+    if not target_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target ticket is required")
+    now = utcnow()
+    with get_conn() as conn:
+        ticket = get_ticket_by_key_conn(conn, ticket_key)
+        target = get_ticket_by_key_conn(conn, target_key)
+        require_project_access(user, int(ticket["project_id"]), write=True)
+        require_project_access(user, int(target["project_id"]), write=False)
+        if int(ticket["id"]) == int(target["id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A ticket cannot link to itself")
+        if int(ticket["project_id"]) != int(target["project_id"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket links are project-scoped")
+        link = row_to_dict(
+            conn.execute(
+                """
+                SELECT ticket_links.*, target.key AS target_key, source.key AS source_key
+                FROM ticket_links
+                JOIN tickets target ON target.id = ticket_links.target_ticket_id
+                JOIN tickets source ON source.id = ticket_links.source_ticket_id
+                WHERE ticket_links.id = ?
+                """,
+                (link_id,),
+            ).fetchone()
+        )
+        if not link or int(link["project_id"]) != int(ticket["project_id"]):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket link not found")
+        if int(ticket["id"]) not in {int(link["source_ticket_id"]), int(link["target_ticket_id"])}:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket link not found")
+        duplicate = row_to_dict(
+            conn.execute(
+                """
+                SELECT id
+                FROM ticket_links
+                WHERE id != ?
+                  AND (
+                    (source_ticket_id = ? AND target_ticket_id = ?)
+                    OR (source_ticket_id = ? AND target_ticket_id = ?)
+                  )
+                """,
+                (link_id, ticket["id"], target["id"], target["id"], ticket["id"]),
+            ).fetchone()
+        )
+        if duplicate:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="These tickets are already linked")
+        old_other_key = link["target_key"] if int(link["source_ticket_id"]) == int(ticket["id"]) else link["source_key"]
+        conn.execute(
+            """
+            UPDATE ticket_links
+            SET source_ticket_id = ?, target_ticket_id = ?, link_type = ?, created_by = ?, created_at = ?
+            WHERE id = ?
+            """,
+            (ticket["id"], target["id"], link_type, user["id"], now, link_id),
+        )
+        conn.execute(
+            "UPDATE tickets SET updated_at = ? WHERE id IN (?, ?, ?)",
+            (now, ticket["id"], target["id"], link["source_ticket_id"] if int(link["source_ticket_id"]) != int(ticket["id"]) else link["target_ticket_id"]),
+        )
+        log_action(
+            conn,
+            ticket["project_id"],
+            ticket["id"],
+            user["id"],
+            "linked",
+            field="ticket_link",
+            old_value=old_other_key,
+            new_value=target["key"],
+            metadata={"link_type": link_type, "updated_existing": True, "link_id": link_id},
+        )
+        return {
+            "source_key": ticket["key"],
+            "target_key": target["key"],
+            "link_type": link_type,
+        }
+
+
 def unlink_ticket(user: Dict[str, Any], ticket_key: str, link_id: int) -> None:
     now = utcnow()
     with get_conn() as conn:
@@ -1289,6 +1396,8 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
                 SELECT tickets.*,
                        sprints.name AS sprint_name,
                        sprints.status AS sprint_status,
+                       sprints.starts_on AS sprint_starts_on,
+                       sprints.ends_on AS sprint_ends_on,
                        assignee.login AS assignee_login,
                        assignee.name AS assignee_name,
                        assignee.avatar_url AS assignee_avatar_url,
@@ -1431,6 +1540,8 @@ def update_ticket(
     ticket_type: Optional[str] = None,
     status_value: Optional[str] = None,
     priority: Optional[str] = None,
+    story_points: Optional[int] = None,
+    story_points_touched: bool = False,
     assignee_id: Optional[int] = None,
     assignee_touched: bool = False,
     sprint_id: Optional[int] = None,
@@ -1465,6 +1576,10 @@ def update_ticket(
             priority = validate_priority(priority)
             if priority != ticket["priority"]:
                 changes.append(("priority", ticket["priority"], priority))
+        if story_points_touched:
+            story_points = validate_story_points(story_points)
+            if story_points != int(ticket["story_points"] or 0):
+                changes.append(("story_points", ticket["story_points"], story_points))
         if assignee_touched and assignee_id != ticket["assignee_id"]:
             if assignee_id:
                 require_project_member_conn(conn, int(ticket["project_id"]), assignee_id)
@@ -1497,6 +1612,7 @@ def update_ticket(
             "ticket_type": ticket["ticket_type"],
             "status": ticket["status"],
             "priority": ticket["priority"],
+            "story_points": int(ticket["story_points"] or 0),
             "assignee_id": ticket["assignee_id"],
             "sprint_id": ticket["sprint_id"],
             "closed_at": ticket["closed_at"],
@@ -1516,7 +1632,7 @@ def update_ticket(
         conn.execute(
             """
             UPDATE tickets
-            SET title = ?, description = ?, ticket_type = ?, status = ?, priority = ?,
+            SET title = ?, description = ?, ticket_type = ?, status = ?, priority = ?, story_points = ?,
                 sprint_id = ?, sort_order = ?, assignee_id = ?, closed_at = ?, updated_at = ?
             WHERE id = ?
             """,
@@ -1526,6 +1642,7 @@ def update_ticket(
                 values["ticket_type"],
                 values["status"],
                 values["priority"],
+                values["story_points"],
                 values["sprint_id"],
                 target_sort_order,
                 values["assignee_id"],

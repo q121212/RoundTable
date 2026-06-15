@@ -140,6 +140,7 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "description": {"type": "string"},
                     "ticket_type": {"type": "string"},
                     "priority": {"type": "string"},
+                    "story_points": {"type": "integer"},
                     "sprint_id": {"type": "integer"},
                 },
                 ["project_key", "title"],
@@ -147,7 +148,7 @@ def tool_specs() -> List[Dict[str, Any]]:
         },
         {
             "name": "update_ticket",
-            "description": "Update title, description, type, status, priority, assignee, or sprint.",
+            "description": "Update title, description, type, status, priority, story points, assignee, or sprint.",
             "inputSchema": schema(
                 {
                     "ticket_key": {"type": "string"},
@@ -156,6 +157,7 @@ def tool_specs() -> List[Dict[str, Any]]:
                     "ticket_type": {"type": "string"},
                     "status": {"type": "string"},
                     "priority": {"type": "string"},
+                    "story_points": {"type": "integer"},
                     "assignee_id": {"type": "integer"},
                     "sprint_id": {"type": "integer"},
                 },
@@ -280,6 +282,7 @@ async def call_tool(
             priority=a.get("priority", "Medium"),
             ticket_type=a.get("ticket_type", "Task"),
             sprint_id=a.get("sprint_id"),
+            story_points=a.get("story_points", 0),
         ),
         "update_ticket": lambda u, a: update_ticket(
             u,
@@ -289,6 +292,8 @@ async def call_tool(
             ticket_type=a.get("ticket_type"),
             status_value=a.get("status"),
             priority=a.get("priority"),
+            story_points=a.get("story_points"),
+            story_points_touched="story_points" in a,
             assignee_id=a.get("assignee_id"),
             assignee_touched="assignee_id" in a,
             sprint_id=a.get("sprint_id"),

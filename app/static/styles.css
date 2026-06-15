@@ -541,9 +541,13 @@ button,
 }
 
 .quick-create-side {
-  grid-template-columns: minmax(220px, 300px) minmax(130px, 180px) minmax(220px, 320px) auto;
+  grid-template-columns: minmax(160px, 220px) minmax(120px, 160px) minmax(90px, 118px) minmax(190px, 1fr) minmax(150px, 200px) auto;
   align-items: end;
   justify-content: start;
+}
+
+.quick-story-points input {
+  text-align: center;
 }
 
 .quick-create-button {
@@ -943,17 +947,42 @@ button,
 }
 
 .ticket-link-list li {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 
-.ticket-link-list a {
+.ticket-link-list a,
+.ticket-link-edit-form {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+.ticket-link-summary {
+  color: var(--ink);
+}
+
+.ticket-link-edit-form {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr) auto;
+  align-items: start;
+}
+
+.ticket-link-edit-form select,
+.compact-ticket-search input {
+  min-height: 34px;
+  padding: 5px 8px;
+  font-size: 0.86rem;
+}
+
+.ticket-link-edit-form .tiny {
+  min-height: 34px;
 }
 
 .compact-link-form {
@@ -1906,6 +1935,10 @@ a.ticket-key:hover {
   max-width: 108px;
 }
 
+.chip-story-points {
+  max-width: 92px;
+}
+
 .chip-assignee {
   max-width: 136px;
 }
@@ -1917,7 +1950,8 @@ a.ticket-key:hover {
 }
 
 .type-icon,
-.priority-icon {
+.priority-icon,
+.story-points-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1930,7 +1964,8 @@ a.ticket-key:hover {
 }
 
 .type-icon .icon,
-.priority-icon .icon {
+.priority-icon .icon,
+.story-points-icon .icon {
   width: 13px;
   height: 13px;
   stroke-width: 2.4;
@@ -1958,6 +1993,11 @@ a.ticket-key:hover {
 .priority-urgent-icon {
   color: var(--coral);
   background: color-mix(in srgb, var(--coral) 12%, var(--surface));
+}
+
+.story-points-icon {
+  color: var(--green-dark);
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
 }
 
 .chip-assignee .chip-label {
@@ -2019,6 +2059,54 @@ a.ticket-key:hover {
 
 .ticket-card-links.is-empty {
   display: none;
+}
+
+.ticket-card-sprint-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 14px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 650;
+}
+
+.ticket-card-sprint-progress[hidden] {
+  display: none;
+}
+
+.sprint-progress-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.sprint-progress-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 22%, var(--surface));
+}
+
+.sprint-progress-dot.is-filled {
+  background: color-mix(in srgb, var(--green) 68%, var(--muted));
+}
+
+.sprint-progress-dot.is-ended {
+  background: color-mix(in srgb, var(--muted) 70%, var(--surface));
+}
+
+.sprint-progress-label {
+  flex: 0 0 auto;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ticket-links-icon {
@@ -2184,6 +2272,24 @@ a.ticket-key:hover {
 .popover-comment textarea {
   min-height: 62px;
   font-size: 0.86rem;
+}
+
+.popover-points {
+  min-width: 160px;
+}
+
+.popover-field-label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.popover-field-label input {
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 0.92rem;
 }
 
 .popover-actions {
@@ -2592,6 +2698,21 @@ a.ticket-key:hover {
     max-height: 92px;
   }
 
+  .ticket-card-sprint-progress {
+    gap: 5px;
+    font-size: 0.64rem;
+  }
+
+  .sprint-progress-dots {
+    gap: 3px;
+  }
+
+  .sprint-progress-dot {
+    width: 4px;
+    height: 4px;
+    flex-basis: 4px;
+  }
+
   .chip {
     min-height: 40px;
     padding: 7px 10px;
@@ -2601,6 +2722,7 @@ a.ticket-key:hover {
   .chip-type,
   .chip-status,
   .chip-priority,
+  .chip-story-points,
   .chip-assignee,
   .chip-sprint {
     max-width: min(46vw, 190px);
@@ -2641,6 +2763,15 @@ a.ticket-key:hover {
   .ticket-card-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .ticket-link-edit-form {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .ticket-link-edit-form .tiny {
+    width: 100%;
   }
 }
 
