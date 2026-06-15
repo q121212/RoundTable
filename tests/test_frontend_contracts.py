@@ -10,7 +10,9 @@ def test_board_counts_use_dedicated_counter_not_status_dot():
     template = (ROOT / "app/templates/board.html").read_text()
 
     assert 'class="column-count"' in template
+    assert 'data-column-points' in template
     assert 'querySelector(".column-count")' in script
+    assert 'querySelector("[data-column-points]")' in script
     assert 'querySelector(".column-head span")' not in script
     assert ".column-head span," not in styles
 

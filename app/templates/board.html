@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ project.key }} board - RoundTable{% endblock %}
 {% block content %}
+{% set can_manage_project = project_role == "admin" %}
 <section class="page-head board-head">
   <div>
     <h1>{{ project.name }}</h1>
     {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
   </div>
   <div class="head-actions">
-    <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+    {% if can_manage_project %}
+      <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+    {% endif %}
   </div>
 </section>
 
@@ -25,7 +28,9 @@
       </select>
     </label>
   </form>
-  <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
+  {% if can_manage_project %}
+    <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
+  {% endif %}
   <details class="ticket-create board-create">
     <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
     <div class="panel board-create-panel">
@@ -177,7 +182,17 @@
           <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
           <span data-i18n="status.{{ status }}">{{ status }}</span>
         </h2>
-        <span class="column-count">{{ columns[status]|length }}</span>
+        <div class="column-metrics" aria-label="Column totals">
+          <span class="column-metric tooltip-anchor" data-i18n-tooltip="column.ticket_count" data-tooltip="Tickets in this status">
+            <span class="column-metric-icon" data-icon="list-checks" aria-hidden="true"></span>
+            <span class="column-count">{{ columns[status]|length }}</span>
+          </span>
+          <span class="column-metric column-points tooltip-anchor" data-i18n-tooltip="column.story_points" data-tooltip="Story points in this status">
+            <span class="column-metric-icon" data-icon="gauge" aria-hidden="true"></span>
+            <span data-column-points>{{ columns[status]|sum(attribute="story_points") }}</span>
+            <span data-i18n="story_points.short">SP</span>
+          </span>
+        </div>
       </header>
       <div class="dropzone" data-status="{{ status }}">
         {% for ticket in columns[status] %}

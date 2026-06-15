@@ -185,6 +185,8 @@ def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
 
     assert response.status_code == 200
     assert 'class="column-count"' in response.text
+    assert "column-points" in response.text
+    assert "data-column-points>3</span>" in response.text
     assert 'data-sprint-filter-select' in response.text
     assert 'data-priority-picker' in response.text
     assert 'data-priority-value="High"' in response.text
@@ -727,6 +729,37 @@ def test_member_cannot_create_project(temp_db):
     )
 
     assert response.status_code == 403
+
+
+def test_board_hides_project_admin_actions_for_members(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "WEB", "Website")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+
+    client = TestClient(app)
+    member_session = create_session(int(member["id"]))
+    client.cookies.set(SESSION_COOKIE, member_session["token"])
+    member_page = client.get("/p/WEB/board")
+
+    assert member_page.status_code == 200
+    assert "/p/WEB/settings" not in member_page.text
+    assert "/p/WEB/sprints" not in member_page.text
+    assert client.get("/p/WEB/settings").status_code == 403
+    assert client.get("/p/WEB/sprints").status_code == 403
+
+    admin_session = create_session(int(owner["id"]))
+    client.cookies.set(SESSION_COOKIE, admin_session["token"])
+    admin_page = client.get("/p/WEB/board")
+
+    assert admin_page.status_code == 200
+    assert "/p/WEB/settings" in admin_page.text
+    assert "/p/WEB/sprints" in admin_page.text
 
 
 def test_member_management_role_change_and_remove(temp_db):

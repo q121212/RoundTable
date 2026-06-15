@@ -41,6 +41,8 @@
       "field.target_ticket": "Target ticket",
       "field.title": "Title",
       "footer.tagline": "A round table for your tickets.",
+      "column.story_points": "Story points in this status",
+      "column.ticket_count": "Tickets in this status",
       "github.create_project_first": "Create a project first.",
       "github.how_copy": "Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.",
       "github.how_title": "How to connect GitHub",
@@ -205,6 +207,7 @@
       "sprint.ends_today": "ends today",
       "status.all": "All",
       "story_points.none": "No SP",
+      "story_points.short": "SP",
       "status.Backlog": "Backlog",
       "status.Closed": "Closed",
       "status.Done": "Done",
@@ -293,6 +296,8 @@
       "field.target_ticket": "Связанный тикет",
       "field.title": "Заголовок",
       "footer.tagline": "Круглый стол для ваших тикетов.",
+      "column.story_points": "Сторипоинты в этом статусе",
+      "column.ticket_count": "Тикетов в этом статусе",
       "github.create_project_first": "Сначала создайте проект.",
       "github.how_copy": "Вставьте owner/repo или ссылку GitHub. Этого достаточно, чтобы webhook связывал ветки, коммиты и PR с тикетами.",
       "github.how_title": "Как подключить GitHub",
@@ -457,6 +462,7 @@
       "sprint.ends_today": "закончится сегодня",
       "status.all": "Все",
       "story_points.none": "Без SP",
+      "story_points.short": "SP",
       "status.Backlog": "Бэклог",
       "status.Closed": "Закрыто",
       "status.Done": "Готово",
@@ -549,6 +555,7 @@
     setupActionLabels();
     setupActionDetails();
     setupSprintProgress();
+    refreshColumnCounts();
     renderIcons();
   }
 
@@ -1588,7 +1595,7 @@
     }
     const text = document.createElement("span");
     text.className = "sprint-progress-label";
-    text.textContent = label;
+    text.textContent = `${translate("field.sprint", currentLang()) || "Sprint"} · ${label}`;
     progress.append(dots, text);
   }
 
@@ -1682,6 +1689,10 @@
     document.querySelectorAll(".board-column").forEach((column) => {
       const counter = column.querySelector(".column-count");
       if (counter) counter.textContent = column.querySelectorAll(".ticket-card").length;
+      const points = Array.from(column.querySelectorAll('.ticket-card .chip-edit[data-edit="story_points"]'))
+        .reduce((sum, chip) => sum + (Number.parseInt(chip.dataset.value || "0", 10) || 0), 0);
+      const pointsEl = column.querySelector("[data-column-points]");
+      if (pointsEl) pointsEl.textContent = String(points);
     });
   }
 

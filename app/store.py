@@ -285,6 +285,17 @@ def require_project_access(user: Dict[str, Any], project_id: int, write: bool = 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Write access denied")
 
 
+def project_role_for_user(user: Dict[str, Any], project_id: int) -> str:
+    if user.get("role") == "admin":
+        return "admin"
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT role FROM project_members WHERE project_id = ? AND user_id = ?",
+            (project_id, user["id"]),
+        ).fetchone()
+    return str(row["role"]) if row else ""
+
+
 def require_project_admin(user: Dict[str, Any], project_id: int) -> None:
     if user.get("role") == "admin":
         return
@@ -1487,6 +1498,7 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
         columns.setdefault(ticket["status"], []).append(ticket)
     return {
         "project": project,
+        "project_role": project_role_for_user(user, int(project["id"])),
         "statuses": statuses,
         "columns": columns,
         "sprints": list_project_sprints(int(project["id"])),
