@@ -70,20 +70,11 @@
           <div class="sprint-row-summary">
             <div class="sprint-row-meta">
               <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
-              <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
-              {% if sprint.starts_on or sprint.ends_on %}
-                <span class="sprint-date-range">
-                  {% if sprint.starts_on %}
-                    <span data-local-date="{{ sprint.starts_on }}">{{ sprint.starts_on }}</span>
-                  {% endif %}
-                  {% if sprint.starts_on and sprint.ends_on %}
-                    <span aria-hidden="true">-</span>
-                  {% endif %}
-                  {% if sprint.ends_on %}
-                    <span data-local-date="{{ sprint.ends_on }}">{{ sprint.ends_on }}</span>
-                  {% endif %}
-                </span>
-              {% endif %}
+              <span class="muted {% if sprint.ticket_preview %}tooltip-anchor{% endif %}"
+                {% if sprint.ticket_preview %}
+                  data-tooltip="{% for ticket in sprint.ticket_preview %}{{ ticket.key }} · {{ ticket.title }}{% if not loop.last %}; {% endif %}{% endfor %}{% if sprint.ticket_preview_more %}; +{{ sprint.ticket_preview_more }}{% endif %}"
+                {% endif %}
+              >{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
             </div>
           </div>
           <form class="sprint-edit-form" method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}">

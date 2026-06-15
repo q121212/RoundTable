@@ -29,6 +29,8 @@ GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
 SPRINT_STATUSES = {"planned", "active", "closed"}
+STATS_VISIBILITIES = {"all", "admin"}
+TICKET_DELETE_POLICIES = {"admin", "member", "viewer"}
 
 
 def validate_project_key(key: str) -> str:
@@ -109,6 +111,28 @@ def normalize_project_ticket_types(values: List[str]) -> List[str]:
 
 def project_ticket_types(project: Dict[str, Any]) -> List[str]:
     return normalize_project_ticket_types(json_loads(project.get("ticket_types_json"), TICKET_TYPES))
+
+
+def normalize_stats_visibility(value: Optional[str]) -> str:
+    clean = (value or "all").strip().lower()
+    if clean not in STATS_VISIBILITIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid statistics visibility")
+    return clean
+
+
+def project_stats_visibility(project: Dict[str, Any]) -> str:
+    return normalize_stats_visibility(project.get("stats_visibility") or "all")
+
+
+def normalize_ticket_delete_policy(value: Optional[str]) -> str:
+    clean = (value or "admin").strip().lower()
+    if clean not in TICKET_DELETE_POLICIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket delete policy")
+    return clean
+
+
+def project_ticket_delete_policy(project: Dict[str, Any]) -> str:
+    return normalize_ticket_delete_policy(project.get("ticket_delete_policy") or "admin")
 
 
 def validate_project_ticket_type(project: Dict[str, Any], value: str) -> str:
@@ -308,6 +332,30 @@ def require_project_admin(user: Dict[str, Any], project_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project admin required")
 
 
+def require_project_stats_access(user: Dict[str, Any], project: Dict[str, Any]) -> None:
+    require_project_access(user, int(project["id"]))
+    if project_stats_visibility(project) == "admin":
+        require_project_admin(user, int(project["id"]))
+
+
+def can_delete_ticket(user: Dict[str, Any], project: Dict[str, Any]) -> bool:
+    role = project_role_for_user(user, int(project["id"]))
+    policy = project_ticket_delete_policy(project)
+    if role == "admin":
+        return True
+    if policy == "member" and role == "member":
+        return True
+    if policy == "viewer" and role in {"member", "viewer"}:
+        return True
+    return False
+
+
+def require_ticket_delete_access(user: Dict[str, Any], project: Dict[str, Any]) -> None:
+    require_project_access(user, int(project["id"]))
+    if not can_delete_ticket(user, project):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ticket delete access denied")
+
+
 def delete_project(user: Dict[str, Any], project_key: str, confirmation: str = "") -> None:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
@@ -328,7 +376,7 @@ def list_project_sprints(project_id: int, include_closed: bool = True) -> List[D
     if not include_closed:
         where += " AND sprints.status != 'closed'"
     with get_conn() as conn:
-        return rows_to_dicts(
+        sprints = rows_to_dicts(
             conn.execute(
                 """
                 SELECT sprints.*,
@@ -351,6 +399,32 @@ def list_project_sprints(project_id: int, include_closed: bool = True) -> List[D
                 tuple(params),
             ).fetchall()
         )
+        if not sprints:
+            return sprints
+        sprint_ids = [int(sprint["id"]) for sprint in sprints]
+        placeholders = ",".join("?" for _ in sprint_ids)
+        ticket_rows = rows_to_dicts(
+            conn.execute(
+                """
+                SELECT sprint_id, key, title
+                FROM tickets
+                WHERE project_id = ?
+                  AND sprint_id IN (%s)
+                ORDER BY sprint_id, sort_order ASC, updated_at DESC, number DESC
+                """
+                % placeholders,
+                (project_id, *sprint_ids),
+            ).fetchall()
+        )
+        tickets_by_sprint: Dict[int, List[Dict[str, Any]]] = {sprint_id: [] for sprint_id in sprint_ids}
+        for ticket in ticket_rows:
+            tickets_by_sprint.setdefault(int(ticket["sprint_id"]), []).append(ticket)
+        for sprint in sprints:
+            preview = tickets_by_sprint.get(int(sprint["id"]), [])[:8]
+            sprint["ticket_preview"] = preview
+            remaining = max(0, int(sprint.get("ticket_count") or 0) - len(preview))
+            sprint["ticket_preview_more"] = remaining
+        return sprints
 
 
 def validate_project_sprint_conn(conn: Any, project_id: int, sprint_id: Optional[int]) -> Optional[int]:
@@ -505,6 +579,8 @@ def update_project_settings(
     repo: str = "",
     statuses: Optional[List[str]] = None,
     ticket_types: Optional[List[str]] = None,
+    stats_visibility: Optional[str] = None,
+    ticket_delete_policy: Optional[str] = None,
 ) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
@@ -514,6 +590,14 @@ def update_project_settings(
     enabled_statuses = project_statuses(project) if statuses is None else normalize_project_statuses(statuses)
     enabled_ticket_types = (
         project_ticket_types(project) if ticket_types is None else normalize_project_ticket_types(ticket_types)
+    )
+    enabled_stats_visibility = (
+        project_stats_visibility(project) if stats_visibility is None else normalize_stats_visibility(stats_visibility)
+    )
+    enabled_ticket_delete_policy = (
+        project_ticket_delete_policy(project)
+        if ticket_delete_policy is None
+        else normalize_ticket_delete_policy(ticket_delete_policy)
     )
     with get_conn() as conn:
         used_statuses = {
@@ -545,7 +629,13 @@ def update_project_settings(
         conn.execute(
             """
             UPDATE projects
-            SET name = ?, description = ?, github_repo_full_name = ?, statuses_json = ?, ticket_types_json = ?
+            SET name = ?,
+                description = ?,
+                github_repo_full_name = ?,
+                statuses_json = ?,
+                ticket_types_json = ?,
+                stats_visibility = ?,
+                ticket_delete_policy = ?
             WHERE id = ?
             """,
             (
@@ -554,6 +644,8 @@ def update_project_settings(
                 normalize_github_repo(repo) or None,
                 json_dumps(enabled_statuses),
                 json_dumps(enabled_ticket_types),
+                enabled_stats_visibility,
+                enabled_ticket_delete_policy,
                 project["id"],
             ),
         )
@@ -1507,6 +1599,159 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
     }
 
 
+def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
+    project = get_project_by_key(project_key)
+    require_project_stats_access(user, project)
+    statuses = project_statuses(project)
+    ticket_types = project_ticket_types(project)
+    sprints = list_project_sprints(int(project["id"]))
+    with get_conn() as conn:
+        tickets = rows_to_dicts(
+            conn.execute(
+                """
+                SELECT tickets.key,
+                       tickets.title,
+                       tickets.status,
+                       tickets.priority,
+                       tickets.ticket_type,
+                       tickets.story_points,
+                       tickets.sprint_id,
+                       sprints.name AS sprint_name,
+                       sprints.status AS sprint_status,
+                       assignee.id AS assignee_id,
+                       assignee.login AS assignee_login,
+                       assignee.name AS assignee_name,
+                       assignee.avatar_url AS assignee_avatar_url
+                FROM tickets
+                LEFT JOIN sprints ON sprints.id = tickets.sprint_id
+                LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
+                WHERE tickets.project_id = ?
+                ORDER BY tickets.updated_at DESC, tickets.number DESC
+                """,
+                (project["id"],),
+            ).fetchall()
+        )
+
+    def make_group(value: str, label: str, group_tickets: List[Dict[str, Any]], href: str = "") -> Dict[str, Any]:
+        points = sum(int(ticket.get("story_points") or 0) for ticket in group_tickets)
+        return {
+            "value": value,
+            "label": label,
+            "count": len(group_tickets),
+            "story_points": points,
+            "tickets": group_tickets[:8],
+            "ticket_more": max(0, len(group_tickets) - 8),
+            "href": href,
+        }
+
+    total_points = sum(int(ticket.get("story_points") or 0) for ticket in tickets)
+    max_count = max([1, *[len([ticket for ticket in tickets if ticket["status"] == status]) for status in statuses]])
+    max_points = max(1, total_points)
+    status_groups = [
+        make_group(
+            status_name,
+            status_name,
+            [ticket for ticket in tickets if ticket["status"] == status_name],
+            "#status-%s" % status_name.lower().replace(" ", "-"),
+        )
+        for status_name in statuses
+    ]
+    for group in status_groups:
+        group["count_percent"] = int(round((group["count"] / max_count) * 100)) if max_count else 0
+        group["points_percent"] = int(round((group["story_points"] / max_points) * 100)) if max_points else 0
+
+    priority_groups = [
+        make_group(priority, priority, [ticket for ticket in tickets if ticket["priority"] == priority])
+        for priority in PRIORITIES
+    ]
+    type_groups = [
+        make_group(ticket_type, ticket_type, [ticket for ticket in tickets if ticket["ticket_type"] == ticket_type])
+        for ticket_type in ticket_types
+    ]
+
+    assignee_values: Dict[str, Dict[str, Any]] = {}
+    for ticket in tickets:
+        key = str(ticket.get("assignee_id") or "unassigned")
+        if key not in assignee_values:
+            assignee_values[key] = {
+                "value": key,
+                "label": ticket.get("assignee_name") or ticket.get("assignee_login") or "Unassigned",
+                "login": ticket.get("assignee_login") or "",
+                "avatar_url": ticket.get("assignee_avatar_url") or "",
+                "tickets": [],
+            }
+        assignee_values[key]["tickets"].append(ticket)
+    assignee_groups = sorted(
+        [
+            {
+                **make_group(
+                    str(group["value"]),
+                    str(group["label"]),
+                    group["tickets"],
+                ),
+                "login": group["login"],
+                "avatar_url": group["avatar_url"],
+            }
+            for group in assignee_values.values()
+        ],
+        key=lambda item: (-int(item["story_points"]), -int(item["count"]), item["label"].lower()),
+    )
+
+    sprint_groups = [
+        {
+            **make_group(
+                "none",
+                "No sprint",
+                [ticket for ticket in tickets if not ticket.get("sprint_id")],
+                "/p/%s/board?sprint=none" % project["key"],
+            ),
+            "status": "",
+            "starts_on": "",
+            "ends_on": "",
+        }
+    ]
+    for sprint_item in sprints:
+        sprint_tickets = [ticket for ticket in tickets if ticket.get("sprint_id") == sprint_item["id"]]
+        sprint_groups.append(
+            {
+                **make_group(
+                    str(sprint_item["id"]),
+                    sprint_item["name"],
+                    sprint_tickets,
+                    "/p/%s/board?sprint=%s" % (project["key"], sprint_item["id"]),
+                ),
+                "status": sprint_item.get("status") or "",
+                "starts_on": sprint_item.get("starts_on") or "",
+                "ends_on": sprint_item.get("ends_on") or "",
+            }
+        )
+
+    open_tickets = [ticket for ticket in tickets if ticket["status"] not in {"Done", "Closed"}]
+    done_tickets = [ticket for ticket in tickets if ticket["status"] == "Done"]
+    closed_tickets = [ticket for ticket in tickets if ticket["status"] == "Closed"]
+    return {
+        "project": project,
+        "project_role": project_role_for_user(user, int(project["id"])),
+        "statuses": statuses,
+        "ticket_types": ticket_types,
+        "tickets": tickets,
+        "summary": {
+            "total_tickets": len(tickets),
+            "open_tickets": len(open_tickets),
+            "done_tickets": len(done_tickets),
+            "closed_tickets": len(closed_tickets),
+            "story_points": total_points,
+            "open_story_points": sum(int(ticket.get("story_points") or 0) for ticket in open_tickets),
+        },
+        "status_groups": status_groups,
+        "priority_groups": priority_groups,
+        "type_groups": type_groups,
+        "assignee_groups": assignee_groups,
+        "sprint_groups": sprint_groups,
+        "active_sprint": next((sprint for sprint in sprints if sprint.get("status") == "active"), None),
+    }
+
+
 def next_ticket_sort_order_conn(conn: Any, project_id: int, status_value: str) -> float:
     value = conn.execute(
         "SELECT COALESCE(MAX(sort_order), 0) + 1000 FROM tickets WHERE project_id = ? AND status = ?",
@@ -1775,6 +2020,30 @@ def reopen_ticket(user: Dict[str, Any], ticket_key: str) -> Dict[str, Any]:
     statuses = project_statuses(project)
     target = "Todo" if "Todo" in statuses else statuses[0]
     return update_ticket(user, ticket_key, status_value=target)
+
+
+def delete_ticket(user: Dict[str, Any], ticket_key: str, confirmation: str = "") -> Dict[str, Any]:
+    ticket_key = ticket_key.upper()
+    if confirmation.strip().upper() != ticket_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Type the ticket key to confirm deletion.")
+    project = get_project_for_ticket_key(ticket_key)
+    require_ticket_delete_access(user, project)
+    with get_conn() as conn:
+        ticket = get_ticket_by_key_conn(conn, ticket_key)
+        if int(ticket["project_id"]) != int(project["id"]):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        deleted = dict(ticket)
+        deleted["project_key"] = project["key"]
+        log_action(
+            conn,
+            int(project["id"]),
+            None,
+            user["id"],
+            "ticket_deleted",
+            metadata={"key": ticket["key"], "title": ticket["title"], "status": ticket["status"]},
+        )
+        conn.execute("DELETE FROM tickets WHERE id = ?", (ticket["id"],))
+        return deleted
 
 
 def get_ticket_by_key_conn(conn: Any, ticket_key: str) -> Dict[str, Any]:

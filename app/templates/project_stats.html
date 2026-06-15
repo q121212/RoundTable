@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}{{ project.key }} stats - RoundTable{% endblock %}
+{% macro ticket_preview(group) %}
+  <details class="stat-drill" {% if group.count and group.count <= 6 %}open{% endif %}>
+    <summary>
+      <span data-i18n="stats.ticket_count">Tickets</span>
+      <strong>{{ group.count }}</strong>
+      <span aria-hidden="true">·</span>
+      <span data-i18n="stats.points">Story points</span>
+      <strong>{{ group.story_points }}</strong>
+    </summary>
+    {% if group.tickets %}
+      <div class="stat-ticket-list">
+        {% for ticket in group.tickets %}
+          <a class="stat-ticket-row" href="/t/{{ ticket.key }}">
+            <span class="ticket-key">{{ ticket.key }}</span>
+            <span>{{ ticket.title }}</span>
+            <span class="field-badge">{{ ticket.story_points or 0 }} SP</span>
+          </a>
+        {% endfor %}
+        {% if group.ticket_more %}
+          <span class="muted">+{{ group.ticket_more }} <span data-i18n="stats.more_tickets">more</span></span>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="muted" data-i18n="stats.empty">No tickets here yet.</p>
+    {% endif %}
+  </details>
+{% endmacro %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">{{ project.key }}</p>
+    <h1 data-i18n="stats.title">Statistics</h1>
+    {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
+  </div>
+  <div class="head-actions">
+    <a class="secondary" href="/p/{{ project.key }}/board" data-icon="arrow-left" data-i18n="stats.board_return">Back to board</a>
+    {% if project_role == "admin" %}
+      <a class="ghost" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="stats-summary-grid">
+  <div class="stat-summary-card">
+    <span data-icon="list-checks" aria-hidden="true"></span>
+    <p data-i18n="stats.total">Total tickets</p>
+    <strong>{{ summary.total_tickets }}</strong>
+  </div>
+  <div class="stat-summary-card">
+    <span data-icon="loader-circle" aria-hidden="true"></span>
+    <p data-i18n="stats.open">Open</p>
+    <strong>{{ summary.open_tickets }}</strong>
+  </div>
+  <div class="stat-summary-card">
+    <span data-icon="gauge" aria-hidden="true"></span>
+    <p data-i18n="stats.open_points">Open SP</p>
+    <strong>{{ summary.open_story_points }}</strong>
+  </div>
+  <div class="stat-summary-card">
+    <span data-icon="check-circle-2" aria-hidden="true"></span>
+    <p data-i18n="stats.done">Done</p>
+    <strong>{{ summary.done_tickets }}</strong>
+  </div>
+  <div class="stat-summary-card">
+    <span data-icon="archive" aria-hidden="true"></span>
+    <p data-i18n="stats.closed">Closed</p>
+    <strong>{{ summary.closed_tickets }}</strong>
+  </div>
+</section>
+
+<section class="stats-layout">
+  <div class="panel stats-panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="stats.statuses">Statuses</p>
+        <h2 data-i18n="stats.statuses">Statuses</h2>
+      </div>
+    </div>
+    <div class="stat-bars">
+      {% for group in status_groups %}
+        <article class="stat-bar-card" id="status-{{ group.value|lower|replace(' ', '-') }}">
+          <div class="stat-bar-head">
+            <span class="stat-bar-label">
+              <span class="status-dot status-{{ group.value|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
+              <span data-i18n="status.{{ group.value }}">{{ group.label }}</span>
+            </span>
+            <span class="stat-bar-count">{{ group.count }} / {{ group.story_points }} SP</span>
+          </div>
+          <div class="stat-bar-track" aria-hidden="true">
+            <span class="stat-bar-fill" style="width: {{ group.count_percent }}%"></span>
+            <span class="stat-bar-fill stat-bar-fill-points" style="width: {{ group.points_percent }}%"></span>
+          </div>
+          {{ ticket_preview(group) }}
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel stats-panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="stats.priorities">Priorities</p>
+        <h2 data-i18n="stats.priorities">Priorities</h2>
+      </div>
+    </div>
+    <div class="stats-chip-grid">
+      {% for group in priority_groups %}
+        <article class="stats-mini-card">
+          <h3>
+            <span class="priority-icon priority-{{ group.value|lower }}-icon" data-icon="{{ priority_icons.get(group.value, 'minus') }}" aria-hidden="true"></span>
+            <span data-i18n="priority.{{ group.value }}">{{ group.label }}</span>
+          </h3>
+          {{ ticket_preview(group) }}
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel stats-panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="stats.types">Types</p>
+        <h2 data-i18n="stats.types">Types</h2>
+      </div>
+    </div>
+    <div class="stats-chip-grid">
+      {% for group in type_groups %}
+        <article class="stats-mini-card">
+          <h3>
+            <span class="type-icon type-{{ group.value|lower }}" data-icon="{{ ticket_type_icons.get(group.value, 'circle-dot') }}" aria-hidden="true"></span>
+            <span data-i18n="type.{{ group.value }}">{{ group.label }}</span>
+          </h3>
+          {{ ticket_preview(group) }}
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel stats-panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="stats.assignees">Assignees</p>
+        <h2 data-i18n="stats.assignees">Assignees</h2>
+      </div>
+    </div>
+    <div class="stats-chip-grid">
+      {% for group in assignee_groups %}
+        <article class="stats-mini-card">
+          <h3 class="profile-line">
+            <span class="avatar-dot" aria-hidden="true">
+              {% if group.avatar_url %}
+                <img src="{{ group.avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+              {% else %}
+                {{ (group.login or "?")[:1]|upper }}
+              {% endif %}
+            </span>
+            <span {% if group.value == "unassigned" %}data-i18n="ticket.unassigned"{% endif %}>{{ group.label }}</span>
+          </h3>
+          {{ ticket_preview(group) }}
+        </article>
+      {% else %}
+        <p class="muted" data-i18n="stats.empty">No tickets here yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel stats-panel stats-wide-panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" data-i18n="stats.sprints">Sprints</p>
+        <h2 data-i18n="stats.sprints">Sprints</h2>
+      </div>
+      {% if active_sprint %}
+        <span class="field-badge" data-i18n="sprint.active">Active</span>
+      {% endif %}
+    </div>
+    <div class="stats-sprint-list">
+      {% for group in sprint_groups %}
+        <article class="stats-mini-card">
+          <div class="stat-sprint-head">
+            <h3>
+              {% if group.value == "none" %}
+                <span data-i18n="sprint.none">No sprint</span>
+              {% else %}
+                {{ group.label }}
+              {% endif %}
+            </h3>
+            {% if group.status %}
+              <span class="field-badge" data-i18n="sprint.{{ group.status }}">{{ group.status }}</span>
+            {% endif %}
+          </div>
+          {% if group.href %}
+            <a class="stat-board-link" href="{{ group.href }}" data-icon="columns-3" data-i18n="stats.board_return">Back to board</a>
+          {% endif %}
+          {{ ticket_preview(group) }}
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

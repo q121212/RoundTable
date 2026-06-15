@@ -8,23 +8,36 @@
     {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
   </div>
   <div class="head-actions board-head-actions">
-    {% if can_manage_project %}
+    {% if can_manage_project or can_view_stats %}
       <div class="board-admin-links">
+        {% if can_view_stats %}
+          <a class="secondary tiny" href="/p/{{ project.key }}/stats" data-icon="bar-chart-3" data-i18n="stats.title">Statistics</a>
+        {% endif %}
+        {% if can_manage_project %}
         <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
         <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
+        {% endif %}
       </div>
     {% endif %}
     <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
       <label>
         <span data-i18n="field.sprint">Sprint</span>
-        <select name="sprint" data-sprint-filter-select>
-          <option value="" {% if not sprint_filter %}selected{% endif %} data-i18n="sprint.all">All sprints</option>
-          <option value="none" {% if sprint_filter == "none" %}selected{% endif %} data-i18n="sprint.backlog">No sprint</option>
-          <option value="active" {% if sprint_filter == "active" %}selected{% endif %} data-i18n="sprint.active">Active sprint</option>
-          {% for sprint in sprints %}
-            <option value="{{ sprint.id }}" {% if sprint_filter == sprint.id|string %}selected{% endif %}>{{ sprint.name }}</option>
-          {% endfor %}
-        </select>
+        <div class="sprint-filter-combo" data-sprint-filter-combo data-project-key="{{ project.key }}" data-current-sprint-filter="{{ sprint_filter }}">
+          <button class="sprint-filter-button" type="button" data-sprint-filter-toggle aria-haspopup="listbox" aria-expanded="false">
+            <span class="sprint-filter-current" data-sprint-filter-current data-i18n="sprint.all">All sprints</span>
+            <span data-icon="chevron-down" aria-hidden="true"></span>
+          </button>
+          <div class="sprint-filter-menu" data-sprint-filter-menu>
+            <input type="search" data-sprint-filter-search placeholder="Find sprint" data-i18n-placeholder="sprint.find_placeholder" autocomplete="off">
+            {% if can_manage_project %}
+              <form class="sprint-filter-create" data-sprint-filter-create>
+                <input type="text" name="name" placeholder="New sprint name" data-i18n-placeholder="sprint.quick_create_placeholder" autocomplete="off">
+                <button class="secondary tiny" type="submit" data-icon="plus" data-i18n="sprint.quick_create">Create sprint</button>
+              </form>
+            {% endif %}
+            <div class="sprint-filter-options" data-sprint-filter-options role="listbox"></div>
+          </div>
+        </div>
       </label>
     </form>
   </div>
@@ -150,7 +163,7 @@
           <select name="sprint_id" aria-label="Sprint">
             <option value="" data-i18n="sprint.none">No sprint</option>
             {% for sprint in sprints if sprint.status != "closed" %}
-              <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+              <option value="{{ sprint.id }}" data-sprint-option data-sprint-name="{{ sprint.name }}" data-sprint-start="{{ sprint.starts_on or '' }}" data-sprint-end="{{ sprint.ends_on or '' }}">{{ sprint.name }}</option>
             {% endfor %}
           </select>
         </label>

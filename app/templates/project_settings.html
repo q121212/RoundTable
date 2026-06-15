@@ -29,7 +29,7 @@
     {% endif %}
   </nav>
 
-  <div class="settings-stack">
+  <div class="settings-stack" data-project-settings-root data-project-key="{{ project.key }}">
     <div class="panel settings-section" id="settings-project">
       <div class="section-heading">
         <div>
@@ -37,7 +37,7 @@
           <h2 data-i18n="projects.details">Project details</h2>
         </div>
       </div>
-      <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/settings">
+      <form class="stacked-form settings-autosave-form" method="post" action="/api/projects/{{ project.key }}/settings" data-project-details-form>
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <label>
           <span class="label-row">
@@ -59,13 +59,7 @@
           </span>
           <input name="repo" value="{{ project.github_repo_full_name or '' }}" placeholder="owner/repo or https://github.com/owner/repo" data-i18n-placeholder="placeholder.github_repo">
         </label>
-        {% for status in active_statuses %}
-          <input type="hidden" name="statuses" value="{{ status }}">
-        {% endfor %}
-        {% for ticket_type in active_ticket_types %}
-          <input type="hidden" name="ticket_types" value="{{ ticket_type }}">
-        {% endfor %}
-        <button class="primary" type="submit" data-icon="save" data-i18n="projects.save_details">Save project</button>
+        <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>
       </form>
     </div>
 
@@ -76,11 +70,8 @@
           <h2 data-i18n="projects.statuses">Board statuses</h2>
         </div>
       </div>
-      <form class="stacked-form" method="post" action="/api/projects/{{ project.key }}/settings">
+      <form class="stacked-form settings-autosave-form" method="post" action="/api/projects/{{ project.key }}/settings" data-board-settings-form>
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <input type="hidden" name="name" value="{{ project.name }}">
-        <input type="hidden" name="description" value="{{ project.description }}">
-        <input type="hidden" name="repo" value="{{ project.github_repo_full_name or '' }}">
         <fieldset class="status-settings board-status-settings">
           <legend>
             <span data-i18n="projects.statuses_selected">Statuses used by this project</span>
@@ -113,7 +104,44 @@
           </div>
           <p class="muted" data-i18n="projects.ticket_types_help">Selected types are available when creating and editing tickets. Move existing tickets before disabling a type.</p>
         </fieldset>
-        <button class="secondary" type="submit" data-icon="columns-3" data-i18n="projects.save_board_settings">Save board settings</button>
+        <fieldset class="status-settings board-status-settings">
+          <legend data-i18n="stats.visibility">Statistics visibility</legend>
+          <div class="status-choice-grid stats-visibility-grid">
+            <label class="check-row status-choice">
+              <input type="radio" name="stats_visibility" value="all" {% if (project.stats_visibility or 'all') == 'all' %}checked{% endif %}>
+              <span data-icon="users" aria-hidden="true"></span>
+              <span data-i18n="stats.visibility_all">Everyone in project</span>
+            </label>
+            <label class="check-row status-choice">
+              <input type="radio" name="stats_visibility" value="admin" {% if project.stats_visibility == 'admin' %}checked{% endif %}>
+              <span data-icon="shield" aria-hidden="true"></span>
+              <span data-i18n="stats.visibility_admin">Project admins only</span>
+            </label>
+          </div>
+          <p class="muted" data-i18n="stats.visibility_help">By default, every project member can open project statistics.</p>
+        </fieldset>
+        <fieldset class="status-settings board-status-settings">
+          <legend data-i18n="ticket.delete_policy">Ticket deletion</legend>
+          <div class="status-choice-grid stats-visibility-grid">
+            <label class="check-row status-choice">
+              <input type="radio" name="ticket_delete_policy" value="admin" {% if (project.ticket_delete_policy or 'admin') == 'admin' %}checked{% endif %}>
+              <span data-icon="shield" aria-hidden="true"></span>
+              <span data-i18n="ticket.delete_policy_admin">Project admins only</span>
+            </label>
+            <label class="check-row status-choice">
+              <input type="radio" name="ticket_delete_policy" value="member" {% if project.ticket_delete_policy == 'member' %}checked{% endif %}>
+              <span data-icon="user-pen" aria-hidden="true"></span>
+              <span data-i18n="ticket.delete_policy_member">Admins and members</span>
+            </label>
+            <label class="check-row status-choice">
+              <input type="radio" name="ticket_delete_policy" value="viewer" {% if project.ticket_delete_policy == 'viewer' %}checked{% endif %}>
+              <span data-icon="users" aria-hidden="true"></span>
+              <span data-i18n="ticket.delete_policy_viewer">Everyone with project access</span>
+            </label>
+          </div>
+          <p class="muted" data-i18n="ticket.delete_policy_help">Delete action appears only on the ticket page for users allowed by this project.</p>
+        </fieldset>
+        <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>
       </form>
     </div>
 

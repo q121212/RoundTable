@@ -33,10 +33,38 @@ def test_sprint_chip_stays_visible_before_assignee_chip():
     assert card_script.index('data-edit="sprint_id"') < card_script.index('data-edit="assignee_id"')
 
 
-def test_sprint_dates_use_localized_date_formatter():
+def test_sprint_dates_use_localized_option_labels():
     script = (ROOT / "app/static/app.js").read_text()
     template = (ROOT / "app/templates/project_sprints.html").read_text()
+    board_template = (ROOT / "app/templates/board.html").read_text()
 
     assert "function formatDateOnly" in script
-    assert "setupLocalDates();" in script
-    assert "data-local-date" in template
+    assert "function sprintDisplayLabel" in script
+    assert "setupSprintOptionLabels();" in script
+    assert "data-local-date" not in template
+    assert "data-sprint-filter-combo" in board_template
+    assert "data-sprint-filter-search" in board_template
+    assert "data-sprint-filter-create" in board_template
+    assert "/sprints/quick" in script
+    assert 'translate("sprint.filter_modes"' in script
+    assert 'translate("sprint.open_sprints"' in script
+    assert '"sprint.active": "Active sprint"' in script
+    assert '"sprint.active": "Активный спринт"' in script
+
+
+def test_popover_icons_render_after_menu_enters_dom():
+    script = (ROOT / "app/static/app.js").read_text()
+    open_popover = script.split("function openPopover", 1)[1].split("function closePopover", 1)[0]
+
+    assert "document.body.appendChild(pop);" in open_popover
+    assert "window.requestAnimationFrame(renderIcons);" in open_popover
+
+
+def test_live_ticket_delete_removes_card_and_refreshes_counts():
+    script = (ROOT / "app/static/app.js").read_text()
+    live_events = script.split("function setupBoardLiveEvents", 1)[1].split("function applyLiveTicketPage", 1)[0]
+
+    assert 'source.addEventListener("ticket_deleted", handleTicketEvent);' in live_events
+    assert 'payload.event === "ticket_deleted"' in live_events
+    assert "card.remove();" in live_events
+    assert "refreshColumnCounts();" in live_events

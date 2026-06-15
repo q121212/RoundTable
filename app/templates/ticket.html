@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ ticket.key }} - RoundTable{% endblock %}
 {% block content %}
-<section class="page-head" data-ticket-page data-ticket-key="{{ ticket.key }}" data-events-url="/events/projects/{{ ticket.project_key }}">
+<section class="page-head" data-ticket-page data-ticket-key="{{ ticket.key }}" data-project-key="{{ ticket.project_key }}" data-events-url="/events/projects/{{ ticket.project_key }}">
   <div>
     <p class="eyebrow"><a href="/p/{{ ticket.project_key }}/board">{{ ticket.project_key }}</a></p>
     <h1 class="ticket-page-title">
@@ -116,7 +116,7 @@
           <select name="sprint_id">
             <option value="" data-i18n="sprint.none">No sprint</option>
             {% for sprint in sprints %}
-              <option value="{{ sprint.id }}" {% if sprint.id == ticket.sprint_id %}selected{% endif %}>{{ sprint.name }}</option>
+              <option value="{{ sprint.id }}" {% if sprint.id == ticket.sprint_id %}selected{% endif %} data-sprint-option data-sprint-name="{{ sprint.name }}" data-sprint-start="{{ sprint.starts_on or '' }}" data-sprint-end="{{ sprint.ends_on or '' }}">{{ sprint.name }}</option>
             {% endfor %}
           </select>
         </label>
@@ -187,6 +187,18 @@
         {% endif %}
       </form>
     </div>
+    {% if can_delete_ticket %}
+      <div class="panel danger-zone ticket-danger-panel">
+        <h2 data-i18n="ticket.delete">Delete ticket</h2>
+        <p class="muted" data-i18n="ticket.delete_help">Deleting a ticket permanently removes its comments, links, watchers, and history. This cannot be undone.</p>
+        <p class="muted"><span data-i18n="ticket.delete_confirm">Type the ticket key to confirm:</span> <code>{{ ticket.key }}</code></p>
+        <form class="danger-confirm-form" method="post" action="/api/tickets/{{ ticket.key }}/delete">
+          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+          <input name="confirm" required placeholder="{{ ticket.key }}">
+          <button class="danger" type="submit" data-icon="trash-2" data-i18n="ticket.delete">Delete ticket</button>
+        </form>
+      </div>
+    {% endif %}
     <div class="panel">
       <h2 data-i18n="ticket.links">Ticket links</h2>
       {% if ticket_links %}

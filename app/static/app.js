@@ -155,7 +155,6 @@
       "projects.last_admin_copy": "Add another project admin before removing or demoting the current one.",
       "projects.last_admin_title": "Project needs an admin",
       "projects.remove_member": "Remove",
-      "projects.save_details": "Save project",
       "projects.settings": "Project settings",
       "projects.settings_access": "Access",
       "projects.settings_board": "Board",
@@ -164,10 +163,8 @@
       "projects.statuses": "Board statuses",
       "projects.statuses_help": "Only selected statuses appear on the board and in ticket status menus. Move tickets out before disabling a status.",
       "projects.statuses_selected": "Statuses used by this project",
-      "projects.save_statuses": "Save statuses",
       "projects.ticket_types_help": "Selected types are available when creating and editing tickets. Move existing tickets before disabling a type.",
       "projects.ticket_types_selected": "Ticket types used by this project",
-      "projects.save_board_settings": "Save board settings",
       "projects.title": "Projects",
       "sound.copy": "Short local sounds for board events. Different event types use different cues.",
       "sound.events_copy": "New tickets, comments, assignments, status changes, sprint changes, Done/Closed, and ticket links.",
@@ -179,8 +176,28 @@
       "sound.theme_bright": "Bright",
       "sound.theme_round": "Round",
       "sound.title": "Sounds on this device",
+      "stats.assignees": "Assignees",
+      "stats.board_return": "Back to board",
+      "stats.closed": "Closed",
+      "stats.done": "Done",
+      "stats.empty": "No tickets here yet.",
+      "stats.more_tickets": "more",
+      "stats.open": "Open",
+      "stats.open_points": "Open SP",
+      "stats.points": "Story points",
+      "stats.priorities": "Priorities",
+      "stats.sprints": "Sprints",
+      "stats.statuses": "Statuses",
+      "stats.ticket_count": "Tickets",
+      "stats.title": "Statistics",
+      "stats.total": "Total tickets",
+      "stats.types": "Types",
+      "stats.visibility": "Statistics visibility",
+      "stats.visibility_admin": "Project admins only",
+      "stats.visibility_all": "Everyone in project",
+      "stats.visibility_help": "By default, every project member can open project statistics.",
       "sprint.activate": "Activate",
-      "sprint.active": "Active",
+      "sprint.active": "Active sprint",
       "sprint.all": "All sprints",
       "sprint.backlog": "No sprint",
       "sprint.close": "Close",
@@ -188,15 +205,23 @@
       "sprint.create": "Create sprint",
       "sprint.empty": "No sprints yet.",
       "sprint.ends_on": "Ends",
+      "sprint.filter_modes": "Views",
+      "sprint.find_placeholder": "Find sprint",
       "sprint.goal": "Goal",
       "sprint.manage": "Sprint planning",
       "sprint.manage_copy": "Plan, activate, close, and reopen project sprints.",
       "sprint.manage_link": "Manage sprints",
       "sprint.new": "New sprint",
+      "sprint.no_matches": "No matching sprints",
       "sprint.none": "No sprint",
+      "sprint.open_sprints": "Sprints",
       "sprint.planned": "Planned",
+      "sprint.quick_create": "Create sprint",
+      "sprint.quick_create_placeholder": "New sprint name",
+      "sprint.recent_closed": "Recent closed",
       "sprint.reopen": "Reopen",
       "sprint.save": "Save sprint",
+      "sprint.selected_archive": "Selected archive",
       "sprint.existing": "Existing sprints",
       "sprint.sprints": "Sprints",
       "sprint.starts_on": "Starts",
@@ -231,6 +256,7 @@
       "ticket.action.sprint_changed": "changed sprint",
       "ticket.action.status_changed": "moved",
       "ticket.action.ticket_created": "created ticket",
+      "ticket.action.ticket_deleted": "deleted ticket",
       "ticket.action.ticket_updated": "updated",
       "ticket.action.type_changed": "changed type",
       "ticket.action.unlinked": "removed ticket link",
@@ -240,6 +266,14 @@
       "ticket.autosave_saved": "Saved",
       "ticket.autosave_saving": "Saving...",
       "ticket.comments": "Comments",
+      "ticket.delete": "Delete ticket",
+      "ticket.delete_confirm": "Type the ticket key to confirm:",
+      "ticket.delete_help": "Deleting a ticket permanently removes its comments, links, watchers, and history. This cannot be undone.",
+      "ticket.delete_policy": "Ticket deletion",
+      "ticket.delete_policy_admin": "Project admins only",
+      "ticket.delete_policy_help": "Delete action appears only on the ticket page for users allowed by this project.",
+      "ticket.delete_policy_member": "Admins and members",
+      "ticket.delete_policy_viewer": "Everyone with project access",
       "ticket.details": "Details",
       "ticket.live_connected": "Live updates on",
       "ticket.live_reconnecting": "Reconnecting...",
@@ -411,7 +445,6 @@
       "projects.last_admin_copy": "Добавьте ещё одного администратора проекта, прежде чем удалять или понижать текущего.",
       "projects.last_admin_title": "Проекту нужен администратор",
       "projects.remove_member": "Удалить",
-      "projects.save_details": "Сохранить проект",
       "projects.settings": "Настройки проекта",
       "projects.settings_access": "Доступ",
       "projects.settings_board": "Доска",
@@ -420,10 +453,8 @@
       "projects.statuses": "Статусы доски",
       "projects.statuses_help": "На доске и в меню тикетов будут только выбранные статусы. Перед отключением статуса перенесите из него тикеты.",
       "projects.statuses_selected": "Статусы этого проекта",
-      "projects.save_statuses": "Сохранить статусы",
       "projects.ticket_types_help": "Выбранные типы доступны при создании и редактировании тикетов. Перед отключением типа переведите существующие тикеты.",
       "projects.ticket_types_selected": "Типы тикетов этого проекта",
-      "projects.save_board_settings": "Сохранить настройки доски",
       "projects.title": "Проекты",
       "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
       "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, смена спринта, Done/Closed и связи тикетов.",
@@ -435,8 +466,28 @@
       "sound.theme_bright": "Яркая",
       "sound.theme_round": "Мягкая",
       "sound.title": "Звуки на этом устройстве",
+      "stats.assignees": "Исполнители",
+      "stats.board_return": "К доске",
+      "stats.closed": "Закрыто",
+      "stats.done": "Готово",
+      "stats.empty": "Тут пока нет тикетов.",
+      "stats.more_tickets": "еще",
+      "stats.open": "Открыто",
+      "stats.open_points": "Открытые SP",
+      "stats.points": "Сторипоинты",
+      "stats.priorities": "Приоритеты",
+      "stats.sprints": "Спринты",
+      "stats.statuses": "Статусы",
+      "stats.ticket_count": "Тикеты",
+      "stats.title": "Статистика",
+      "stats.total": "Всего тикетов",
+      "stats.types": "Типы",
+      "stats.visibility": "Видимость статистики",
+      "stats.visibility_admin": "Только админы проекта",
+      "stats.visibility_all": "Все участники проекта",
+      "stats.visibility_help": "По умолчанию статистику проекта видят все участники.",
       "sprint.activate": "Активировать",
-      "sprint.active": "Активный",
+      "sprint.active": "Активный спринт",
       "sprint.all": "Все спринты",
       "sprint.backlog": "Без спринта",
       "sprint.close": "Закрыть",
@@ -444,15 +495,23 @@
       "sprint.create": "Создать спринт",
       "sprint.empty": "Спринтов пока нет.",
       "sprint.ends_on": "Конец",
+      "sprint.filter_modes": "Режимы",
+      "sprint.find_placeholder": "Найти спринт",
       "sprint.goal": "Цель",
       "sprint.manage": "Планирование спринтов",
       "sprint.manage_copy": "Планируйте, запускайте, закрывайте и переоткрывайте спринты проекта.",
       "sprint.manage_link": "Управлять спринтами",
       "sprint.new": "Новый спринт",
+      "sprint.no_matches": "Спринты не найдены",
       "sprint.none": "Без спринта",
+      "sprint.open_sprints": "Спринты",
       "sprint.planned": "План",
+      "sprint.quick_create": "Создать спринт",
+      "sprint.quick_create_placeholder": "Название нового спринта",
+      "sprint.recent_closed": "Недавно закрытые",
       "sprint.reopen": "Переоткрыть",
       "sprint.save": "Сохранить спринт",
+      "sprint.selected_archive": "Выбранный архив",
       "sprint.existing": "Текущие спринты",
       "sprint.sprints": "Спринты",
       "sprint.starts_on": "Начало",
@@ -487,6 +546,7 @@
       "ticket.action.sprint_changed": "изменил спринт",
       "ticket.action.status_changed": "изменил статус",
       "ticket.action.ticket_created": "создал тикет",
+      "ticket.action.ticket_deleted": "удалил тикет",
       "ticket.action.ticket_updated": "обновил тикет",
       "ticket.action.type_changed": "изменил тип",
       "ticket.action.unlinked": "удалил связь",
@@ -496,6 +556,14 @@
       "ticket.autosave_saved": "Сохранено",
       "ticket.autosave_saving": "Сохраняю...",
       "ticket.comments": "Комментарии",
+      "ticket.delete": "Удалить тикет",
+      "ticket.delete_confirm": "Введите ключ тикета для подтверждения:",
+      "ticket.delete_help": "Удаление тикета безвозвратно удалит его комментарии, связи, наблюдателей и историю. Отменить нельзя.",
+      "ticket.delete_policy": "Удаление тикетов",
+      "ticket.delete_policy_admin": "Только админы проекта",
+      "ticket.delete_policy_help": "Удаление видно только на странице тикета тем, кому это разрешено настройкой проекта.",
+      "ticket.delete_policy_member": "Админы и участники",
+      "ticket.delete_policy_viewer": "Все с доступом к проекту",
       "ticket.details": "Детали",
       "ticket.live_connected": "Живые обновления включены",
       "ticket.live_reconnecting": "Переподключаюсь...",
@@ -554,10 +622,11 @@
     updateLanguageButton();
     updateThemeButton();
     setupLocalTimes();
-    setupLocalDates();
+    setupSprintOptionLabels();
     setupActionLabels();
     setupActionDetails();
     setupSprintProgress();
+    updateSprintFilterLabels();
     refreshColumnCounts();
     renderIcons();
   }
@@ -1184,6 +1253,12 @@
     }
   }
 
+  function setBoardData(key, value) {
+    const board = document.querySelector(".board");
+    if (!board) return;
+    board.dataset[key] = JSON.stringify(value);
+  }
+
   function openPopover(chip) {
     closePopover();
     const card = chip.closest(".ticket-card");
@@ -1200,6 +1275,8 @@
       buildOptionsPopover(pop, field, card, chip);
     }
     document.body.appendChild(pop);
+    renderIcons();
+    window.requestAnimationFrame(renderIcons);
     positionPopover(pop, chip);
     activePopover = pop;
     activeChip = chip;
@@ -1296,7 +1373,7 @@
       options = [{ value: "", label: translate("sprint.none", currentLang()) || "No sprint" }];
       boardData("sprints", [])
         .filter((s) => s.status !== "closed")
-        .forEach((s) => options.push({ value: String(s.id), label: s.name }));
+        .forEach((s) => options.push({ value: String(s.id), label: sprintDisplayLabel(s) }));
     } else if (field === "assignee_id") {
       options = [{ value: "", label: translate("ticket.unassigned", currentLang()) || "Unassigned" }];
       boardData("members", []).forEach((m) => options.push({ value: String(m.id), label: m.name || m.login }));
@@ -1326,7 +1403,6 @@
       button.addEventListener("click", () => applyFieldChange(card, field, opt.value));
       pop.appendChild(button);
     });
-    renderIcons();
   }
 
   async function applyFieldChange(card, field, value) {
@@ -1790,6 +1866,20 @@
       try {
         const payload = JSON.parse(event.data || "{}");
         payload.event = payload.event || event.type;
+        if (payload.event === "ticket_deleted") {
+          const key = payload.ticket_key || payload.ticket?.key;
+          const card = key ? document.querySelector(`.ticket-card[data-ticket-key="${cssEscape(key)}"]`) : null;
+          if (card) {
+            card.remove();
+            refreshColumnCounts();
+          }
+          const ticketPage = document.querySelector("[data-ticket-page]");
+          if (ticketPage && ticketPage.dataset.ticketKey === key) {
+            const projectKey = ticketPage.dataset.projectKey || "";
+            window.location.href = `/p/${encodeURIComponent(projectKey)}/board`;
+          }
+          return;
+        }
         applyLiveTicket(payload.ticket);
         applyLiveTicketPage(payload);
         playTicketSound(payload);
@@ -1802,6 +1892,7 @@
     source.addEventListener("ticket_commented", handleTicketEvent);
     source.addEventListener("ticket_linked", handleTicketEvent);
     source.addEventListener("ticket_unlinked", handleTicketEvent);
+    source.addEventListener("ticket_deleted", handleTicketEvent);
     window.addEventListener("beforeunload", () => source.close());
   }
 
@@ -1919,6 +2010,89 @@
         control.addEventListener("input", () => saveSoon(650));
         control.addEventListener("blur", () => saveSoon(0));
       }
+    });
+  }
+
+  function setupProjectSettingsAutosave() {
+    document.querySelectorAll("[data-project-settings-root]").forEach((root) => {
+      const projectKey = root.dataset.projectKey;
+      const forms = root.querySelectorAll("[data-project-details-form], [data-board-settings-form]");
+      if (!projectKey || !forms.length) return;
+      let timer = null;
+
+      const setStatus = (key) => {
+        root.querySelectorAll("[data-autosave-status]").forEach((status) => {
+          status.dataset.i18n = key;
+          status.textContent = translate(key, currentLang()) || status.textContent;
+          status.dataset.state = key.endsWith("error") ? "error" : key.endsWith("saving") ? "saving" : "saved";
+        });
+      };
+
+      const settingsFormData = () => {
+        const details = root.querySelector("[data-project-details-form]");
+        const board = root.querySelector("[data-board-settings-form]");
+        if (!details || !board) return null;
+        const name = details.elements.name?.value || "";
+        if (!name.trim()) return null;
+        const csrf = details.elements.csrf_token?.value || board.elements.csrf_token?.value || "";
+        const data = new FormData();
+        data.append("csrf_token", csrf);
+        data.append("name", name);
+        data.append("description", details.elements.description?.value || "");
+        data.append("repo", details.elements.repo?.value || "");
+        board.querySelectorAll('input[name="statuses"]:checked').forEach((input) => {
+          data.append("statuses", input.value);
+        });
+        board.querySelectorAll('input[name="ticket_types"]:checked').forEach((input) => {
+          data.append("ticket_types", input.value);
+        });
+        const statsVisibility = board.querySelector('input[name="stats_visibility"]:checked');
+        data.append("stats_visibility", statsVisibility?.value || "all");
+        const ticketDeletePolicy = board.querySelector('input[name="ticket_delete_policy"]:checked');
+        data.append("ticket_delete_policy", ticketDeletePolicy?.value || "admin");
+        return data;
+      };
+
+      const saveNow = async () => {
+        const data = settingsFormData();
+        if (!data) {
+          setStatus("ticket.autosave_error");
+          return;
+        }
+        setStatus("ticket.autosave_saving");
+        try {
+          const response = await fetch(`/api/projects/${encodeURIComponent(projectKey)}/settings`, {
+            method: "POST",
+            body: data,
+            headers: { "x-csrf-token": data.get("csrf_token") || "" },
+          });
+          if (!response.ok) throw new Error("settings save failed");
+          setStatus("ticket.autosave_saved");
+        } catch (error) {
+          setStatus("ticket.autosave_error");
+        }
+      };
+
+      const saveSoon = (delay) => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(saveNow, delay);
+      };
+
+      forms.forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          saveSoon(0);
+        });
+        form.querySelectorAll("input, textarea, select").forEach((control) => {
+          if (control.type === "hidden") return;
+          if (control.type === "checkbox" || control.type === "radio" || control.tagName === "SELECT") {
+            control.addEventListener("change", () => saveSoon(0));
+          } else {
+            control.addEventListener("input", () => saveSoon(650));
+            control.addEventListener("blur", () => saveSoon(0));
+          }
+        });
+      });
     });
   }
 
@@ -2331,10 +2505,25 @@
     });
   }
 
-  function setupLocalDates() {
-    document.querySelectorAll("[data-local-date]").forEach((element) => {
-      const formatted = formatDateOnly(element.dataset.localDate);
-      if (formatted) element.textContent = formatted;
+  function sprintDateRangeLabel(startValue, endValue) {
+    const start = formatDateOnly(startValue);
+    const end = formatDateOnly(endValue);
+    if (start && end) return `${start} - ${end}`;
+    if (start) return start;
+    return end;
+  }
+
+  function sprintDisplayLabel(sprint) {
+    const name = sprint?.name || "";
+    const range = sprintDateRangeLabel(sprint?.starts_on, sprint?.ends_on);
+    return range ? `${name} · ${range}` : name;
+  }
+
+  function setupSprintOptionLabels() {
+    document.querySelectorAll("[data-sprint-option]").forEach((option) => {
+      const name = option.dataset.sprintName || option.textContent.trim();
+      const range = sprintDateRangeLabel(option.dataset.sprintStart, option.dataset.sprintEnd);
+      option.textContent = range ? `${name} · ${range}` : name;
     });
   }
 
@@ -2460,17 +2649,215 @@
   }
 
   function setupSprintFilter() {
-    document.querySelectorAll("[data-sprint-filter-select]").forEach((select) => {
-      select.addEventListener("change", () => {
-        const form = select.closest("form");
-        if (!form) return;
-        if (typeof form.requestSubmit === "function") {
-          form.requestSubmit();
+    document.querySelectorAll("[data-sprint-filter-combo]").forEach((combo) => {
+      const toggle = combo.querySelector("[data-sprint-filter-toggle]");
+      const menu = combo.querySelector("[data-sprint-filter-menu]");
+      const search = combo.querySelector("[data-sprint-filter-search]");
+      const createForm = combo.querySelector("[data-sprint-filter-create]");
+      if (!toggle || !menu || !search) return;
+
+      const close = () => {
+        combo.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+      };
+      const open = () => {
+        document.querySelectorAll("[data-sprint-filter-combo].is-open").forEach((other) => {
+          if (other !== combo) other.classList.remove("is-open");
+        });
+        combo.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+        renderSprintFilterOptions(combo);
+        window.setTimeout(() => search.focus(), 0);
+      };
+
+      updateSprintFilterCurrent(combo);
+      renderSprintFilterOptions(combo);
+
+      toggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (combo.classList.contains("is-open")) {
+          close();
         } else {
-          form.submit();
+          open();
         }
       });
+      search.addEventListener("input", () => renderSprintFilterOptions(combo));
+      if (createForm) {
+        createForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const projectKey = combo.dataset.projectKey || "";
+          const input = createForm.elements.name;
+          const button = createForm.querySelector("button[type='submit']");
+          const name = (input?.value || "").trim();
+          if (!projectKey || !name) return;
+          if (button) button.disabled = true;
+          if (input) input.disabled = true;
+          try {
+            const formData = new FormData();
+            formData.append("name", name);
+            formData.append("status", "planned");
+            const response = await fetch(`/api/projects/${encodeURIComponent(projectKey)}/sprints/quick`, {
+              method: "POST",
+              headers: { "x-csrf-token": csrfToken(), accept: "application/json" },
+              body: formData,
+            });
+            if (!response.ok) throw new Error(await response.text());
+            const sprint = await response.json();
+            const sprints = boardData("sprints", []).filter((item) => String(item.id) !== String(sprint.id));
+            setBoardData("sprints", [sprint, ...sprints]);
+            window.location.href = sprintFilterUrl(projectKey, sprint.id);
+          } catch (error) {
+            window.alert(error.message || "Could not create sprint");
+            if (button) button.disabled = false;
+            if (input) input.disabled = false;
+          }
+        });
+      }
+      combo.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") close();
+      });
     });
+
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("[data-sprint-filter-combo]")) return;
+      document.querySelectorAll("[data-sprint-filter-combo].is-open").forEach((combo) => {
+        combo.classList.remove("is-open");
+        combo.querySelector("[data-sprint-filter-toggle]")?.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
+
+  function sprintFilterUrl(projectKey, value) {
+    const url = new URL(`/p/${encodeURIComponent(projectKey)}/board`, window.location.origin);
+    if (value) url.searchParams.set("sprint", value);
+    return `${url.pathname}${url.search}`;
+  }
+
+  function sprintFilterServiceOptions() {
+    return [
+      { value: "", label: translate("sprint.all", currentLang()) || "All sprints" },
+      { value: "none", label: translate("sprint.none", currentLang()) || "No sprint" },
+      { value: "active", label: translate("sprint.active", currentLang()) || "Active" },
+    ];
+  }
+
+  function updateSprintFilterCurrent(combo) {
+    const current = combo.dataset.currentSprintFilter || "";
+    const target = combo.querySelector("[data-sprint-filter-current]");
+    if (!target) return;
+    const service = sprintFilterServiceOptions().find((option) => option.value === current);
+    if (service) {
+      target.textContent = service.label;
+      return;
+    }
+    const sprint = boardData("sprints", []).find((item) => String(item.id) === String(current));
+    target.textContent = sprint ? sprintDisplayLabel(sprint) : current;
+  }
+
+  function updateSprintFilterLabels() {
+    setupSprintOptionLabels();
+    document.querySelectorAll("[data-sprint-filter-combo]").forEach((combo) => {
+      updateSprintFilterCurrent(combo);
+      if (combo.classList.contains("is-open")) renderSprintFilterOptions(combo);
+    });
+  }
+
+  function renderSprintFilterOptions(combo) {
+    const list = combo.querySelector("[data-sprint-filter-options]");
+    const search = combo.querySelector("[data-sprint-filter-search]");
+    if (!list) return;
+    const projectKey = combo.dataset.projectKey || "";
+    const current = combo.dataset.currentSprintFilter || "";
+    const query = (search?.value || "").trim().toLowerCase();
+    const allSprints = boardData("sprints", []);
+    list.innerHTML = "";
+
+    const addGroup = (title, options) => {
+      if (!options.length) return;
+      const group = document.createElement("div");
+      group.className = "sprint-filter-group";
+      const heading = document.createElement("div");
+      heading.className = "sprint-filter-group-title";
+      heading.textContent = title;
+      group.appendChild(heading);
+      options.forEach((option) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "sprint-filter-option";
+        button.setAttribute("role", "option");
+        if (String(option.value) === String(current)) {
+          button.classList.add("is-current");
+          button.setAttribute("aria-selected", "true");
+        } else {
+          button.setAttribute("aria-selected", "false");
+        }
+        const main = document.createElement("span");
+        main.className = "sprint-filter-option-main";
+        main.textContent = option.label;
+        button.appendChild(main);
+        if (option.meta) {
+          const meta = document.createElement("span");
+          meta.className = "sprint-filter-option-meta";
+          meta.textContent = option.meta;
+          button.appendChild(meta);
+        }
+        button.addEventListener("click", () => {
+          window.location.href = sprintFilterUrl(projectKey, option.value);
+        });
+        group.appendChild(button);
+      });
+      list.appendChild(group);
+    };
+
+    if (!query) {
+      addGroup(translate("sprint.filter_modes", currentLang()) || "Filter", sprintFilterServiceOptions());
+      addGroup(
+        translate("sprint.open_sprints", currentLang()) || "Open sprints",
+        allSprints
+          .filter((sprint) => sprint.status !== "closed")
+          .map((sprint) => ({
+            value: String(sprint.id),
+            label: sprint.name,
+            meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+          }))
+      );
+      const recentClosed = allSprints.filter((sprint) => sprint.status === "closed").slice(0, 6);
+      addGroup(
+        translate("sprint.recent_closed", currentLang()) || "Recent closed",
+        recentClosed.map((sprint) => ({
+          value: String(sprint.id),
+          label: sprint.name,
+          meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+        }))
+      );
+      const visibleIds = new Set(recentClosed.concat(allSprints.filter((sprint) => sprint.status !== "closed")).map((sprint) => String(sprint.id)));
+      const selectedArchived = allSprints.filter((sprint) => String(sprint.id) === String(current) && !visibleIds.has(String(sprint.id)));
+      addGroup(
+        translate("sprint.selected_archive", currentLang()) || "Selected archive",
+        selectedArchived.map((sprint) => ({
+          value: String(sprint.id),
+          label: sprint.name,
+          meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+        }))
+      );
+      return;
+    }
+
+    const matches = allSprints
+      .filter((sprint) => sprintDisplayLabel(sprint).toLowerCase().includes(query))
+      .slice(0, 30)
+      .map((sprint) => ({
+        value: String(sprint.id),
+        label: sprint.name,
+        meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+      }));
+    addGroup(translate("sprint.sprints", currentLang()) || "Sprints", matches);
+    if (!matches.length) {
+      const empty = document.createElement("div");
+      empty.className = "sprint-filter-empty";
+      empty.textContent = translate("sprint.no_matches", currentLang()) || "No matching sprints";
+      list.appendChild(empty);
+    }
   }
 
   function setupTooltips() {
@@ -2496,6 +2883,7 @@
     setupTicketSearchInputs();
     setupSoundPreferences();
     setupTicketAutosave();
+    setupProjectSettingsAutosave();
     setupMenus();
     setupConfirms();
     setupCopyButtons();

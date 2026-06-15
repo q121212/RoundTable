@@ -66,14 +66,25 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 
 - Projects with short keys like `CRM`, `OPS`, or `AI`.
 - Project-prefixed ticket keys like `CRM-1`, `CRM-2`, and `OPS-1`.
-- Ticket board with `Backlog`, `Todo`, `In Progress`, `Review`, `Done`, and `Closed`.
-- Ticket details with title, markdown-ready description, status, priority,
-  assignee, reporter, watchers, comments, GitHub links, and timestamps.
+- Ticket board with configurable project statuses, defaulting to `Backlog`,
+  `Todo`, `In Progress`, `Review`, `Done`, and `Closed`.
+- Ticket details with title, markdown-ready description, configurable type,
+  status, priority, story points, sprint, assignee, reporter, watchers,
+  comments, GitHub links, ticket-to-ticket links, and timestamps.
+- Sprint planning with planned/active/closed sprints, sprint filtering on the
+  board, sprint progress hints on cards, and project-admin sprint management.
+- Project statistics with ticket and story-point breakdowns by status,
+  priority, type, assignee, and sprint.
+- Project-configurable ticket deletion policy. By default only project admins can
+  delete tickets, and deletion is available only from the ticket page after
+  typing the ticket key.
 - Append-only `action_log` for important changes.
 - Mobile-first UI: desktop kanban columns, phone status tabs, large touch
   targets, mobile status move controls, and no required horizontal scrolling.
 - Live board updates through Server-Sent Events for ticket moves and edits.
 - Quick display preferences: `en`/`ru` language switch and light/dark themes.
+- Project settings autosave for details, board statuses/types, and statistics
+  visibility.
 - GitHub App OAuth login and webhook-based linking for branches, commits, and PRs.
 - MCP-style JSON-RPC endpoint for ticket automation.
 - Telegram notifications through a SQLite outbox with retries. SMTP support exists
@@ -85,6 +96,9 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 /
 /projects
 /p/{project_key}/board
+/p/{project_key}/stats
+/p/{project_key}/settings
+/p/{project_key}/sprints
 /t/{ticket_key}
 /settings/mcp
 /settings/notifications
@@ -101,6 +115,11 @@ POST   /api/tickets/{key}/comments
 POST   /api/tickets/{key}/close
 POST   /api/tickets/{key}/reopen
 POST   /api/tickets/{key}/watch
+POST   /api/tickets/{key}/delete
+POST   /api/projects/{project_key}/settings
+POST   /api/projects/{project_key}/sprints
+POST   /api/projects/{project_key}/sprints/{sprint_id}
+POST   /api/projects/{project_key}/sprints/{sprint_id}/status
 ```
 
 Notification routes:
@@ -142,6 +161,8 @@ Security-related behavior:
 - server-side sessions
 - CSRF protection
 - role-based project access
+- project-level statistics visibility (`all` members by default, or admins only)
+- project-level ticket deletion policy (`admin` by default)
 - GitHub webhook signature validation
 - MCP token hashing and revocation
 
@@ -238,6 +259,8 @@ Core entities:
 ```text
 Project
 Ticket
+Sprint
+TicketLink
 Comment
 User
 Watcher
@@ -252,11 +275,24 @@ Design principles:
 
 - ticket identity is based on project-prefixed keys
 - ticket title does not need to repeat the project name
+- ticket statuses and ticket types can be configured per project
+- story points and sprint assignment are first-class ticket fields
 - important state changes are written to `action_log`
 - GitHub links are secondary references, not the source of truth
 - MCP access is token-based and checked through application permissions
 
 ## Tests
+
+```bash
+python -m compileall app
+ruff check .
+pytest -q
+```
+
+The test suite uses temporary SQLite databases through `tests/conftest.py`.
+Add or update tests when changing `app/store.py`, public routes, permissions,
+MCP behavior, or frontend contracts that templates and `app/static/app.js`
+depend on.
 
 ```bash
 source .venv/bin/activate

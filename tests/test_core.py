@@ -14,11 +14,13 @@ from app.store import (
     create_sprint,
     create_ticket,
     delete_project,
+    delete_ticket,
     get_project_by_key,
     get_ticket_bundle,
     list_project_sprints,
     link_ticket,
     project_members,
+    project_statistics,
     project_ticket_types,
     remove_project_member,
     search_linkable_tickets,
@@ -172,6 +174,56 @@ def test_board_sprint_filter_page_hides_no_sprint_tickets(temp_db):
     assert ticket["key"] in no_sprint_response.text
 
 
+def test_board_sprint_filter_limits_closed_archive_options(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    create_sprint(user, "RT", "Next sprint", status_value="planned", starts_on="2026-06-20")
+    closed = [
+        create_sprint(user, "RT", f"Closed {index}", status_value="closed", starts_on=f"2026-05-{index + 1:02d}")
+        for index in range(8)
+    ]
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get("/p/RT/board")
+
+    assert 'data-sprint-filter-combo' in response.text
+    assert 'data-sprint-filter-search' in response.text
+    assert "Next sprint" in response.text
+    assert "Closed 7" in response.text
+
+    archived_response = client.get(f"/p/RT/board?sprint={closed[0]['id']}")
+    assert archived_response.status_code == 200
+    assert f'data-current-sprint-filter="{closed[0]["id"]}"' in archived_response.text
+
+
+def test_board_sprint_filter_can_create_sprint_inline_for_admins(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    board_response = client.get("/p/RT/board")
+    response = client.post(
+        "/api/projects/RT/sprints/quick",
+        data={"name": "Inline sprint"},
+        headers={"x-csrf-token": session["csrf"]},
+    )
+
+    assert board_response.status_code == 200
+    assert "data-sprint-filter-create" in board_response.text
+    assert response.status_code == 200
+    assert response.json()["name"] == "Inline sprint"
+    assert response.json()["status"] == "planned"
+
+
 def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
@@ -187,13 +239,14 @@ def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):
     assert 'class="column-count"' in response.text
     assert "column-points" in response.text
     assert "data-column-points>3</span>" in response.text
-    assert 'data-sprint-filter-select' in response.text
+    assert 'data-sprint-filter-combo' in response.text
     assert 'data-priority-picker' in response.text
     assert 'data-priority-value="High"' in response.text
     assert 'data-edit="story_points"' in response.text
     assert "3 SP" in response.text
     assert 'data-sprint-start="2026-06-10"' in response.text
     assert 'data-sprint-end="2026-06-24"' in response.text
+    assert 'data-sprint-option data-sprint-name="Sprint 1"' in response.text
     assert '<select name="priority"' not in response.text
 
 
@@ -341,8 +394,8 @@ def test_sprint_details_can_be_edited_via_page(temp_db):
 
     assert page.status_code == 200
     assert 'action="/api/projects/SPR/sprints/' in page.text
-    assert 'data-local-date="2026-06-10"' in page.text
-    assert 'data-local-date="2026-06-17"' in page.text
+    assert "Sprint 1" in page.text
+    assert "data-local-date" not in page.text
     assert response.status_code == 303
     assert response.headers["location"] == "/p/SPR/sprints"
     edited = list_project_sprints(int(get_project_by_key("SPR")["id"]))[0]
@@ -361,6 +414,18 @@ def test_sprint_dates_are_validated(temp_db):
     with pytest.raises(HTTPException) as bad_order:
         create_sprint(user, "RT", "Sprint 2", starts_on="2026-06-20", ends_on="2026-06-10")
     assert bad_order.value.status_code == 400
+
+
+def test_sprint_list_includes_ticket_preview_for_management_tooltips(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "SPR", "Sprint Project")
+    sprint = create_sprint(user, "SPR", "Sprint 1")
+    ticket = create_ticket(user, "SPR", "Preview me", sprint_id=sprint["id"])
+
+    listed = list_project_sprints(int(get_project_by_key("SPR")["id"]))[0]
+
+    assert listed["ticket_preview"] == [{"sprint_id": sprint["id"], "key": ticket["key"], "title": "Preview me"}]
+    assert listed["ticket_preview_more"] == 0
 
 
 def test_project_accepts_github_repo_url(temp_db):
@@ -385,6 +450,59 @@ def test_project_status_settings_control_board_and_ticket_updates(temp_db):
     with pytest.raises(HTTPException) as exc:
         update_ticket(user, ticket["key"], status_value="Closed")
     assert exc.value.status_code == 400
+
+
+def test_project_settings_details_and_board_are_autosaved(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "OPS", "Operations")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get("/p/OPS/settings")
+
+    assert response.status_code == 200
+    assert "data-project-settings-root" in response.text
+    assert "data-project-details-form" in response.text
+    assert "data-board-settings-form" in response.text
+    assert 'name="stats_visibility" value="all"' in response.text
+    assert 'name="stats_visibility" value="admin"' in response.text
+    assert 'name="ticket_delete_policy" value="admin"' in response.text
+    assert 'name="ticket_delete_policy" value="member"' in response.text
+    assert 'name="ticket_delete_policy" value="viewer"' in response.text
+    assert 'data-i18n="projects.save_details"' not in response.text
+    assert 'data-i18n="projects.save_board_settings"' not in response.text
+
+
+def test_project_statistics_page_and_visibility_setting(temp_db):
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "OPS", "Operations")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET role = 'member' WHERE id = ?", (member["id"],))
+    member = {**member, "role": "member"}
+    create_ticket(owner, "OPS", "Investigate", story_points=5, priority="High")
+    session = create_session(int(member["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get("/p/OPS/stats")
+    board_response = client.get("/p/OPS/board")
+
+    assert response.status_code == 200
+    assert "Investigate" in response.text
+    assert "5 SP" in response.text
+    assert 'href="/p/OPS/stats"' in board_response.text
+    stats = project_statistics("OPS", member)
+    assert stats["summary"]["story_points"] == 5
+
+    update_project_settings(owner, "OPS", "Operations", stats_visibility="admin")
+    hidden_response = client.get("/p/OPS/stats")
+    hidden_board_response = client.get("/p/OPS/board")
+
+    assert hidden_response.status_code == 403
+    assert 'href="/p/OPS/stats"' not in hidden_board_response.text
 
 
 def test_project_status_with_tickets_cannot_be_disabled(temp_db):
@@ -711,6 +829,96 @@ def test_delete_project_requires_admin(temp_db):
     delete_project(owner, "OPS", "OPS")
     with get_conn() as conn:
         assert conn.execute("SELECT COUNT(*) c FROM projects WHERE key = 'OPS'").fetchone()["c"] == 0
+
+
+def test_ticket_delete_policy_defaults_to_project_admin_only(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "OPS", "Operations")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+    ticket = create_ticket(owner, "OPS", "Remove me")
+
+    with pytest.raises(HTTPException) as bad_confirm:
+        delete_ticket(owner, ticket["key"], "wrong")
+    assert bad_confirm.value.status_code == 400
+
+    with pytest.raises(HTTPException) as denied:
+        delete_ticket(member, ticket["key"], ticket["key"])
+    assert denied.value.status_code == 403
+
+    deleted = delete_ticket(owner, ticket["key"], ticket["key"])
+    assert deleted["key"] == ticket["key"]
+    assert deleted["project_key"] == "OPS"
+
+    with pytest.raises(HTTPException) as missing:
+        get_ticket_bundle(ticket["key"])
+    assert missing.value.status_code == 404
+    with get_conn() as conn:
+        audit = row_to_dict(
+            conn.execute(
+                "SELECT action, ticket_id, metadata_json FROM action_log WHERE action = 'ticket_deleted'",
+            ).fetchone()
+        )
+    assert audit["ticket_id"] is None
+    assert ticket["key"] in audit["metadata_json"]
+
+
+def test_ticket_delete_policy_can_allow_members_and_ui_is_hidden_until_allowed(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "OPS", "Operations")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+    ticket = create_ticket(owner, "OPS", "Member delete")
+    session = create_session(int(member["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    hidden_response = client.get("/t/%s" % ticket["key"])
+
+    assert hidden_response.status_code == 200
+    assert "/api/tickets/%s/delete" % ticket["key"] not in hidden_response.text
+
+    update_project_settings(owner, "OPS", "Operations", ticket_delete_policy="member")
+    allowed_response = client.get("/t/%s" % ticket["key"])
+
+    assert allowed_response.status_code == 200
+    assert "/api/tickets/%s/delete" % ticket["key"] in allowed_response.text
+
+    delete_ticket(member, ticket["key"], ticket["key"])
+    with get_conn() as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (ticket["key"],)).fetchone()["c"] == 0
+
+
+def test_ticket_delete_route_redirects_to_board_and_removes_from_counts(temp_db):
+    owner = upsert_user("alice", email="alice@example.com")
+    create_project(owner, "OPS", "Operations")
+    removed = create_ticket(owner, "OPS", "Remove from board", story_points=5)
+    kept = create_ticket(owner, "OPS", "Stay on board", story_points=2)
+    session = create_session(int(owner["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.post(
+        "/api/tickets/%s/delete" % removed["key"],
+        data={"csrf_token": session["csrf"], "confirm": removed["key"]},
+        follow_redirects=False,
+    )
+    board = board_for_project("OPS", owner)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/p/OPS/board"
+    assert [ticket["key"] for ticket in board["columns"]["Backlog"]] == [kept["key"]]
+    assert sum(ticket["story_points"] for ticket in board["columns"]["Backlog"]) == 2
 
 
 def test_member_cannot_create_project(temp_db):

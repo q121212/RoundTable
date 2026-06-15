@@ -44,7 +44,9 @@ from .store import (
     create_telegram_link_token,
     create_test_notification,
     create_ticket,
+    can_delete_ticket,
     delete_project,
+    delete_ticket,
     get_project_by_key,
     get_telegram_link,
     get_ticket_bundle,
@@ -55,6 +57,8 @@ from .store import (
     notification_preferences,
     normalize_github_repo,
     project_members,
+    project_statistics,
+    project_stats_visibility,
     project_ticket_types,
     project_statuses,
     remove_project_member,
@@ -363,10 +367,17 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
     sprint_filter = str(request.query_params.get("sprint") or "")
     board = board_for_project(project_key, user, sprint_filter=sprint_filter)
     members = project_members(int(board["project"]["id"]))
+    project_role = board["project_role"]
+    can_view_stats = project_stats_visibility(board["project"]) == "all" or project_role == "admin"
     return render(
         request,
         "board.html",
-        {**board, "members": members, "ticket_types": project_ticket_types(board["project"])},
+        {
+            **board,
+            "members": members,
+            "ticket_types": project_ticket_types(board["project"]),
+            "can_view_stats": can_view_stats,
+        },
     )
 
 
@@ -436,6 +447,13 @@ async def project_sprints_page(request: Request, project_key: str) -> HTMLRespon
     )
 
 
+@app.get("/p/{project_key}/stats", response_class=HTMLResponse)
+async def project_stats_page(request: Request, project_key: str) -> HTMLResponse:
+    user = require_page_user(request)
+    stats = project_statistics(project_key, user)
+    return render(request, "project_stats.html", stats)
+
+
 @app.post("/api/projects/{project_key}/delete")
 async def api_delete_project(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
@@ -456,6 +474,8 @@ async def api_update_project_settings(request: Request, project_key: str) -> Red
         str(form.get("repo") or ""),
         [str(value) for value in form.getlist("statuses")],
         [str(value) for value in form.getlist("ticket_types")],
+        str(form.get("stats_visibility")) if "stats_visibility" in form else None,
+        str(form.get("ticket_delete_policy")) if "ticket_delete_policy" in form else None,
     )
     return redirect("/p/%s/settings" % project_key.upper())
 
@@ -474,6 +494,22 @@ async def api_create_sprint(request: Request, project_key: str) -> RedirectRespo
         str(form.get("status") or "planned"),
     )
     return redirect("/p/%s/sprints" % project_key.upper())
+
+
+@app.post("/api/projects/{project_key}/sprints/quick")
+async def api_create_sprint_quick(request: Request, project_key: str) -> JSONResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    sprint = create_sprint(
+        user,
+        project_key,
+        str(form.get("name") or ""),
+        str(form.get("goal") or ""),
+        str(form.get("starts_on") or ""),
+        str(form.get("ends_on") or ""),
+        str(form.get("status") or "planned"),
+    )
+    return JSONResponse(sprint)
 
 
 @app.post("/api/projects/{project_key}/sprints/{sprint_id}/status")
@@ -607,6 +643,7 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
             "ticket_types": project_ticket_types(project),
             "sprints": sprints,
             "link_types": TICKET_LINK_TYPES,
+            "can_delete_ticket": can_delete_ticket(user, project),
         },
     )
 
@@ -713,6 +750,23 @@ async def api_add_comment(request: Request, ticket_key: str) -> RedirectResponse
     add_comment(user, ticket_key, str(form.get("body") or ""))
     await publish_ticket_event(get_ticket_bundle(ticket_key)["ticket"], "ticket_commented")
     return redirect("/t/%s" % ticket_key)
+
+
+@app.post("/api/tickets/{ticket_key}/delete")
+async def api_delete_ticket(request: Request, ticket_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    deleted = delete_ticket(user, ticket_key, str(form.get("confirm") or ""))
+    await project_events.publish(
+        str(deleted["project_key"]),
+        {
+            "event": "ticket_deleted",
+            "ticket_key": deleted["key"],
+            "old_status": deleted["status"],
+            "old_story_points": int(deleted.get("story_points") or 0),
+        },
+    )
+    return redirect("/p/%s/board" % deleted["project_key"])
 
 
 @app.post("/api/tickets/{ticket_key}/links")

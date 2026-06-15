@@ -54,9 +54,22 @@ deploy.sh, deploy/   deployment (see below)
 - **No migration framework.** `init_db()` runs on startup and uses
   `CREATE TABLE IF NOT EXISTS`. Schema changes must be additive and safe against
   existing DBs; there is no down-migration. SQLite file lives in `./data/`.
-- **Tickets:** project-prefixed keys (`GT-1`). Statuses and priorities come from
-  `db.py` (`TICKET_STATUSES`, `PRIORITIES`) — don't hardcode elsewhere. Important
-  state changes are appended to `action_log`.
+- **Tickets:** project-prefixed keys (`GT-1`). Statuses, priorities, ticket types,
+  sprints, story points, and ticket links are first-class product concepts.
+  Statuses/priorities/types come from `db.py` (`TICKET_STATUSES`, `PRIORITIES`,
+  `TICKET_TYPES`) — don't hardcode elsewhere. Important state changes are
+  appended to `action_log`.
+- **Project settings autosave:** project details, board statuses/types,
+  statistics visibility, and ticket deletion policy autosave from
+  `project_settings.html` via
+  `setupProjectSettingsAutosave()`; don't reintroduce Save buttons for those
+  sections unless the UX decision changes.
+- **Statistics:** `/p/{project_key}/stats` summarizes tickets/story points by
+  status, priority, type, assignee, and sprint. Visibility is project-configured
+  (`all` by default, or project admins only).
+- **Ticket deletion:** available only from the ticket page and only when allowed
+  by the project's deletion policy. Default policy is project admins only. Keep
+  confirmation-by-ticket-key and live board removal/count refresh intact.
 - **Board edits:** keep cards compact (the board's value is fitting many tickets).
   Status changes by drag (pointer events) or inline `[data-inline-field]` → `PATCH
   /api/tickets/{key}`. Quick comments are handled through the compact comment chip
