@@ -1318,12 +1318,43 @@ time {
 }
 
 .sprint-row {
-  grid-template-columns: minmax(0, 1.2fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
 }
 
-.sprint-row > span:first-child {
+.sprint-edit-form {
   display: grid;
-  gap: 2px;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.7fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.sprint-edit-main,
+.sprint-edit-dates {
+  display: grid;
+  gap: 8px;
+}
+
+.sprint-edit-main {
+  grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 1fr);
+}
+
+.sprint-edit-dates {
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+}
+
+.sprint-edit-form input {
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+.sprint-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sprint-actions {
@@ -1385,6 +1416,16 @@ code {
   }
 
   .mcp-token-action .ghost {
+    width: 100%;
+  }
+
+  .sprint-edit-form,
+  .sprint-edit-main,
+  .sprint-edit-dates {
+    grid-template-columns: 1fr;
+  }
+
+  .sprint-edit-form .tiny {
     width: 100%;
   }
 

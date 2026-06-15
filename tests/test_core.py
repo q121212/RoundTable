@@ -26,6 +26,7 @@ from app.store import (
     sync_configured_admin_roles,
     update_project_member,
     update_project_settings,
+    update_sprint,
     update_sprint_status,
     update_ticket,
     update_ticket_link,
@@ -279,6 +280,70 @@ def test_project_admin_can_reopen_closed_sprint(temp_db):
     with pytest.raises(HTTPException) as exc:
         update_sprint_status(member, "SPR", int(sprint["id"]), "closed")
     assert exc.value.status_code == 403
+
+
+def test_project_admin_can_edit_sprint_details(temp_db):
+    admin = upsert_user("alice")
+    member = upsert_user("bob")
+    project = create_project(admin, "SPR", "Sprints")
+    add_project_member(int(project["id"]), "bob", "member")
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET role = 'member' WHERE id = ?", (member["id"],))
+    member = {**member, "role": "member"}
+    sprint = create_sprint(admin, "SPR", "Sprint 1", goal="Old", starts_on="2026-06-10", ends_on="2026-06-17")
+
+    updated = update_sprint(
+        admin,
+        "SPR",
+        int(sprint["id"]),
+        "Sprint 2",
+        "New goal",
+        "2026-06-11",
+        "2026-06-18",
+    )
+
+    assert updated["name"] == "Sprint 2"
+    assert updated["goal"] == "New goal"
+    assert updated["starts_on"] == "2026-06-11"
+    assert updated["ends_on"] == "2026-06-18"
+
+    with pytest.raises(HTTPException) as bad_order:
+        update_sprint(admin, "SPR", int(sprint["id"]), "Sprint 2", starts_on="2026-06-20", ends_on="2026-06-10")
+    assert bad_order.value.status_code == 400
+
+    with pytest.raises(HTTPException) as forbidden:
+        update_sprint(member, "SPR", int(sprint["id"]), "Nope")
+    assert forbidden.value.status_code == 403
+
+
+def test_sprint_details_can_be_edited_via_page(temp_db):
+    admin = upsert_user("alice", email="alice@example.com")
+    create_project(admin, "SPR", "Sprints")
+    sprint = create_sprint(admin, "SPR", "Sprint 1", goal="Old", starts_on="2026-06-10", ends_on="2026-06-17")
+    session = create_session(int(admin["id"]))
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+
+    page = client.get("/p/SPR/sprints")
+    response = client.post(
+        f"/api/projects/SPR/sprints/{sprint['id']}",
+        data={
+            "csrf_token": session["csrf"],
+            "name": "Renamed sprint",
+            "goal": "Updated",
+            "starts_on": "2026-06-11",
+            "ends_on": "2026-06-18",
+        },
+        follow_redirects=False,
+    )
+
+    assert page.status_code == 200
+    assert 'action="/api/projects/SPR/sprints/' in page.text
+    assert response.status_code == 303
+    assert response.headers["location"] == "/p/SPR/sprints"
+    edited = list_project_sprints(int(get_project_by_key("SPR")["id"]))[0]
+    assert edited["name"] == "Renamed sprint"
+    assert edited["goal"] == "Updated"
 
 
 def test_sprint_dates_are_validated(temp_db):

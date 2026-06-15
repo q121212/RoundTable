@@ -67,12 +67,37 @@
     <div class="table-list sprint-list">
       {% for sprint in sprints %}
         <div class="table-row sprint-row">
-          <span>
-            <strong>{{ sprint.name }}</strong>
-            <span class="muted">{{ sprint.goal or "" }}</span>
-          </span>
-          <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
-          <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
+          <form class="sprint-edit-form" method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}">
+            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+            <div class="sprint-edit-main">
+              <label>
+                <span class="label-row">
+                  <span data-i18n="field.name">Name</span>
+                  <span class="required-mark" aria-hidden="true">*</span>
+                </span>
+                <input name="name" required value="{{ sprint.name }}">
+              </label>
+              <label>
+                <span class="label-row"><span data-i18n="sprint.goal">Goal</span></span>
+                <input name="goal" value="{{ sprint.goal or '' }}">
+              </label>
+            </div>
+            <div class="sprint-edit-dates">
+              <label>
+                <span class="label-row"><span data-i18n="sprint.starts_on">Starts</span></span>
+                <input name="starts_on" type="date" value="{{ sprint.starts_on or '' }}">
+              </label>
+              <label>
+                <span class="label-row"><span data-i18n="sprint.ends_on">Ends</span></span>
+                <input name="ends_on" type="date" value="{{ sprint.ends_on or '' }}">
+              </label>
+            </div>
+            <button class="secondary tiny" type="submit" data-icon="save" data-i18n="sprint.save">Save sprint</button>
+          </form>
+          <div class="sprint-row-meta">
+            <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
+            <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
+          </div>
           <div class="sprint-actions">
             {% if sprint.status != "active" and sprint.status != "closed" %}
               <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">

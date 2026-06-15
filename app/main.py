@@ -71,6 +71,7 @@ from .store import (
     update_notification_preferences,
     update_project_member,
     update_project_settings,
+    update_sprint,
     update_sprint_status,
     update_ticket,
     update_ticket_link,
@@ -480,6 +481,22 @@ async def api_update_sprint_status(request: Request, project_key: str, sprint_id
     user = await validate_csrf_request(request)
     form = await request.form()
     update_sprint_status(user, project_key, sprint_id, str(form.get("status") or "planned"))
+    return redirect(str(request.headers.get("referer") or "/p/%s/sprints" % project_key.upper()))
+
+
+@app.post("/api/projects/{project_key}/sprints/{sprint_id}")
+async def api_update_sprint(request: Request, project_key: str, sprint_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    update_sprint(
+        user,
+        project_key,
+        sprint_id,
+        str(form.get("name") or ""),
+        str(form.get("goal") or ""),
+        str(form.get("starts_on") or ""),
+        str(form.get("ends_on") or ""),
+    )
     return redirect(str(request.headers.get("referer") or "/p/%s/sprints" % project_key.upper()))
 
 

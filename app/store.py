@@ -400,6 +400,61 @@ def create_sprint(
         return row_to_dict(conn.execute("SELECT * FROM sprints WHERE id = ?", (cur.lastrowid,)).fetchone()) or {}
 
 
+def update_sprint(
+    user: Dict[str, Any],
+    project_key: str,
+    sprint_id: int,
+    name: str,
+    goal: str = "",
+    starts_on: str = "",
+    ends_on: str = "",
+) -> Dict[str, Any]:
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint name is required")
+    starts_on = validate_date_string(starts_on, "Sprint start date")
+    ends_on = validate_date_string(ends_on, "Sprint end date")
+    if starts_on and ends_on and ends_on < starts_on:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint end date cannot be before start date")
+    with get_conn() as conn:
+        sprint = row_to_dict(
+            conn.execute("SELECT * FROM sprints WHERE id = ? AND project_id = ?", (sprint_id, project["id"])).fetchone()
+        )
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found")
+        try:
+            conn.execute(
+                """
+                UPDATE sprints
+                SET name = ?, goal = ?, starts_on = ?, ends_on = ?
+                WHERE id = ?
+                """,
+                (name, goal.strip(), starts_on or None, ends_on or None, sprint_id),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint name already exists") from exc
+        changes = {
+            "name": [sprint["name"], name],
+            "goal": [sprint["goal"] or "", goal.strip()],
+            "starts_on": [sprint["starts_on"] or "", starts_on or ""],
+            "ends_on": [sprint["ends_on"] or "", ends_on or ""],
+        }
+        log_action(
+            conn,
+            int(project["id"]),
+            None,
+            user["id"],
+            "sprint_updated",
+            field="sprint_details",
+            old_value=sprint["name"],
+            new_value=name,
+            metadata={"changes": changes},
+        )
+        return row_to_dict(conn.execute("SELECT * FROM sprints WHERE id = ?", (sprint_id,)).fetchone()) or {}
+
+
 def update_sprint_status(user: Dict[str, Any], project_key: str, sprint_id: int, status_value: str) -> Dict[str, Any]:
     if status_value not in SPRINT_STATUSES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid sprint status")

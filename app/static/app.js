@@ -194,6 +194,7 @@
       "sprint.none": "No sprint",
       "sprint.planned": "Planned",
       "sprint.reopen": "Reopen",
+      "sprint.save": "Save sprint",
       "sprint.existing": "Existing sprints",
       "sprint.sprints": "Sprints",
       "sprint.starts_on": "Starts",
@@ -445,6 +446,7 @@
       "sprint.none": "Без спринта",
       "sprint.planned": "План",
       "sprint.reopen": "Переоткрыть",
+      "sprint.save": "Сохранить спринт",
       "sprint.existing": "Текущие спринты",
       "sprint.sprints": "Спринты",
       "sprint.starts_on": "Начало",
@@ -1566,7 +1568,7 @@
     const today = new Date();
     const total = Math.max(1, dateDiffDays(start, end) + 1);
     const elapsed = Math.min(total, Math.max(0, dateDiffDays(start, today) + 1));
-    const dotCount = 12;
+    const dotCount = total <= 14 ? total : 14;
     const filled = Math.max(1, Math.min(dotCount, Math.ceil((elapsed / total) * dotCount)));
     const left = dateDiffDays(today, end);
     let label = `${left} ${translate("sprint.days_left", currentLang()) || "days left"}`;
