@@ -45,6 +45,7 @@ def test_sprint_dates_use_localized_option_labels():
     assert "data-sprint-filter-combo" in board_template
     assert "data-sprint-filter-search" in board_template
     assert "data-sprint-filter-create" in board_template
+    assert '<form class="sprint-filter-form"' not in board_template
     assert "/sprints/quick" in script
     assert 'translate("sprint.filter_modes"' in script
     assert 'translate("sprint.open_sprints"' in script

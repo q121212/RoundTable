@@ -19,7 +19,7 @@
         {% endif %}
       </div>
     {% endif %}
-    <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
+    <div class="sprint-filter-form">
       <label>
         <span data-i18n="field.sprint">Sprint</span>
         <div class="sprint-filter-combo" data-sprint-filter-combo data-project-key="{{ project.key }}" data-current-sprint-filter="{{ sprint_filter }}">
@@ -39,7 +39,7 @@
           </div>
         </div>
       </label>
-    </form>
+    </div>
   </div>
 </section>
 
