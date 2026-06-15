@@ -36,6 +36,7 @@ from .store import (
     consume_telegram_link_token,
     create_mcp_token,
     create_project,
+    create_sprint,
     create_telegram_link_token,
     create_test_notification,
     create_ticket,
@@ -45,6 +46,7 @@ from .store import (
     get_ticket_bundle,
     link_ticket,
     list_mcp_tokens,
+    list_project_sprints,
     list_projects,
     notification_preferences,
     normalize_github_repo,
@@ -64,6 +66,7 @@ from .store import (
     update_notification_preferences,
     update_project_member,
     update_project_settings,
+    update_sprint_status,
     update_ticket,
     upsert_user,
 )
@@ -317,7 +320,8 @@ async def api_create_project(request: Request) -> RedirectResponse:
 @app.get("/p/{project_key}/board", response_class=HTMLResponse)
 async def board_page(request: Request, project_key: str) -> HTMLResponse:
     user = require_page_user(request)
-    board = board_for_project(project_key, user)
+    sprint_filter = str(request.query_params.get("sprint") or "")
+    board = board_for_project(project_key, user, sprint_filter=sprint_filter)
     members = project_members(int(board["project"]["id"]))
     return render(
         request,
@@ -374,6 +378,7 @@ async def project_settings_page(request: Request, project_key: str, error: str =
             "active_statuses": project_statuses(project),
             "all_ticket_types": TICKET_TYPES,
             "active_ticket_types": project_ticket_types(project),
+            "sprints": list_project_sprints(int(project["id"])),
         },
     )
 
@@ -400,6 +405,30 @@ async def api_update_project_settings(request: Request, project_key: str) -> Red
         [str(value) for value in form.getlist("ticket_types")],
     )
     return redirect("/p/%s/settings" % project_key.upper())
+
+
+@app.post("/api/projects/{project_key}/sprints")
+async def api_create_sprint(request: Request, project_key: str) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    create_sprint(
+        user,
+        project_key,
+        str(form.get("name") or ""),
+        str(form.get("goal") or ""),
+        str(form.get("starts_on") or ""),
+        str(form.get("ends_on") or ""),
+        str(form.get("status") or "planned"),
+    )
+    return redirect("/p/%s/settings#settings-sprints" % project_key.upper())
+
+
+@app.post("/api/projects/{project_key}/sprints/{sprint_id}/status")
+async def api_update_sprint_status(request: Request, project_key: str, sprint_id: int) -> RedirectResponse:
+    user = await validate_csrf_request(request)
+    form = await request.form()
+    update_sprint_status(user, project_key, sprint_id, str(form.get("status") or "planned"))
+    return redirect(str(request.headers.get("referer") or "/p/%s/settings#settings-sprints" % project_key.upper()))
 
 
 @app.post("/api/projects/{project_key}/members")
@@ -468,6 +497,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
     user = await validate_csrf_request(request)
     form = await request.form()
     assignee_id = parse_optional_int(form.get("assignee_id"))
+    sprint_id = parse_optional_int(form.get("sprint_id"))
     ticket = create_ticket(
         user,
         str(form.get("project_key") or ""),
@@ -476,6 +506,7 @@ async def api_create_ticket(request: Request) -> RedirectResponse:
         str(form.get("priority") or "Medium"),
         str(form.get("ticket_type") or "Task"),
         assignee_id,
+        sprint_id,
     )
     await publish_ticket_event(ticket, "ticket_created")
     return redirect("/t/%s" % ticket["key"])
@@ -496,6 +527,7 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
             "members": members,
             "statuses": project_statuses(project),
             "ticket_types": project_ticket_types(project),
+            "sprints": list_project_sprints(int(project["id"]), include_closed=False),
             "link_types": TICKET_LINK_TYPES,
         },
     )
@@ -525,6 +557,8 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         priority=str(form.get("priority")) if "priority" in form else None,
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched=assignee_present,
+        sprint_id=parse_optional_int(form.get("sprint_id")),
+        sprint_touched="sprint_id" in form,
     )
     await publish_ticket_event(ticket)
     return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
@@ -542,6 +576,8 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
         priority=str(form.get("priority")) if "priority" in form else None,
         assignee_id=parse_optional_int(form.get("assignee_id")),
         assignee_touched="assignee_id" in form,
+        sprint_id=parse_optional_int(form.get("sprint_id")),
+        sprint_touched="sprint_id" in form,
     )
     comment = str(form.get("comment") or "").strip()
     if comment:
@@ -565,6 +601,8 @@ async def api_update_ticket_json(request: Request, ticket_key: str) -> JSONRespo
         priority=payload.get("priority"),
         assignee_id=payload.get("assignee_id"),
         assignee_touched="assignee_id" in payload,
+        sprint_id=payload.get("sprint_id"),
+        sprint_touched="sprint_id" in payload,
         position_after_key=payload.get("position_after_key"),
         position_touched="position_after_key" in payload,
     )

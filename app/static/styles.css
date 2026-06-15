@@ -1128,6 +1128,23 @@ time {
   margin: 0;
 }
 
+.sound-event-list {
+  display: grid;
+  gap: 3px;
+  width: min(100%, 520px);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.sound-event-list strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
 .segmented-control {
   display: inline-grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1154,6 +1171,43 @@ time {
   background: var(--surface);
   color: var(--green-dark);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 18%, var(--line));
+}
+
+.sound-theme-control {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sprint-filter-form {
+  width: min(100%, 320px);
+}
+
+.sprint-filter-form label {
+  display: grid;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.sprint-filter-form select {
+  min-height: 38px;
+  font-size: 0.9rem;
+}
+
+.sprint-row {
+  grid-template-columns: minmax(0, 1.2fr) auto auto auto;
+}
+
+.sprint-row > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.sprint-actions {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 code {
@@ -2741,18 +2795,33 @@ a.ticket-key:hover {
 @media (max-width: 900px) {
   .project-settings-layout {
     grid-template-columns: 1fr;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .settings-rail {
     position: static;
     display: flex;
     gap: 8px;
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     box-shadow: none;
   }
 
   .settings-rail a {
     flex: 0 0 auto;
+  }
+
+  .settings-stack,
+  .settings-section,
+  .settings-section form,
+  .settings-section label,
+  .settings-subsection {
+    max-width: 100%;
+    min-width: 0;
   }
 
   .access-add-form {

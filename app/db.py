@@ -96,6 +96,20 @@ def init_db() -> None:
                 PRIMARY KEY (project_id, user_id)
             );
 
+            CREATE TABLE IF NOT EXISTS sprints (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                goal TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'planned',
+                starts_on TEXT,
+                ends_on TEXT,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TEXT NOT NULL,
+                closed_at TEXT,
+                UNIQUE (project_id, name)
+            );
+
             CREATE TABLE IF NOT EXISTS tickets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -105,6 +119,7 @@ def init_db() -> None:
                 description TEXT NOT NULL DEFAULT '',
                 ticket_type TEXT NOT NULL DEFAULT 'Task',
                 status TEXT NOT NULL DEFAULT 'Backlog',
+                sprint_id INTEGER REFERENCES sprints(id) ON DELETE SET NULL,
                 sort_order REAL,
                 priority TEXT NOT NULL DEFAULT 'Medium',
                 assignee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -244,6 +259,8 @@ def init_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_tickets_project_status
                 ON tickets(project_id, status, sort_order, updated_at);
+            CREATE INDEX IF NOT EXISTS idx_sprints_project_status
+                ON sprints(project_id, status, created_at);
             CREATE INDEX IF NOT EXISTS idx_action_log_ticket
                 ON action_log(ticket_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_ticket_links_source
@@ -271,6 +288,13 @@ def init_db() -> None:
         _add_column_if_missing(conn, "projects", "ticket_types_json", "TEXT")
         _add_column_if_missing(conn, "tickets", "ticket_type", "TEXT NOT NULL DEFAULT 'Task'")
         _add_column_if_missing(conn, "tickets", "sort_order", "REAL")
+        _add_column_if_missing(conn, "tickets", "sprint_id", "INTEGER REFERENCES sprints(id) ON DELETE SET NULL")
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_tickets_project_sprint
+                ON tickets(project_id, sprint_id, status, sort_order)
+            """
+        )
         _backfill_ticket_sort_order(conn)
 
 

@@ -12,6 +12,19 @@
 </section>
 
 <div class="board-toolbar">
+  <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
+    <label>
+      <span data-i18n="field.sprint">Sprint</span>
+      <select name="sprint" onchange="this.form.submit()">
+        <option value="" {% if not sprint_filter %}selected{% endif %} data-i18n="sprint.all">All sprints</option>
+        <option value="none" {% if sprint_filter == "none" %}selected{% endif %} data-i18n="sprint.backlog">No sprint</option>
+        <option value="active" {% if sprint_filter == "active" %}selected{% endif %} data-i18n="sprint.active">Active sprint</option>
+        {% for sprint in sprints %}
+          <option value="{{ sprint.id }}" {% if sprint_filter == sprint.id|string %}selected{% endif %}>{{ sprint.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
   <details class="ticket-create board-create">
     <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
     <div class="panel board-create-panel">
@@ -106,6 +119,17 @@
             </div>
           </div>
         </div>
+        <label class="field-shell">
+          <span class="label-row">
+            <span data-i18n="field.sprint">Sprint</span>
+          </span>
+          <select name="sprint_id" aria-label="Sprint">
+            <option value="" data-i18n="sprint.none">No sprint</option>
+            {% for sprint in sprints if sprint.status != "closed" %}
+              <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <button class="primary quick-create-button" type="submit" data-icon="plus" data-i18n="action.create">Create</button>
       </div>
     </form>
@@ -120,7 +144,7 @@
   {% endfor %}
 </div>
 
-<section class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-ticket-types='{{ ticket_types | tojson }}' data-members='{{ members | tojson }}'>
+<section class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-ticket-types='{{ ticket_types | tojson }}' data-sprints='{{ sprints | tojson }}' data-members='{{ members | tojson }}'>
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
@@ -165,6 +189,9 @@
                 {% else %}
                   <span class="chip-label assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
                 {% endif %}
+              </button>
+              <button type="button" class="chip chip-edit chip-sprint" data-edit="sprint_id" data-value="{{ ticket.sprint_id or '' }}" aria-haspopup="true">
+                <span class="chip-label" {% if not ticket.sprint_name %}data-i18n="sprint.none"{% endif %}>{{ ticket.sprint_name or "No sprint" }}</span>
               </button>
               <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description"></button>
               <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment"></button>

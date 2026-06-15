@@ -10,10 +10,12 @@ from app.store import (
     board_for_project,
     close_ticket,
     create_project,
+    create_sprint,
     create_ticket,
     delete_project,
     get_project_by_key,
     get_ticket_bundle,
+    list_project_sprints,
     link_ticket,
     project_members,
     project_ticket_types,
@@ -22,6 +24,7 @@ from app.store import (
     sync_configured_admin_roles,
     update_project_member,
     update_project_settings,
+    update_sprint_status,
     update_ticket,
     upsert_user,
     unlink_ticket,
@@ -85,6 +88,38 @@ def test_ticket_board_order_can_be_changed_via_api(temp_db):
         first["key"],
         second["key"],
     ]
+
+
+def test_project_sprints_filter_board_and_update_tickets(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    sprint = create_sprint(user, "RT", "Sprint 1", status_value="active")
+    sprint_ticket = create_ticket(user, "RT", "Scoped work", sprint_id=sprint["id"])
+    backlog_ticket = create_ticket(user, "RT", "Later work")
+
+    active_board = board_for_project("RT", user, sprint_filter="active")
+    no_sprint_board = board_for_project("RT", user, sprint_filter="none")
+
+    assert [ticket["key"] for ticket in active_board["columns"]["Backlog"]] == [sprint_ticket["key"]]
+    assert [ticket["key"] for ticket in no_sprint_board["columns"]["Backlog"]] == [backlog_ticket["key"]]
+
+    updated = update_ticket(user, backlog_ticket["key"], sprint_id=sprint["id"], sprint_touched=True)
+
+    assert updated["sprint_id"] == sprint["id"]
+    assert updated["sprint_name"] == "Sprint 1"
+
+
+def test_only_one_sprint_can_be_active_per_project(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    first = create_sprint(user, "RT", "Sprint 1", status_value="active")
+    second = create_sprint(user, "RT", "Sprint 2")
+
+    update_sprint_status(user, "RT", int(second["id"]), "active")
+    sprints = {sprint["name"]: sprint["status"] for sprint in list_project_sprints(int(first["project_id"]))}
+
+    assert sprints["Sprint 1"] == "planned"
+    assert sprints["Sprint 2"] == "active"
 
 
 def test_project_accepts_github_repo_url(temp_db):

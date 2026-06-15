@@ -1,4 +1,5 @@
 import re
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -26,6 +27,7 @@ TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
 GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
+SPRINT_STATUSES = {"planned", "active", "closed"}
 
 
 def validate_project_key(key: str) -> str:
@@ -287,6 +289,122 @@ def delete_project(user: Dict[str, Any], project_key: str, confirmation: str = "
         conn.execute("DELETE FROM projects WHERE id = ?", (project["id"],))
 
 
+def list_project_sprints(project_id: int, include_closed: bool = True) -> List[Dict[str, Any]]:
+    where = "sprints.project_id = ?"
+    params: List[Any] = [project_id]
+    if not include_closed:
+        where += " AND sprints.status != 'closed'"
+    with get_conn() as conn:
+        return rows_to_dicts(
+            conn.execute(
+                """
+                SELECT sprints.*,
+                       COUNT(tickets.id) AS ticket_count
+                FROM sprints
+                LEFT JOIN tickets ON tickets.sprint_id = sprints.id
+                WHERE %s
+                GROUP BY sprints.id
+                ORDER BY
+                  CASE sprints.status
+                    WHEN 'active' THEN 1
+                    WHEN 'planned' THEN 2
+                    ELSE 3
+                  END,
+                  sprints.starts_on IS NULL,
+                  sprints.starts_on DESC,
+                  sprints.created_at DESC
+                """
+                % where,
+                tuple(params),
+            ).fetchall()
+        )
+
+
+def validate_project_sprint_conn(conn: Any, project_id: int, sprint_id: Optional[int]) -> Optional[int]:
+    if not sprint_id:
+        return None
+    sprint = row_to_dict(
+        conn.execute("SELECT * FROM sprints WHERE id = ? AND project_id = ?", (sprint_id, project_id)).fetchone()
+    )
+    if not sprint:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint does not belong to this project")
+    return int(sprint_id)
+
+
+def create_sprint(
+    user: Dict[str, Any],
+    project_key: str,
+    name: str,
+    goal: str = "",
+    starts_on: str = "",
+    ends_on: str = "",
+    status_value: str = "planned",
+) -> Dict[str, Any]:
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint name is required")
+    status_value = status_value if status_value in SPRINT_STATUSES else "planned"
+    now = utcnow()
+    with get_conn() as conn:
+        if status_value == "active":
+            conn.execute("UPDATE sprints SET status = 'planned' WHERE project_id = ? AND status = 'active'", (project["id"],))
+        try:
+            cur = conn.execute(
+                """
+                INSERT INTO sprints
+                    (project_id, name, goal, status, starts_on, ends_on, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    project["id"],
+                    name,
+                    goal.strip(),
+                    status_value,
+                    starts_on.strip() or None,
+                    ends_on.strip() or None,
+                    user["id"],
+                    now,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint name already exists") from exc
+        log_action(conn, int(project["id"]), None, user["id"], "sprint_created", metadata={"name": name})
+        return row_to_dict(conn.execute("SELECT * FROM sprints WHERE id = ?", (cur.lastrowid,)).fetchone()) or {}
+
+
+def update_sprint_status(user: Dict[str, Any], project_key: str, sprint_id: int, status_value: str) -> Dict[str, Any]:
+    if status_value not in SPRINT_STATUSES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid sprint status")
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    now = utcnow()
+    with get_conn() as conn:
+        sprint = row_to_dict(
+            conn.execute("SELECT * FROM sprints WHERE id = ? AND project_id = ?", (sprint_id, project["id"])).fetchone()
+        )
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found")
+        if status_value == "active":
+            conn.execute("UPDATE sprints SET status = 'planned' WHERE project_id = ? AND status = 'active'", (project["id"],))
+        conn.execute(
+            "UPDATE sprints SET status = ?, closed_at = ? WHERE id = ?",
+            (status_value, now if status_value == "closed" else None, sprint_id),
+        )
+        log_action(
+            conn,
+            int(project["id"]),
+            None,
+            user["id"],
+            "sprint_updated",
+            field="sprint_status",
+            old_value=sprint["status"],
+            new_value=status_value,
+        )
+        return row_to_dict(conn.execute("SELECT * FROM sprints WHERE id = ?", (sprint_id,)).fetchone()) or {}
+
+
 def update_project_settings(
     user: Dict[str, Any],
     project_key: str,
@@ -544,6 +662,7 @@ def create_ticket(
     priority: str = "Medium",
     ticket_type: str = "Task",
     assignee_id: Optional[int] = None,
+    sprint_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     title = title.strip()
     if not title:
@@ -559,6 +678,7 @@ def create_ticket(
         require_project_access(user, int(project["id"]), write=True)
         if assignee_id:
             require_project_member_conn(conn, int(project["id"]), assignee_id)
+        sprint_id = validate_project_sprint_conn(conn, int(project["id"]), sprint_id)
         ticket_type = validate_project_ticket_type(project, ticket_type)
         initial_status = project_statuses(project)[0]
         sort_order = first_ticket_sort_order_conn(conn, int(project["id"]), initial_status)
@@ -572,8 +692,8 @@ def create_ticket(
             """
             INSERT INTO tickets
                 (project_id, number, key, title, description, ticket_type, status, priority,
-                 sort_order, assignee_id, reporter_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 sprint_id, sort_order, assignee_id, reporter_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 project["id"],
@@ -584,6 +704,7 @@ def create_ticket(
                 ticket_type,
                 initial_status,
                 priority,
+                sprint_id,
                 sort_order,
                 assignee_id,
                 user["id"],
@@ -607,7 +728,7 @@ def create_ticket(
             ticket_id,
             user["id"],
             "ticket_created",
-            metadata={"key": ticket_key, "title": title, "ticket_type": ticket_type},
+            metadata={"key": ticket_key, "title": title, "ticket_type": ticket_type, "sprint_id": sprint_id},
         )
         if assignee_id:
             log_action(
@@ -631,6 +752,8 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
                    projects.key AS project_key,
                    projects.name AS project_name,
                    projects.github_repo_full_name AS project_github_repo_full_name,
+                   sprints.name AS sprint_name,
+                   sprints.status AS sprint_status,
                    assignee.login AS assignee_login,
                    assignee.name AS assignee_name,
                    assignee.avatar_url AS assignee_avatar_url,
@@ -639,6 +762,7 @@ def get_ticket_by_id_conn(conn: Any, ticket_id: int) -> Dict[str, Any]:
                    reporter.avatar_url AS reporter_avatar_url
             FROM tickets
             JOIN projects ON projects.id = tickets.project_id
+            LEFT JOIN sprints ON sprints.id = tickets.sprint_id
             LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
             LEFT JOIN users reporter ON reporter.id = tickets.reporter_id
             WHERE tickets.id = ?
@@ -661,6 +785,8 @@ def get_ticket(ticket_key: str) -> Dict[str, Any]:
                        projects.key AS project_key,
                        projects.name AS project_name,
                        projects.github_repo_full_name AS project_github_repo_full_name,
+                       sprints.name AS sprint_name,
+                       sprints.status AS sprint_status,
                        assignee.login AS assignee_login,
                        assignee.name AS assignee_name,
                        assignee.avatar_url AS assignee_avatar_url,
@@ -669,6 +795,7 @@ def get_ticket(ticket_key: str) -> Dict[str, Any]:
                        reporter.avatar_url AS reporter_avatar_url
                 FROM tickets
                 JOIN projects ON projects.id = tickets.project_id
+                LEFT JOIN sprints ON sprints.id = tickets.sprint_id
                 LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
                 LEFT JOIN users reporter ON reporter.id = tickets.reporter_id
                 WHERE tickets.key = ?
@@ -996,15 +1123,44 @@ def unlink_ticket(user: Dict[str, Any], ticket_key: str, link_id: int) -> None:
         )
 
 
-def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
+def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str = "") -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_access(user, int(project["id"]))
     statuses = project_statuses(project)
     with get_conn() as conn:
+        where = ["tickets.project_id = ?"]
+        params: List[Any] = [project["id"]]
+        current_sprint = None
+        if sprint_filter == "none":
+            where.append("tickets.sprint_id IS NULL")
+        elif sprint_filter == "active":
+            current_sprint = row_to_dict(
+                conn.execute(
+                    "SELECT * FROM sprints WHERE project_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+                    (project["id"],),
+                ).fetchone()
+            )
+            if current_sprint:
+                where.append("tickets.sprint_id = ?")
+                params.append(current_sprint["id"])
+            else:
+                where.append("tickets.sprint_id IS NULL")
+        elif sprint_filter:
+            current_sprint = row_to_dict(
+                conn.execute(
+                    "SELECT * FROM sprints WHERE project_id = ? AND id = ?",
+                    (project["id"], sprint_filter),
+                ).fetchone()
+            )
+            if current_sprint:
+                where.append("tickets.sprint_id = ?")
+                params.append(current_sprint["id"])
         rows = rows_to_dicts(
             conn.execute(
                 """
                 SELECT tickets.*,
+                       sprints.name AS sprint_name,
+                       sprints.status AS sprint_status,
                        assignee.login AS assignee_login,
                        assignee.name AS assignee_name,
                        assignee.avatar_url AS assignee_avatar_url,
@@ -1012,11 +1168,12 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                        reporter.name AS reporter_name,
                        reporter.avatar_url AS reporter_avatar_url
                 FROM tickets
+                LEFT JOIN sprints ON sprints.id = tickets.sprint_id
                 LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
                 LEFT JOIN users reporter ON reporter.id = tickets.reporter_id
-                WHERE project_id = ?
+                WHERE %s
                 ORDER BY
-                    CASE status
+                    CASE tickets.status
                         WHEN 'Backlog' THEN 1
                         WHEN 'Todo' THEN 2
                         WHEN 'In Progress' THEN 3
@@ -1024,18 +1181,26 @@ def board_for_project(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
                         WHEN 'Done' THEN 5
                         ELSE 6
                     END,
-                    sort_order ASC,
-                    updated_at DESC,
-                    number DESC
-                """,
-                (project["id"],),
+                    tickets.sort_order ASC,
+                    tickets.updated_at DESC,
+                    tickets.number DESC
+                """
+                % " AND ".join(where),
+                tuple(params),
             ).fetchall()
         )
         attach_ticket_link_summaries_conn(conn, rows)
     columns = {status_name: [] for status_name in statuses}
     for ticket in rows:
         columns.setdefault(ticket["status"], []).append(ticket)
-    return {"project": project, "statuses": statuses, "columns": columns}
+    return {
+        "project": project,
+        "statuses": statuses,
+        "columns": columns,
+        "sprints": list_project_sprints(int(project["id"])),
+        "sprint_filter": sprint_filter,
+        "current_sprint": current_sprint,
+    }
 
 
 def next_ticket_sort_order_conn(conn: Any, project_id: int, status_value: str) -> float:
@@ -1140,6 +1305,8 @@ def update_ticket(
     priority: Optional[str] = None,
     assignee_id: Optional[int] = None,
     assignee_touched: bool = False,
+    sprint_id: Optional[int] = None,
+    sprint_touched: bool = False,
     position_after_key: Optional[str] = None,
     position_touched: bool = False,
 ) -> Dict[str, Any]:
@@ -1174,6 +1341,10 @@ def update_ticket(
             if assignee_id:
                 require_project_member_conn(conn, int(ticket["project_id"]), assignee_id)
             changes.append(("assignee_id", ticket["assignee_id"], assignee_id))
+        if sprint_touched:
+            sprint_id = validate_project_sprint_conn(conn, int(ticket["project_id"]), sprint_id)
+            if sprint_id != ticket["sprint_id"]:
+                changes.append(("sprint_id", ticket["sprint_id"], sprint_id))
 
         target_status = status_value if status_value is not None else ticket["status"]
         target_sort_order = ticket["sort_order"]
@@ -1199,6 +1370,7 @@ def update_ticket(
             "status": ticket["status"],
             "priority": ticket["priority"],
             "assignee_id": ticket["assignee_id"],
+            "sprint_id": ticket["sprint_id"],
             "closed_at": ticket["closed_at"],
             "sort_order": ticket["sort_order"],
         }
@@ -1208,6 +1380,8 @@ def update_ticket(
                 values["closed_at"] = now if new == "Closed" else None
             elif field == "assignee_id":
                 values["assignee_id"] = new
+            elif field == "sprint_id":
+                values["sprint_id"] = new
             else:
                 values[field] = new
 
@@ -1215,7 +1389,7 @@ def update_ticket(
             """
             UPDATE tickets
             SET title = ?, description = ?, ticket_type = ?, status = ?, priority = ?,
-                sort_order = ?, assignee_id = ?, closed_at = ?, updated_at = ?
+                sprint_id = ?, sort_order = ?, assignee_id = ?, closed_at = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -1224,6 +1398,7 @@ def update_ticket(
                 values["ticket_type"],
                 values["status"],
                 values["priority"],
+                values["sprint_id"],
                 target_sort_order,
                 values["assignee_id"],
                 values["closed_at"],
@@ -1244,6 +1419,8 @@ def update_ticket(
                 action = "type_changed"
             if field == "assignee_id":
                 action = "assigned"
+            if field == "sprint_id":
+                action = "sprint_changed"
             log_action(
                 conn,
                 ticket["project_id"],

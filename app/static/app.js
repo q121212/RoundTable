@@ -4,6 +4,7 @@
   const STORAGE_THEME = "roundtable.theme";
   const STORAGE_BOARD_URL = "roundtable.lastBoardUrl";
   const STORAGE_SOUND_MODE = "roundtable.soundMode";
+  const STORAGE_SOUND_THEME = "roundtable.soundTheme";
   const messages = {
     en: {
       "action.close": "Close",
@@ -32,6 +33,7 @@
       "field.required": "Required",
       "field.reporter": "Reporter",
       "field.role": "Role",
+      "field.sprint": "Sprint",
       "field.status": "Status",
       "field.ticket_type": "Type",
       "field.link_type": "Link type",
@@ -163,11 +165,32 @@
       "projects.save_board_settings": "Save board settings",
       "projects.title": "Projects",
       "sound.copy": "Short local sounds for board events. Different event types use different cues.",
+      "sound.events_copy": "New tickets, comments, assignments, status changes, Done/Closed, and ticket links.",
+      "sound.events_title": "Events with sound",
       "sound.focused": "Focused",
       "sound.off": "Off",
       "sound.soft": "Soft",
       "sound.test": "Test sound",
+      "sound.theme_bright": "Bright",
+      "sound.theme_round": "Round",
       "sound.title": "Sounds on this device",
+      "sprint.activate": "Activate",
+      "sprint.active": "Active",
+      "sprint.all": "All sprints",
+      "sprint.backlog": "No sprint",
+      "sprint.close": "Close",
+      "sprint.closed": "Closed",
+      "sprint.create": "Create sprint",
+      "sprint.empty": "No sprints yet.",
+      "sprint.ends_on": "Ends",
+      "sprint.goal": "Goal",
+      "sprint.manage": "Sprint planning",
+      "sprint.none": "No sprint",
+      "sprint.planned": "Planned",
+      "sprint.sprints": "Sprints",
+      "sprint.starts_on": "Starts",
+      "sprint.status": "Status",
+      "sprint.ticket_count": "tickets",
       "status.all": "All",
       "status.Backlog": "Backlog",
       "status.Closed": "Closed",
@@ -245,6 +268,7 @@
       "field.required": "Обязательно",
       "field.reporter": "Автор",
       "field.role": "Роль",
+      "field.sprint": "Спринт",
       "field.status": "Статус",
       "field.ticket_type": "Тип",
       "field.link_type": "Тип связи",
@@ -376,11 +400,32 @@
       "projects.save_board_settings": "Сохранить настройки доски",
       "projects.title": "Проекты",
       "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
+      "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, Done/Closed и связи тикетов.",
+      "sound.events_title": "Какие события звучат",
       "sound.focused": "Важное",
       "sound.off": "Выкл",
       "sound.soft": "Мягко",
       "sound.test": "Проверить звук",
+      "sound.theme_bright": "Яркая",
+      "sound.theme_round": "Мягкая",
       "sound.title": "Звуки на этом устройстве",
+      "sprint.activate": "Активировать",
+      "sprint.active": "Активный",
+      "sprint.all": "Все спринты",
+      "sprint.backlog": "Без спринта",
+      "sprint.close": "Закрыть",
+      "sprint.closed": "Закрыт",
+      "sprint.create": "Создать спринт",
+      "sprint.empty": "Спринтов пока нет.",
+      "sprint.ends_on": "Конец",
+      "sprint.goal": "Цель",
+      "sprint.manage": "Планирование спринтов",
+      "sprint.none": "Без спринта",
+      "sprint.planned": "План",
+      "sprint.sprints": "Спринты",
+      "sprint.starts_on": "Начало",
+      "sprint.status": "Статус",
+      "sprint.ticket_count": "тикетов",
       "status.all": "Все",
       "status.Backlog": "Бэклог",
       "status.Closed": "Закрыто",
@@ -537,9 +582,19 @@
     return localStorage.getItem(STORAGE_SOUND_MODE) || "off";
   }
 
+  function currentSoundTheme() {
+    return localStorage.getItem(STORAGE_SOUND_THEME) || "round";
+  }
+
   function setSoundMode(mode) {
     const value = ["off", "soft", "focused"].includes(mode) ? mode : "off";
     localStorage.setItem(STORAGE_SOUND_MODE, value);
+    updateSoundControls();
+  }
+
+  function setSoundTheme(theme) {
+    const value = ["round", "bright"].includes(theme) ? theme : "round";
+    localStorage.setItem(STORAGE_SOUND_THEME, value);
     updateSoundControls();
   }
 
@@ -547,6 +602,10 @@
     document.querySelectorAll("[data-sound-mode]").forEach((button) => {
       button.classList.toggle("active", button.dataset.soundMode === currentSoundMode());
       button.setAttribute("aria-pressed", button.dataset.soundMode === currentSoundMode() ? "true" : "false");
+    });
+    document.querySelectorAll("[data-sound-theme]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.soundTheme === currentSoundTheme());
+      button.setAttribute("aria-pressed", button.dataset.soundTheme === currentSoundTheme() ? "true" : "false");
     });
   }
 
@@ -560,6 +619,12 @@
     });
     document.querySelectorAll("[data-sound-test]").forEach((button) => {
       button.addEventListener("click", () => playTicketSound({ event: "test" }, true));
+    });
+    document.querySelectorAll("[data-sound-theme]").forEach((button) => {
+      button.addEventListener("click", () => {
+        setSoundTheme(button.dataset.soundTheme || "round");
+        if (currentSoundMode() !== "off") playTicketSound({ event: "test" }, true);
+      });
     });
     document.addEventListener(
       "pointerdown",
@@ -627,24 +692,45 @@
     const ctx = ensureAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime + 0.01;
-    const volume = 0.035;
+    const bright = currentSoundTheme() === "bright";
+    const volume = bright ? 0.045 : 0.035;
     const kind = soundKind(payload);
-    if (kind === "success") {
+    if (bright && kind === "success") {
+      playTone(ctx, now, 659.25, 0.08, volume, "triangle");
+      playTone(ctx, now + 0.08, 987.77, 0.11, volume * 0.8, "triangle");
+      playTone(ctx, now + 0.16, 1318.51, 0.12, volume * 0.55, "sine");
+    } else if (kind === "success") {
       playTone(ctx, now, 523.25, 0.12, volume, "sine");
       playTone(ctx, now + 0.07, 659.25, 0.14, volume * 0.9, "sine");
       playTone(ctx, now + 0.14, 783.99, 0.18, volume * 0.8, "triangle");
+    } else if (bright && kind === "status") {
+      playTone(ctx, now, 493.88, 0.05, volume * 0.9, "square");
+      playTone(ctx, now + 0.07, 739.99, 0.08, volume * 0.6, "triangle");
     } else if (kind === "status") {
       playTone(ctx, now, 392, 0.09, volume, "triangle");
       playTone(ctx, now + 0.08, 587.33, 0.12, volume * 0.85, "triangle");
+    } else if (bright && kind === "comment") {
+      playTone(ctx, now, 880, 0.035, volume * 0.55, "sine");
+      playTone(ctx, now + 0.055, 880, 0.035, volume * 0.5, "sine");
+      playTone(ctx, now + 0.11, 1174.66, 0.045, volume * 0.45, "sine");
     } else if (kind === "comment") {
       playTone(ctx, now, 740, 0.06, volume * 0.65, "sine");
       playTone(ctx, now + 0.09, 660, 0.08, volume * 0.55, "sine");
+    } else if (bright && kind === "assigned") {
+      playTone(ctx, now, 392, 0.08, volume * 0.8, "sawtooth");
+      playTone(ctx, now + 0.09, 523.25, 0.09, volume * 0.65, "triangle");
     } else if (kind === "assigned") {
       playTone(ctx, now, 330, 0.11, volume * 0.9, "triangle");
       playTone(ctx, now + 0.1, 440, 0.12, volume * 0.75, "triangle");
+    } else if (bright && kind === "created") {
+      playTone(ctx, now, 1046.5, 0.04, volume * 0.55, "sine");
+      playTone(ctx, now + 0.045, 1567.98, 0.06, volume * 0.4, "sine");
     } else if (kind === "created") {
       playTone(ctx, now, 880, 0.06, volume * 0.55, "sine");
       playTone(ctx, now + 0.05, 1174.66, 0.08, volume * 0.45, "sine");
+    } else if (bright && kind === "linked") {
+      playTone(ctx, now, 698.46, 0.035, volume * 0.4, "square");
+      playTone(ctx, now + 0.045, 523.25, 0.035, volume * 0.32, "square");
     } else if (kind === "linked") {
       playTone(ctx, now, 494, 0.04, volume * 0.45, "square");
     } else {
@@ -1123,6 +1209,11 @@
       }));
     } else if (field === "priority") {
       options = boardData("priorities", []).map((p) => ({ value: p, label: translate(`priority.${p}`, currentLang()) || p }));
+    } else if (field === "sprint_id") {
+      options = [{ value: "", label: translate("sprint.none", currentLang()) || "No sprint" }];
+      boardData("sprints", [])
+        .filter((s) => s.status !== "closed")
+        .forEach((s) => options.push({ value: String(s.id), label: s.name }));
     } else if (field === "assignee_id") {
       options = [{ value: "", label: translate("ticket.unassigned", currentLang()) || "Unassigned" }];
       boardData("members", []).forEach((m) => options.push({ value: String(m.id), label: m.name || m.login }));
@@ -1150,7 +1241,7 @@
 
   async function applyFieldChange(card, field, value) {
     const payload = {};
-    payload[field] = field === "assignee_id" ? (value ? Number(value) : null) : value;
+    payload[field] = field === "assignee_id" || field === "sprint_id" ? (value ? Number(value) : null) : value;
     closePopover();
     card.classList.add("is-saving");
     try {
@@ -1265,6 +1356,7 @@
     setChipValue(card, "ticket_type", ticket.ticket_type, translate(`type.${ticket.ticket_type}`, currentLang()) || ticket.ticket_type);
     setChipValue(card, "status", ticket.status, translate(`status.${ticket.status}`, currentLang()) || ticket.status);
     setChipValue(card, "priority", ticket.priority, translate(`priority.${ticket.priority}`, currentLang()) || ticket.priority);
+    setChipValue(card, "sprint_id", ticket.sprint_id ? String(ticket.sprint_id) : "", ticket.sprint_name || translate("sprint.none", currentLang()) || "No sprint");
     updateAssigneeChip(card, ticket);
     updateLinkedTickets(card, ticket);
     refreshColumnCounts();
@@ -1280,6 +1372,8 @@
       if (field === "status") labelEl.dataset.i18n = `status.${value}`;
       if (field === "priority") labelEl.dataset.i18n = `priority.${value}`;
       if (field === "ticket_type") labelEl.dataset.i18n = `type.${value}`;
+      if (field === "sprint_id" && !value) labelEl.dataset.i18n = "sprint.none";
+      if (field === "sprint_id" && value) labelEl.removeAttribute("data-i18n");
       labelEl.textContent = label;
     }
     if (field === "priority") {
@@ -1415,6 +1509,9 @@
           <span class="avatar-dot" aria-hidden="true"></span>
           <span class="chip-label assignee-label"></span>
         </button>
+        <button type="button" class="chip chip-edit chip-sprint" data-edit="sprint_id" aria-haspopup="true">
+          <span class="chip-label"></span>
+        </button>
         <button type="button" class="chip chip-edit chip-desc" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description"></button>
         <button type="button" class="chip chip-edit chip-comment" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment"></button>
       </div>
@@ -1479,6 +1576,7 @@
       setFormValue(form, "status", ticket.status || "");
       setFormValue(form, "priority", ticket.priority || "");
       setFormValue(form, "assignee_id", ticket.assignee_id ? String(ticket.assignee_id) : "");
+      setFormValue(form, "sprint_id", ticket.sprint_id ? String(ticket.sprint_id) : "");
     }
     prependActivity(payload.action);
   }
@@ -1529,7 +1627,7 @@
     if (!form) return;
     const ticketKey = form.dataset.ticketKey;
     const status = form.querySelector("[data-autosave-status]");
-    const fields = ["title", "description", "ticket_type", "status", "priority", "assignee_id"];
+    const fields = ["title", "description", "ticket_type", "status", "priority", "assignee_id", "sprint_id"];
     const timers = new Map();
 
     form.addEventListener("submit", (event) => event.preventDefault());
@@ -1544,7 +1642,7 @@
     const fieldValue = (field) => {
       const control = form.elements[field];
       if (!control) return undefined;
-      if (field === "assignee_id") return control.value ? Number(control.value) : null;
+      if (field === "assignee_id" || field === "sprint_id") return control.value ? Number(control.value) : null;
       return control.value;
     };
 
@@ -1855,6 +1953,7 @@
     if (field === "priority") return translate(`priority.${value}`, currentLang()) || value;
     if (field === "ticket_type") return translate(`type.${value}`, currentLang()) || value;
     if (field === "ticket_link") return value;
+    if (field === "sprint_id") return "";
     if (field === "title") return value;
     if (field === "description") return "";
     if (field === "assignee_id") return "";
@@ -1870,7 +1969,7 @@
         element.textContent = `· ${oldLabel} → ${newLabel}`;
       } else if (newLabel) {
         element.textContent = `· ${newLabel}`;
-      } else if (field === "description" || field === "assignee_id") {
+      } else if (field === "description" || field === "assignee_id" || field === "sprint_id") {
         element.textContent = "";
       } else {
         element.textContent = "";
