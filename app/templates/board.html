@@ -15,7 +15,7 @@
   <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
     <label>
       <span data-i18n="field.sprint">Sprint</span>
-      <select name="sprint" onchange="this.form.submit()">
+      <select name="sprint" data-sprint-filter-select>
         <option value="" {% if not sprint_filter %}selected{% endif %} data-i18n="sprint.all">All sprints</option>
         <option value="none" {% if sprint_filter == "none" %}selected{% endif %} data-i18n="sprint.backlog">No sprint</option>
         <option value="active" {% if sprint_filter == "active" %}selected{% endif %} data-i18n="sprint.active">Active sprint</option>
@@ -25,7 +25,7 @@
       </select>
     </label>
   </form>
-  <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/settings#settings-sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
+  <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
   <details class="ticket-create board-create">
     <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
     <div class="panel board-create-panel">

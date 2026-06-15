@@ -419,6 +419,21 @@ async def project_settings_page(request: Request, project_key: str, error: str =
     )
 
 
+@app.get("/p/{project_key}/sprints", response_class=HTMLResponse)
+async def project_sprints_page(request: Request, project_key: str) -> HTMLResponse:
+    user = require_page_user(request)
+    project = get_project_by_key(project_key)
+    require_project_admin(user, int(project["id"]))
+    return render(
+        request,
+        "project_sprints.html",
+        {
+            "project": project,
+            "sprints": list_project_sprints(int(project["id"])),
+        },
+    )
+
+
 @app.post("/api/projects/{project_key}/delete")
 async def api_delete_project(request: Request, project_key: str) -> RedirectResponse:
     user = await validate_csrf_request(request)
@@ -456,7 +471,7 @@ async def api_create_sprint(request: Request, project_key: str) -> RedirectRespo
         str(form.get("ends_on") or ""),
         str(form.get("status") or "planned"),
     )
-    return redirect("/p/%s/settings#settings-sprints" % project_key.upper())
+    return redirect("/p/%s/sprints" % project_key.upper())
 
 
 @app.post("/api/projects/{project_key}/sprints/{sprint_id}/status")
@@ -464,7 +479,7 @@ async def api_update_sprint_status(request: Request, project_key: str, sprint_id
     user = await validate_csrf_request(request)
     form = await request.form()
     update_sprint_status(user, project_key, sprint_id, str(form.get("status") or "planned"))
-    return redirect(str(request.headers.get("referer") or "/p/%s/settings#settings-sprints" % project_key.upper()))
+    return redirect(str(request.headers.get("referer") or "/p/%s/sprints" % project_key.upper()))
 
 
 @app.post("/api/projects/{project_key}/members")

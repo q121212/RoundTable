@@ -8,6 +8,7 @@
   </div>
   <div class="head-actions">
     <a class="secondary" href="/p/{{ project.key }}/board" data-icon="arrow-left" data-i18n="projects.back_to_board">Back to board</a>
+    <a class="secondary" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage">Sprint planning</a>
     <a class="secondary" href="/integrations/github" data-icon="git-branch" data-i18n="github.settings">GitHub settings</a>
   </div>
 </section>
@@ -22,7 +23,6 @@
   <nav class="settings-rail" aria-label="Project settings sections">
     <a href="#settings-project" data-icon="folder" data-i18n="projects.settings_project">Project</a>
     <a href="#settings-board" data-icon="columns-3" data-i18n="projects.settings_board">Board</a>
-    <a href="#settings-sprints" data-icon="timer" data-i18n="sprint.sprints">Sprints</a>
     <a href="#settings-access" data-icon="users" data-i18n="projects.settings_access">Access</a>
     {% if can_delete %}
       <a href="#settings-danger" data-icon="trash-2" data-i18n="projects.settings_danger">Danger</a>
@@ -115,91 +115,6 @@
         </fieldset>
         <button class="secondary" type="submit" data-icon="columns-3" data-i18n="projects.save_board_settings">Save board settings</button>
       </form>
-    </div>
-
-    <div class="panel settings-section" id="settings-sprints">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow" data-i18n="sprint.sprints">Sprints</p>
-          <h2 data-i18n="sprint.manage">Sprint planning</h2>
-        </div>
-      </div>
-      <form class="stacked-form sprint-create-form" method="post" action="/api/projects/{{ project.key }}/sprints">
-        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-        <div class="form-row">
-          <label>
-            <span class="label-row">
-              <span data-i18n="field.name">Name</span>
-              <span class="required-mark" aria-hidden="true">*</span>
-            </span>
-            <input name="name" required placeholder="Sprint 1">
-          </label>
-          <label>
-            <span class="label-row"><span data-i18n="sprint.status">Status</span></span>
-            <select name="status">
-              <option value="planned" data-i18n="sprint.planned">Planned</option>
-              <option value="active" data-i18n="sprint.active">Active</option>
-            </select>
-          </label>
-        </div>
-        <label>
-          <span class="label-row"><span data-i18n="sprint.goal">Goal</span></span>
-          <input name="goal" placeholder="What should this sprint achieve?">
-        </label>
-        <div class="form-row">
-          <label>
-            <span class="label-row"><span data-i18n="sprint.starts_on">Starts</span></span>
-            <input name="starts_on" type="date">
-          </label>
-          <label>
-            <span class="label-row"><span data-i18n="sprint.ends_on">Ends</span></span>
-            <input name="ends_on" type="date">
-          </label>
-        </div>
-        <button class="secondary" type="submit" data-icon="timer" data-i18n="sprint.create">Create sprint</button>
-      </form>
-      <div class="table-list sprint-list">
-        {% for sprint in sprints %}
-          <div class="table-row sprint-row">
-            <span>
-              <strong>{{ sprint.name }}</strong>
-              <span class="muted">{{ sprint.goal or "" }}</span>
-            </span>
-            <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
-            <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
-            <div class="sprint-actions">
-              {% if sprint.status != "active" and sprint.status != "closed" %}
-                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                  <input type="hidden" name="status" value="active">
-                  <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
-                </form>
-              {% endif %}
-              {% if sprint.status == "closed" %}
-                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                  <input type="hidden" name="status" value="planned">
-                  <button class="secondary tiny" type="submit" data-icon="rotate-ccw" data-i18n="sprint.reopen">Reopen</button>
-                </form>
-                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                  <input type="hidden" name="status" value="active">
-                  <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
-                </form>
-              {% endif %}
-              {% if sprint.status != "closed" %}
-                <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                  <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                  <input type="hidden" name="status" value="closed">
-                  <button class="ghost tiny" type="submit" data-icon="archive" data-i18n="sprint.close">Close</button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        {% else %}
-          <p class="muted" data-i18n="sprint.empty">No sprints yet.</p>
-        {% endfor %}
-      </div>
     </div>
 
     <div class="panel settings-section" id="settings-access">

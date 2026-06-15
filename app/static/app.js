@@ -186,10 +186,13 @@
       "sprint.ends_on": "Ends",
       "sprint.goal": "Goal",
       "sprint.manage": "Sprint planning",
+      "sprint.manage_copy": "Plan, activate, close, and reopen project sprints.",
       "sprint.manage_link": "Manage sprints",
+      "sprint.new": "New sprint",
       "sprint.none": "No sprint",
       "sprint.planned": "Planned",
       "sprint.reopen": "Reopen",
+      "sprint.existing": "Existing sprints",
       "sprint.sprints": "Sprints",
       "sprint.starts_on": "Starts",
       "sprint.status": "Status",
@@ -428,10 +431,13 @@
       "sprint.ends_on": "Конец",
       "sprint.goal": "Цель",
       "sprint.manage": "Планирование спринтов",
+      "sprint.manage_copy": "Планируйте, запускайте, закрывайте и переоткрывайте спринты проекта.",
       "sprint.manage_link": "Управлять спринтами",
+      "sprint.new": "Новый спринт",
       "sprint.none": "Без спринта",
       "sprint.planned": "План",
       "sprint.reopen": "Переоткрыть",
+      "sprint.existing": "Текущие спринты",
       "sprint.sprints": "Спринты",
       "sprint.starts_on": "Начало",
       "sprint.status": "Статус",
@@ -2279,6 +2285,20 @@
     });
   }
 
+  function setupSprintFilter() {
+    document.querySelectorAll("[data-sprint-filter-select]").forEach((select) => {
+      select.addEventListener("change", () => {
+        const form = select.closest("form");
+        if (!form) return;
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+      });
+    });
+  }
+
   function setupTooltips() {
     document.addEventListener("click", (event) => {
       document.querySelectorAll(".help-dot.tooltip-open").forEach((button) => {
@@ -2313,6 +2333,7 @@
     setupMentionInputs();
     setupOpenCreate();
     setupMobileStatusTabs();
+    setupSprintFilter();
     setupTooltips();
     setupBoardLiveEvents();
   });

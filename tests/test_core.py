@@ -130,6 +130,23 @@ def test_active_sprint_filter_is_empty_without_active_sprint(temp_db):
     assert [item["key"] for item in no_sprint_board["columns"]["Backlog"]] == [ticket["key"]]
 
 
+def test_board_sprint_filter_page_hides_no_sprint_tickets(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    ticket = create_ticket(user, "RT", "Unscoped work")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+
+    active_response = client.get("/p/RT/board?sprint=active")
+    no_sprint_response = client.get("/p/RT/board?sprint=none")
+
+    assert active_response.status_code == 200
+    assert ticket["key"] not in active_response.text
+    assert ticket["key"] in no_sprint_response.text
+
+
 def test_only_one_sprint_can_be_active_per_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
