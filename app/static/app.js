@@ -205,6 +205,7 @@
       "sprint.days_left": "days left",
       "sprint.ended": "ended",
       "sprint.ends_today": "ends today",
+      "sprint.total_days": "sprint days",
       "status.all": "All",
       "story_points.none": "No SP",
       "story_points.short": "SP",
@@ -460,6 +461,7 @@
       "sprint.days_left": "дн. осталось",
       "sprint.ended": "завершился",
       "sprint.ends_today": "закончится сегодня",
+      "sprint.total_days": "дней спринта",
       "status.all": "Все",
       "story_points.none": "Без SP",
       "story_points.short": "SP",
@@ -552,6 +554,7 @@
     updateLanguageButton();
     updateThemeButton();
     setupLocalTimes();
+    setupLocalDates();
     setupActionLabels();
     setupActionDetails();
     setupSprintProgress();
@@ -1552,6 +1555,15 @@
     return new Date(parts[0], parts[1] - 1, parts[2]);
   }
 
+  function formatDateOnly(value) {
+    const date = parseDateOnly(value);
+    if (!date) return "";
+    const enMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const ruMonths = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+    const months = currentLang() === "ru" ? ruMonths : enMonths;
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  }
+
   function dateDiffDays(from, to) {
     const oneDay = 24 * 60 * 60 * 1000;
     const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
@@ -1582,7 +1594,7 @@
     if (left === 0) label = translate("sprint.ends_today", currentLang()) || "ends today";
     if (left < 0) label = translate("sprint.ended", currentLang()) || "ended";
     progress.hidden = false;
-    progress.title = `${progress.dataset.sprintStart} - ${progress.dataset.sprintEnd}: ${label}`;
+    progress.title = `${formatDateOnly(progress.dataset.sprintStart)} - ${formatDateOnly(progress.dataset.sprintEnd)} · ${total} ${translate("sprint.total_days", currentLang()) || "sprint days"} · ${label}`;
     progress.innerHTML = "";
     const dots = document.createElement("span");
     dots.className = "sprint-progress-dots";
@@ -1734,12 +1746,12 @@
           <span class="story-points-icon" data-icon="gauge" aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
+        <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint">
+          <span class="chip-label"></span>
+        </button>
         <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee">
           <span class="avatar-dot" aria-hidden="true"></span>
           <span class="chip-label assignee-label"></span>
-        </button>
-        <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint">
-          <span class="chip-label"></span>
         </button>
         <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
         <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>
@@ -2316,6 +2328,13 @@
         hour: "2-digit",
         minute: "2-digit",
       }).format(date);
+    });
+  }
+
+  function setupLocalDates() {
+    document.querySelectorAll("[data-local-date]").forEach((element) => {
+      const formatted = formatDateOnly(element.dataset.localDate);
+      if (formatted) element.textContent = formatted;
     });
   }
 

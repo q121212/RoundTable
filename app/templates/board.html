@@ -7,30 +7,30 @@
     <h1>{{ project.name }}</h1>
     {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
   </div>
-  <div class="head-actions">
+  <div class="head-actions board-head-actions">
     {% if can_manage_project %}
-      <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+      <div class="board-admin-links">
+        <a class="ghost tiny" href="/p/{{ project.key }}/settings" data-icon="settings" data-i18n="projects.settings">Project settings</a>
+        <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
+      </div>
     {% endif %}
+    <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
+      <label>
+        <span data-i18n="field.sprint">Sprint</span>
+        <select name="sprint" data-sprint-filter-select>
+          <option value="" {% if not sprint_filter %}selected{% endif %} data-i18n="sprint.all">All sprints</option>
+          <option value="none" {% if sprint_filter == "none" %}selected{% endif %} data-i18n="sprint.backlog">No sprint</option>
+          <option value="active" {% if sprint_filter == "active" %}selected{% endif %} data-i18n="sprint.active">Active sprint</option>
+          {% for sprint in sprints %}
+            <option value="{{ sprint.id }}" {% if sprint_filter == sprint.id|string %}selected{% endif %}>{{ sprint.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
   </div>
 </section>
 
-<div class="board-toolbar">
-  <form class="sprint-filter-form" method="get" action="/p/{{ project.key }}/board">
-    <label>
-      <span data-i18n="field.sprint">Sprint</span>
-      <select name="sprint" data-sprint-filter-select>
-        <option value="" {% if not sprint_filter %}selected{% endif %} data-i18n="sprint.all">All sprints</option>
-        <option value="none" {% if sprint_filter == "none" %}selected{% endif %} data-i18n="sprint.backlog">No sprint</option>
-        <option value="active" {% if sprint_filter == "active" %}selected{% endif %} data-i18n="sprint.active">Active sprint</option>
-        {% for sprint in sprints %}
-          <option value="{{ sprint.id }}" {% if sprint_filter == sprint.id|string %}selected{% endif %}>{{ sprint.name }}</option>
-        {% endfor %}
-      </select>
-    </label>
-  </form>
-  {% if can_manage_project %}
-    <a class="secondary tiny sprint-manage-link" href="/p/{{ project.key }}/sprints" data-icon="timer" data-i18n="sprint.manage_link">Manage sprints</a>
-  {% endif %}
+<div class="board-toolbar board-ticket-toolbar">
   <details class="ticket-create board-create">
     <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
     <div class="panel board-create-panel">
@@ -224,6 +224,9 @@
                 <span class="story-points-icon" data-icon="gauge" aria-hidden="true"></span>
                 <span class="chip-label" {% if not ticket.story_points %}data-i18n="story_points.none"{% endif %}>{{ (ticket.story_points ~ " SP") if ticket.story_points else "No SP" }}</span>
               </button>
+              <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" data-value="{{ ticket.sprint_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint" title="{{ ticket.sprint_name or 'No sprint' }}">
+                <span class="chip-label" {% if not ticket.sprint_name %}data-i18n="sprint.none"{% endif %}>{{ ticket.sprint_name or "No sprint" }}</span>
+              </button>
               <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" data-value="{{ ticket.assignee_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee" title="{{ ticket.assignee_name or ticket.assignee_login or 'Unassigned' }}">
                 <span class="avatar-dot" aria-hidden="true">
                   {% if ticket.assignee_avatar_url %}
@@ -237,9 +240,6 @@
                 {% else %}
                   <span class="chip-label assignee-label" data-i18n="ticket.unassigned">Unassigned</span>
                 {% endif %}
-              </button>
-              <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" data-value="{{ ticket.sprint_id or '' }}" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint" title="{{ ticket.sprint_name or 'No sprint' }}">
-                <span class="chip-label" {% if not ticket.sprint_name %}data-i18n="sprint.none"{% endif %}>{{ ticket.sprint_name or "No sprint" }}</span>
               </button>
               <button type="button" class="chip chip-edit chip-desc tooltip-anchor" data-edit="description" data-icon="square-pen" aria-haspopup="true" aria-label="Edit description" data-i18n-aria="field.description" data-i18n-tooltip="field.description" data-tooltip="Description"></button>
               <button type="button" class="chip chip-edit chip-comment tooltip-anchor" data-edit="comment" data-icon="message-square-plus" aria-haspopup="true" aria-label="Comment" data-i18n-aria="action.comment" data-i18n-tooltip="action.comment" data-tooltip="Comment"></button>

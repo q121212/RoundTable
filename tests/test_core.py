@@ -341,6 +341,8 @@ def test_sprint_details_can_be_edited_via_page(temp_db):
 
     assert page.status_code == 200
     assert 'action="/api/projects/SPR/sprints/' in page.text
+    assert 'data-local-date="2026-06-10"' in page.text
+    assert 'data-local-date="2026-06-17"' in page.text
     assert response.status_code == 303
     assert response.headers["location"] == "/p/SPR/sprints"
     edited = list_project_sprints(int(get_project_by_key("SPR")["id"]))[0]

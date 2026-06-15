@@ -921,6 +921,30 @@ button,
   gap: 10px;
 }
 
+.board-head-actions {
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: min(320px, 100%);
+}
+
+.board-admin-links {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 320px);
+}
+
+.board-admin-links .ghost,
+.board-admin-links .secondary,
+.board-head-actions .sprint-filter-form {
+  width: min(100%, 320px);
+}
+
+.board-ticket-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin: -4px 0 12px;
+}
+
 .workflow-actions {
   display: grid;
   gap: 10px;
@@ -1355,9 +1379,17 @@ time {
   gap: 10px;
 }
 
+.sprint-row-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
 .sprint-edit-form {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.7fr) auto;
+  grid-template-columns: minmax(280px, 1fr) minmax(270px, 0.72fr);
   gap: 8px;
   align-items: end;
 }
@@ -1373,7 +1405,7 @@ time {
 }
 
 .sprint-edit-dates {
-  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  grid-template-columns: repeat(2, minmax(132px, 1fr));
 }
 
 .sprint-edit-form input {
@@ -1382,11 +1414,26 @@ time {
   font-size: 0.9rem;
 }
 
+.sprint-edit-form .secondary {
+  grid-column: 2;
+  justify-self: end;
+  min-width: 145px;
+}
+
 .sprint-row-meta {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.sprint-date-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  white-space: nowrap;
 }
 
 .sprint-actions {
@@ -1458,6 +1505,8 @@ code {
   }
 
   .sprint-edit-form .tiny {
+    grid-column: auto;
+    justify-self: stretch;
     width: 100%;
   }
 
@@ -1472,6 +1521,16 @@ code {
 
   .board-head {
     align-items: stretch;
+  }
+
+  .board-head-actions {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .board-admin-links,
+  .board-head-actions .sprint-filter-form {
+    width: 100%;
   }
 }
 
@@ -1963,7 +2022,7 @@ a.ticket-key:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  max-height: 58px;
+  max-height: 86px;
   overflow: hidden;
 }
 
@@ -2666,6 +2725,16 @@ a.ticket-key:hover {
     padding: 14px 10px 92px;
   }
 
+  .board-admin-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .board-admin-links .tiny {
+    min-height: 48px;
+    padding-inline: 10px;
+    justify-content: center;
+  }
+
   .panel {
     padding: 12px;
   }
@@ -2769,7 +2838,7 @@ a.ticket-key:hover {
 
   .ticket-card-chips {
     gap: 5px;
-    max-height: 92px;
+    max-height: 104px;
   }
 
   .ticket-card-sprint-progress {

@@ -67,6 +67,25 @@
     <div class="table-list sprint-list">
       {% for sprint in sprints %}
         <div class="table-row sprint-row">
+          <div class="sprint-row-summary">
+            <div class="sprint-row-meta">
+              <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
+              <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
+              {% if sprint.starts_on or sprint.ends_on %}
+                <span class="sprint-date-range">
+                  {% if sprint.starts_on %}
+                    <span data-local-date="{{ sprint.starts_on }}">{{ sprint.starts_on }}</span>
+                  {% endif %}
+                  {% if sprint.starts_on and sprint.ends_on %}
+                    <span aria-hidden="true">-</span>
+                  {% endif %}
+                  {% if sprint.ends_on %}
+                    <span data-local-date="{{ sprint.ends_on }}">{{ sprint.ends_on }}</span>
+                  {% endif %}
+                </span>
+              {% endif %}
+            </div>
+          </div>
           <form class="sprint-edit-form" method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}">
             <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
             <div class="sprint-edit-main">
@@ -94,10 +113,6 @@
             </div>
             <button class="secondary tiny" type="submit" data-icon="save" data-i18n="sprint.save">Save sprint</button>
           </form>
-          <div class="sprint-row-meta">
-            <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
-            <span class="muted">{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
-          </div>
           <div class="sprint-actions">
             {% if sprint.status != "active" and sprint.status != "closed" %}
               <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
