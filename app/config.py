@@ -41,6 +41,12 @@ class Settings:
         "SESSION_COOKIE_SECURE",
         os.getenv("BASE_URL", "http://localhost:8000").lower().startswith("https"),
     )
+    # When the app runs behind a reverse proxy you trust (e.g. nginx), enable
+    # this so the client IP used for rate limiting is read from the *last*
+    # X-Forwarded-For hop (the one the proxy appended). Off by default: a direct
+    # client must not be able to spoof its identity via the header.
+    trust_proxy_headers: bool = _bool("TRUST_PROXY_HEADERS", False)
+
     admin_github_logins: List[str] = None  # type: ignore[assignment]
 
     github_client_id: str = os.getenv("GITHUB_CLIENT_ID", "")
