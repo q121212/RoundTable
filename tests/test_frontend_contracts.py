@@ -45,8 +45,14 @@ def test_sprint_dates_use_localized_option_labels():
     assert "data-sprint-filter-combo" in board_template
     assert "data-sprint-filter-search" in board_template
     assert "data-sprint-filter-create" in board_template
+    assert "sprint.find_or_create_placeholder" in board_template
+    assert "sprint.quick_create_placeholder" not in board_template
     assert '<form class="sprint-filter-form"' not in board_template
     assert "/sprints/quick" in script
+    assert 'data-i18n-tooltip="help.ticket_type"' in board_template
+    assert 'data-i18n-tooltip="help.priority"' in board_template
+    assert 'data-i18n-tooltip="help.ticket_type"' in script
+    assert 'data-i18n-tooltip="help.priority"' in script
     assert 'translate("sprint.filter_modes"' in script
     assert 'translate("sprint.open_sprints"' in script
     assert '"sprint.active": "Active sprint"' in script

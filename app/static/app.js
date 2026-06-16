@@ -65,6 +65,7 @@
       "help.project_key": "Short uppercase prefix for ticket keys, for example CRM or OPS.",
       "help.project_name": "Human-readable project name shown in the UI.",
       "help.role": "member can edit, viewer can only read, admin can manage project access.",
+      "help.sprint": "Sprint or iteration this ticket is planned in.",
       "help.status": "Where the ticket currently is on the board.",
       "help.story_points": "Small effort estimate. Use 0 when not estimated.",
       "help.ticket_type": "Type of work. Epics are bigger containers; tasks, bugs, and stories are regular tickets.",
@@ -166,6 +167,7 @@
       "projects.ticket_types_help": "Selected types are available when creating and editing tickets. Move existing tickets before disabling a type.",
       "projects.ticket_types_selected": "Ticket types used by this project",
       "projects.title": "Projects",
+      "projects.tools": "Project tools",
       "sound.copy": "Short local sounds for board events. Different event types use different cues.",
       "sound.events_copy": "New tickets, comments, assignments, status changes, sprint changes, Done/Closed, and ticket links.",
       "sound.events_title": "Events with sound",
@@ -196,6 +198,8 @@
       "stats.visibility_admin": "Project admins only",
       "stats.visibility_all": "Everyone in project",
       "stats.visibility_help": "By default, every project member can open project statistics.",
+      "stats.visibility_member": "Members and admins",
+      "stats.visibility_viewer": "Viewers, members, and admins",
       "sprint.activate": "Activate",
       "sprint.active": "Active sprint",
       "sprint.all": "All sprints",
@@ -207,6 +211,7 @@
       "sprint.ends_on": "Ends",
       "sprint.filter_modes": "Views",
       "sprint.find_placeholder": "Find sprint",
+      "sprint.find_or_create_placeholder": "Find or name sprint",
       "sprint.goal": "Goal",
       "sprint.manage": "Sprint planning",
       "sprint.manage_copy": "Plan, activate, close, and reopen project sprints.",
@@ -218,6 +223,7 @@
       "sprint.planned": "Planned",
       "sprint.quick_create": "Create sprint",
       "sprint.quick_create_placeholder": "New sprint name",
+      "sprint.quick_create_help": "Create a sprint without leaving the board. Dates are optional.",
       "sprint.recent_closed": "Recent closed",
       "sprint.reopen": "Reopen",
       "sprint.save": "Save sprint",
@@ -269,10 +275,13 @@
       "ticket.delete": "Delete ticket",
       "ticket.delete_confirm": "Type the ticket key to confirm:",
       "ticket.delete_help": "Deleting a ticket permanently removes its comments, links, watchers, and history. This cannot be undone.",
+      "ticket.delete_own_only": "Non-admins can delete only their own tickets",
+      "ticket.delete_own_only_help": "Project admins are not limited by this checkbox.",
       "ticket.delete_policy": "Ticket deletion",
       "ticket.delete_policy_admin": "Project admins only",
       "ticket.delete_policy_help": "Delete action appears only on the ticket page for users allowed by this project.",
       "ticket.delete_policy_member": "Admins and members",
+      "ticket.delete_policy_role_help": "Choose the lowest project role that can delete tickets.",
       "ticket.delete_policy_viewer": "Everyone with project access",
       "ticket.details": "Details",
       "ticket.live_connected": "Live updates on",
@@ -355,6 +364,7 @@
       "help.project_key": "Короткий uppercase-префикс для ключей тикетов, например CRM или OPS.",
       "help.project_name": "Человеческое название проекта, которое видно в интерфейсе.",
       "help.role": "member может редактировать, viewer только читать, admin управляет доступом к проекту.",
+      "help.sprint": "Спринт или итерация, в которую запланирован тикет.",
       "help.status": "Где тикет сейчас находится на доске.",
       "help.story_points": "Короткая оценка объема работы. 0 означает, что оценки пока нет.",
       "help.ticket_type": "Тип работы. Эпик — крупный контейнер; задачи, баги и истории — обычные тикеты.",
@@ -456,6 +466,7 @@
       "projects.ticket_types_help": "Выбранные типы доступны при создании и редактировании тикетов. Перед отключением типа переведите существующие тикеты.",
       "projects.ticket_types_selected": "Типы тикетов этого проекта",
       "projects.title": "Проекты",
+      "projects.tools": "Инструменты проекта",
       "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
       "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, смена спринта, Done/Closed и связи тикетов.",
       "sound.events_title": "Какие события звучат",
@@ -486,6 +497,8 @@
       "stats.visibility_admin": "Только админы проекта",
       "stats.visibility_all": "Все участники проекта",
       "stats.visibility_help": "По умолчанию статистику проекта видят все участники.",
+      "stats.visibility_member": "Участники и админы",
+      "stats.visibility_viewer": "Наблюдатели, участники и админы",
       "sprint.activate": "Активировать",
       "sprint.active": "Активный спринт",
       "sprint.all": "Все спринты",
@@ -497,6 +510,7 @@
       "sprint.ends_on": "Конец",
       "sprint.filter_modes": "Режимы",
       "sprint.find_placeholder": "Найти спринт",
+      "sprint.find_or_create_placeholder": "Найти или назвать спринт",
       "sprint.goal": "Цель",
       "sprint.manage": "Планирование спринтов",
       "sprint.manage_copy": "Планируйте, запускайте, закрывайте и переоткрывайте спринты проекта.",
@@ -508,6 +522,7 @@
       "sprint.planned": "План",
       "sprint.quick_create": "Создать спринт",
       "sprint.quick_create_placeholder": "Название нового спринта",
+      "sprint.quick_create_help": "Создайте спринт, не уходя с доски. Даты можно не указывать.",
       "sprint.recent_closed": "Недавно закрытые",
       "sprint.reopen": "Переоткрыть",
       "sprint.save": "Сохранить спринт",
@@ -559,10 +574,13 @@
       "ticket.delete": "Удалить тикет",
       "ticket.delete_confirm": "Введите ключ тикета для подтверждения:",
       "ticket.delete_help": "Удаление тикета безвозвратно удалит его комментарии, связи, наблюдателей и историю. Отменить нельзя.",
+      "ticket.delete_own_only": "Не-админы удаляют только свои тикеты",
+      "ticket.delete_own_only_help": "На админов проекта это ограничение не распространяется.",
       "ticket.delete_policy": "Удаление тикетов",
       "ticket.delete_policy_admin": "Только админы проекта",
       "ticket.delete_policy_help": "Удаление видно только на странице тикета тем, кому это разрешено настройкой проекта.",
       "ticket.delete_policy_member": "Админы и участники",
+      "ticket.delete_policy_role_help": "Выберите минимальную роль проекта, которой можно удалять тикеты.",
       "ticket.delete_policy_viewer": "Все с доступом к проекту",
       "ticket.details": "Детали",
       "ticket.live_connected": "Живые обновления включены",
@@ -1806,26 +1824,26 @@
         <a class="ticket-open-link" data-icon="external-link" aria-label="Open ticket"></a>
       </div>
       <div class="ticket-card-chips">
-        <button type="button" class="chip chip-edit chip-type tooltip-anchor" data-edit="ticket_type" aria-haspopup="true" data-i18n-tooltip="field.ticket_type" data-tooltip="Type">
+        <button type="button" class="chip chip-edit chip-type tooltip-anchor" data-edit="ticket_type" aria-haspopup="true" data-i18n-tooltip="help.ticket_type" data-tooltip="Type of work. Epics are bigger containers; tasks, bugs, and stories are regular tickets.">
           <span class="type-icon" aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-status tooltip-anchor" data-edit="status" aria-haspopup="true" data-i18n-tooltip="field.status" data-tooltip="Status">
+        <button type="button" class="chip chip-edit chip-status tooltip-anchor" data-edit="status" aria-haspopup="true" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">
           <span class="status-dot" data-status-dot aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-priority tooltip-anchor" data-edit="priority" aria-haspopup="true" data-i18n-tooltip="field.priority" data-tooltip="Priority">
+        <button type="button" class="chip chip-edit chip-priority tooltip-anchor" data-edit="priority" aria-haspopup="true" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">
           <span class="priority-icon" data-priority-icon aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-story-points tooltip-anchor" data-edit="story_points" aria-haspopup="true" data-i18n-tooltip="field.story_points" data-tooltip="Story points">
+        <button type="button" class="chip chip-edit chip-story-points tooltip-anchor" data-edit="story_points" aria-haspopup="true" data-i18n-tooltip="help.story_points" data-tooltip="Small effort estimate. Use 0 when not estimated.">
           <span class="story-points-icon" data-icon="gauge" aria-hidden="true"></span>
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" aria-haspopup="true" data-i18n-tooltip="field.sprint" data-tooltip="Sprint">
+        <button type="button" class="chip chip-edit chip-sprint tooltip-anchor" data-edit="sprint_id" aria-haspopup="true" data-i18n-tooltip="help.sprint" data-tooltip="Sprint or iteration this ticket is planned in.">
           <span class="chip-label"></span>
         </button>
-        <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" aria-haspopup="true" data-i18n-tooltip="field.assignee" data-tooltip="Assignee">
+        <button type="button" class="chip chip-edit chip-assignee tooltip-anchor" data-edit="assignee_id" aria-haspopup="true" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">
           <span class="avatar-dot" aria-hidden="true"></span>
           <span class="chip-label assignee-label"></span>
         </button>
@@ -2047,9 +2065,11 @@
           data.append("ticket_types", input.value);
         });
         const statsVisibility = board.querySelector('input[name="stats_visibility"]:checked');
-        data.append("stats_visibility", statsVisibility?.value || "all");
+        data.append("stats_visibility", statsVisibility?.value || "viewer");
         const ticketDeletePolicy = board.querySelector('input[name="ticket_delete_policy"]:checked');
         data.append("ticket_delete_policy", ticketDeletePolicy?.value || "admin");
+        const ticketDeleteOwnOnly = board.querySelector('input[name="ticket_delete_own_only"]:checked');
+        data.append("ticket_delete_own_only", ticketDeleteOwnOnly ? "1" : "0");
         return data;
       };
 
@@ -2653,7 +2673,7 @@
       const toggle = combo.querySelector("[data-sprint-filter-toggle]");
       const menu = combo.querySelector("[data-sprint-filter-menu]");
       const search = combo.querySelector("[data-sprint-filter-search]");
-      const createForm = combo.querySelector("[data-sprint-filter-create]");
+      const createButton = combo.querySelector("[data-sprint-filter-create]");
       if (!toggle || !menu || !search) return;
 
       const close = () => {
@@ -2681,36 +2701,23 @@
           open();
         }
       });
-      search.addEventListener("input", () => renderSprintFilterOptions(combo));
-      if (createForm) {
-        createForm.addEventListener("submit", async (event) => {
+      const updateCreateButton = () => {
+        if (createButton) createButton.disabled = !search.value.trim();
+      };
+      search.addEventListener("input", () => {
+        renderSprintFilterOptions(combo);
+        updateCreateButton();
+      });
+      search.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || !createButton || createButton.disabled) return;
+        event.preventDefault();
+        createButton.click();
+      });
+      if (createButton) {
+        updateCreateButton();
+        createButton.addEventListener("click", async (event) => {
           event.preventDefault();
-          const projectKey = combo.dataset.projectKey || "";
-          const input = createForm.elements.name;
-          const button = createForm.querySelector("button[type='submit']");
-          const name = (input?.value || "").trim();
-          if (!projectKey || !name) return;
-          if (button) button.disabled = true;
-          if (input) input.disabled = true;
-          try {
-            const formData = new FormData();
-            formData.append("name", name);
-            formData.append("status", "planned");
-            const response = await fetch(`/api/projects/${encodeURIComponent(projectKey)}/sprints/quick`, {
-              method: "POST",
-              headers: { "x-csrf-token": csrfToken(), accept: "application/json" },
-              body: formData,
-            });
-            if (!response.ok) throw new Error(await response.text());
-            const sprint = await response.json();
-            const sprints = boardData("sprints", []).filter((item) => String(item.id) !== String(sprint.id));
-            setBoardData("sprints", [sprint, ...sprints]);
-            window.location.href = sprintFilterUrl(projectKey, sprint.id);
-          } catch (error) {
-            window.alert(error.message || "Could not create sprint");
-            if (button) button.disabled = false;
-            if (input) input.disabled = false;
-          }
+          await createQuickSprint(combo.dataset.projectKey || "", search.value.trim(), [search, createButton]);
         });
       }
       combo.addEventListener("keydown", (event) => {
@@ -2725,6 +2732,33 @@
         combo.querySelector("[data-sprint-filter-toggle]")?.setAttribute("aria-expanded", "false");
       });
     });
+  }
+
+  async function createQuickSprint(projectKey, name, controls = []) {
+    if (!projectKey || !name) return;
+    controls.forEach((control) => {
+      if (control) control.disabled = true;
+    });
+    try {
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("status", "planned");
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectKey)}/sprints/quick`, {
+        method: "POST",
+        headers: { "x-csrf-token": csrfToken(), accept: "application/json" },
+        body: formData,
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const sprint = await response.json();
+      const sprints = boardData("sprints", []).filter((item) => String(item.id) !== String(sprint.id));
+      setBoardData("sprints", [sprint, ...sprints]);
+      window.location.href = sprintFilterUrl(projectKey, sprint.id);
+    } catch (error) {
+      window.alert(error.message || "Could not create sprint");
+      controls.forEach((control) => {
+        if (control) control.disabled = false;
+      });
+    }
   }
 
   function sprintFilterUrl(projectKey, value) {

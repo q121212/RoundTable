@@ -106,11 +106,17 @@
         </fieldset>
         <fieldset class="status-settings board-status-settings">
           <legend data-i18n="stats.visibility">Statistics visibility</legend>
+          {% set stats_visibility = project.stats_visibility or 'all' %}
           <div class="status-choice-grid stats-visibility-grid">
             <label class="check-row status-choice">
-              <input type="radio" name="stats_visibility" value="all" {% if (project.stats_visibility or 'all') == 'all' %}checked{% endif %}>
+              <input type="radio" name="stats_visibility" value="viewer" {% if stats_visibility in ['all', 'viewer'] %}checked{% endif %}>
               <span data-icon="users" aria-hidden="true"></span>
-              <span data-i18n="stats.visibility_all">Everyone in project</span>
+              <span data-i18n="stats.visibility_viewer">Viewers, members, and admins</span>
+            </label>
+            <label class="check-row status-choice">
+              <input type="radio" name="stats_visibility" value="member" {% if stats_visibility == 'member' %}checked{% endif %}>
+              <span data-icon="user-check" aria-hidden="true"></span>
+              <span data-i18n="stats.visibility_member">Members and admins</span>
             </label>
             <label class="check-row status-choice">
               <input type="radio" name="stats_visibility" value="admin" {% if project.stats_visibility == 'admin' %}checked{% endif %}>
@@ -122,6 +128,7 @@
         </fieldset>
         <fieldset class="status-settings board-status-settings">
           <legend data-i18n="ticket.delete_policy">Ticket deletion</legend>
+          <p class="muted settings-field-note" data-i18n="ticket.delete_policy_role_help">Choose the lowest project role that can delete tickets.</p>
           <div class="status-choice-grid stats-visibility-grid">
             <label class="check-row status-choice">
               <input type="radio" name="ticket_delete_policy" value="admin" {% if (project.ticket_delete_policy or 'admin') == 'admin' %}checked{% endif %}>
@@ -139,6 +146,15 @@
               <span data-i18n="ticket.delete_policy_viewer">Everyone with project access</span>
             </label>
           </div>
+          <label class="check-row status-choice own-ticket-choice">
+            <input type="hidden" name="ticket_delete_own_only" value="0">
+            <input type="checkbox" name="ticket_delete_own_only" value="1" {% if project.ticket_delete_own_only %}checked{% endif %}>
+            <span data-icon="check" aria-hidden="true"></span>
+            <span>
+              <strong data-i18n="ticket.delete_own_only">Non-admins can delete only their own tickets</strong>
+              <span class="muted" data-i18n="ticket.delete_own_only_help">Project admins are not limited by this checkbox.</span>
+            </span>
+          </label>
           <p class="muted" data-i18n="ticket.delete_policy_help">Delete action appears only on the ticket page for users allowed by this project.</p>
         </fieldset>
         <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>

@@ -12,116 +12,153 @@
 </section>
 
 <section class="ticket-layout">
-  <div class="panel">
-    <form class="stacked-form ticket-autosave-form" method="post" action="/api/tickets/{{ ticket.key }}" data-ticket-autosave data-ticket-key="{{ ticket.key }}">
-      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-      <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>
-      <label>
-        <span class="label-row">
-          <span data-i18n="field.title">Title</span>
-          <span class="required-mark" aria-hidden="true">*</span>
-          <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
-        </span>
-        <input name="title" value="{{ ticket.title }}" required>
-      </label>
-      <label>
-        <span class="label-row">
-          <span data-i18n="field.description">Description</span>
-          <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
-        </span>
-        <textarea name="description" rows="8" data-mention-input data-mention-project="{{ ticket.project_key }}">{{ ticket.description }}</textarea>
-      </label>
-      <div class="form-row">
+  <div class="ticket-main-stack">
+    <div class="panel">
+      <form class="stacked-form ticket-autosave-form" method="post" action="/api/tickets/{{ ticket.key }}" data-ticket-autosave data-ticket-key="{{ ticket.key }}">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+        <div class="autosave-status" data-autosave-status data-i18n="ticket.autosave_saved">Saved</div>
         <label>
           <span class="label-row">
-            <span data-i18n="field.ticket_type">Type</span>
+            <span data-i18n="field.title">Title</span>
             <span class="required-mark" aria-hidden="true">*</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_title" data-tooltip="Short human-readable task name.">?</button>
           </span>
-          <input type="hidden" name="ticket_type" value="{{ ticket.ticket_type }}">
-          <div class="type-picker" data-type-picker>
-            <button class="type-select-button" type="button" data-type-toggle aria-haspopup="listbox" aria-expanded="false">
-              <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-selected-type-icon data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
-              <span data-selected-type-label data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
-              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
-            </button>
-            <div class="type-picker-menu" role="listbox">
-            {% for ticket_type in ticket_types %}
-              <button class="type-choice {% if ticket_type == ticket.ticket_type %}is-selected{% endif %}" type="button" role="option" data-type-value="{{ ticket_type }}" aria-selected="{% if ticket_type == ticket.ticket_type %}true{% else %}false{% endif %}">
-                <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
-                <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
+          <input name="title" value="{{ ticket.title }}" required>
+        </label>
+        <label>
+          <span class="label-row">
+            <span data-i18n="field.description">Description</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_description" data-tooltip="Add context, acceptance criteria, links, or notes. Markdown-style text is fine.">?</button>
+          </span>
+          <textarea name="description" rows="8" data-mention-input data-mention-project="{{ ticket.project_key }}">{{ ticket.description }}</textarea>
+        </label>
+        <div class="form-row">
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.ticket_type">Type</span>
+              <span class="required-mark" aria-hidden="true">*</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.ticket_type" data-tooltip="Use Epic for bigger work, Task for normal work, Bug for defects, Story for user-facing changes.">?</button>
+            </span>
+            <input type="hidden" name="ticket_type" value="{{ ticket.ticket_type }}">
+            <div class="type-picker" data-type-picker>
+              <button class="type-select-button" type="button" data-type-toggle aria-haspopup="listbox" aria-expanded="false">
+                <span class="type-icon type-{{ ticket.ticket_type|lower }}" data-selected-type-icon data-icon="{{ ticket_type_icons.get(ticket.ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+                <span data-selected-type-label data-i18n="type.{{ ticket.ticket_type }}">{{ ticket.ticket_type }}</span>
+                <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
               </button>
-            {% endfor %}
+              <div class="type-picker-menu" role="listbox">
+              {% for ticket_type in ticket_types %}
+                <button class="type-choice {% if ticket_type == ticket.ticket_type %}is-selected{% endif %}" type="button" role="option" data-type-value="{{ ticket_type }}" aria-selected="{% if ticket_type == ticket.ticket_type %}true{% else %}false{% endif %}">
+                  <span class="type-icon type-{{ ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+                  <span data-i18n="type.{{ ticket_type }}">{{ ticket_type }}</span>
+                </button>
+              {% endfor %}
+              </div>
             </div>
-          </div>
-        </label>
-        <label>
-          <span class="label-row">
-            <span data-i18n="field.status">Status</span>
-            <span class="required-mark" aria-hidden="true">*</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">?</button>
-          </span>
-          <select name="status">
-            {% for status in statuses %}
-              <option value="{{ status }}" {% if status == ticket.status %}selected{% endif %} data-i18n="status.{{ status }}">{{ status }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>
-          <span class="label-row">
-            <span data-i18n="field.priority">Priority</span>
-            <span class="required-mark" aria-hidden="true">*</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
-          </span>
-          <input type="hidden" name="priority" value="{{ ticket.priority }}">
-          <div class="type-picker priority-picker" data-priority-picker>
-            <button class="type-select-button priority-select-button" type="button" data-priority-toggle aria-haspopup="listbox" aria-expanded="false">
-              <span class="priority-icon priority-{{ ticket.priority|lower }}-icon" data-selected-priority-icon data-icon="{{ priority_icons.get(ticket.priority, 'minus') }}" aria-hidden="true"></span>
-              <span data-selected-priority-label data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
-              <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
-            </button>
-            <div class="type-picker-menu priority-picker-menu" role="listbox">
-            {% for priority in priorities %}
-              <button class="type-choice priority-choice {% if priority == ticket.priority %}is-selected{% endif %}" type="button" role="option" data-priority-value="{{ priority }}" aria-selected="{% if priority == ticket.priority %}true{% else %}false{% endif %}">
-                <span class="priority-icon priority-{{ priority|lower }}-icon" data-icon="{{ priority_icons.get(priority, 'minus') }}" aria-hidden="true"></span>
-                <span data-i18n="priority.{{ priority }}">{{ priority }}</span>
+          </label>
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.status">Status</span>
+              <span class="required-mark" aria-hidden="true">*</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.status" data-tooltip="Where the ticket currently is on the board.">?</button>
+            </span>
+            <select name="status">
+              {% for status in statuses %}
+                <option value="{{ status }}" {% if status == ticket.status %}selected{% endif %} data-i18n="status.{{ status }}">{{ status }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.priority">Priority</span>
+              <span class="required-mark" aria-hidden="true">*</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.priority" data-tooltip="Defaults to Medium. Use Urgent only for work that blocks people now.">?</button>
+            </span>
+            <input type="hidden" name="priority" value="{{ ticket.priority }}">
+            <div class="type-picker priority-picker" data-priority-picker>
+              <button class="type-select-button priority-select-button" type="button" data-priority-toggle aria-haspopup="listbox" aria-expanded="false">
+                <span class="priority-icon priority-{{ ticket.priority|lower }}-icon" data-selected-priority-icon data-icon="{{ priority_icons.get(ticket.priority, 'minus') }}" aria-hidden="true"></span>
+                <span data-selected-priority-label data-i18n="priority.{{ ticket.priority }}">{{ ticket.priority }}</span>
+                <span class="type-select-chevron" data-icon="chevron-down" aria-hidden="true"></span>
               </button>
-            {% endfor %}
+              <div class="type-picker-menu priority-picker-menu" role="listbox">
+              {% for priority in priorities %}
+                <button class="type-choice priority-choice {% if priority == ticket.priority %}is-selected{% endif %}" type="button" role="option" data-priority-value="{{ priority }}" aria-selected="{% if priority == ticket.priority %}true{% else %}false{% endif %}">
+                  <span class="priority-icon priority-{{ priority|lower }}-icon" data-icon="{{ priority_icons.get(priority, 'minus') }}" aria-hidden="true"></span>
+                  <span data-i18n="priority.{{ priority }}">{{ priority }}</span>
+                </button>
+              {% endfor %}
+              </div>
             </div>
-          </div>
-        </label>
+          </label>
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.story_points">Story points</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.story_points" data-tooltip="Small effort estimate. Use 0 when not estimated.">?</button>
+            </span>
+            <input name="story_points" type="number" min="0" max="999" step="1" inputmode="numeric" value="{{ ticket.story_points or 0 }}">
+          </label>
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.assignee">Assignee</span>
+              <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
+            </span>
+            <select name="assignee_id">
+              <option value="" data-i18n="ticket.unassigned">Unassigned</option>
+              {% for member in members %}
+                <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.name or member.login }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span class="label-row">
+              <span data-i18n="field.sprint">Sprint</span>
+            </span>
+            <select name="sprint_id">
+              <option value="" data-i18n="sprint.none">No sprint</option>
+              {% for sprint in sprints %}
+                <option value="{{ sprint.id }}" {% if sprint.id == ticket.sprint_id %}selected{% endif %} data-sprint-option data-sprint-name="{{ sprint.name }}" data-sprint-start="{{ sprint.starts_on or '' }}" data-sprint-end="{{ sprint.ends_on or '' }}">{{ sprint.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="panel ticket-comments-panel">
+      <h2 data-i18n="ticket.comments">Comments</h2>
+      <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}/comments">
+        <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <label>
           <span class="label-row">
-            <span data-i18n="field.story_points">Story points</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.story_points" data-tooltip="Small effort estimate. Use 0 when not estimated.">?</button>
+            <span data-i18n="field.comment">Comment</span>
+            <span class="required-mark" aria-hidden="true">*</span>
+            <button class="help-dot" type="button" data-i18n-tooltip="help.comment" data-tooltip="Visible update for everyone watching the ticket.">?</button>
           </span>
-          <input name="story_points" type="number" min="0" max="999" step="1" inputmode="numeric" value="{{ ticket.story_points or 0 }}">
+          <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment" data-mention-input data-mention-project="{{ ticket.project_key }}"></textarea>
         </label>
-        <label>
-          <span class="label-row">
-            <span data-i18n="field.assignee">Assignee</span>
-            <button class="help-dot" type="button" data-i18n-tooltip="help.assignee" data-tooltip="Person responsible for the next action. They will receive notifications if enabled.">?</button>
-          </span>
-          <select name="assignee_id">
-            <option value="" data-i18n="ticket.unassigned">Unassigned</option>
-            {% for member in members %}
-              <option value="{{ member.id }}" {% if member.id == ticket.assignee_id %}selected{% endif %}>{{ member.name or member.login }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>
-          <span class="label-row">
-            <span data-i18n="field.sprint">Sprint</span>
-          </span>
-          <select name="sprint_id">
-            <option value="" data-i18n="sprint.none">No sprint</option>
-            {% for sprint in sprints %}
-              <option value="{{ sprint.id }}" {% if sprint.id == ticket.sprint_id %}selected{% endif %} data-sprint-option data-sprint-name="{{ sprint.name }}" data-sprint-start="{{ sprint.starts_on or '' }}" data-sprint-end="{{ sprint.ends_on or '' }}">{{ sprint.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
+        <button class="secondary" type="submit" data-icon="message-square" data-i18n="action.comment">Comment</button>
+      </form>
+      <div class="comment-list">
+        {% for comment in comments %}
+          <article class="comment">
+            <div class="comment-head">
+              <span class="profile-line">
+                <span class="avatar-dot" aria-hidden="true">
+                  {% if comment.user_avatar_url %}
+                    <img src="{{ comment.user_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                  {% else %}
+                    {{ (comment.user_login or "?")[:1]|upper }}
+                  {% endif %}
+                </span>
+                <strong>{{ comment.user_name or comment.user_login or "Unknown" }}</strong>
+              </span>
+              <time data-local-time="{{ comment.created_at }}">{{ comment.created_at }}</time>
+            </div>
+            <p>{{ comment.body_html }}</p>
+          </article>
+        {% endfor %}
       </div>
-    </form>
+    </div>
   </div>
 
   <aside class="side-panel">
@@ -187,18 +224,6 @@
         {% endif %}
       </form>
     </div>
-    {% if can_delete_ticket %}
-      <div class="panel danger-zone ticket-danger-panel">
-        <h2 data-i18n="ticket.delete">Delete ticket</h2>
-        <p class="muted" data-i18n="ticket.delete_help">Deleting a ticket permanently removes its comments, links, watchers, and history. This cannot be undone.</p>
-        <p class="muted"><span data-i18n="ticket.delete_confirm">Type the ticket key to confirm:</span> <code>{{ ticket.key }}</code></p>
-        <form class="danger-confirm-form" method="post" action="/api/tickets/{{ ticket.key }}/delete">
-          <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-          <input name="confirm" required placeholder="{{ ticket.key }}">
-          <button class="danger" type="submit" data-icon="trash-2" data-i18n="ticket.delete">Delete ticket</button>
-        </form>
-      </div>
-    {% endif %}
     <div class="panel">
       <h2 data-i18n="ticket.links">Ticket links</h2>
       {% if ticket_links %}
@@ -310,42 +335,7 @@
   </aside>
 </section>
 
-<section class="ticket-layout">
-  <div class="panel">
-    <h2 data-i18n="ticket.comments">Comments</h2>
-    <form class="stacked-form" method="post" action="/api/tickets/{{ ticket.key }}/comments">
-      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-      <label>
-        <span class="label-row">
-          <span data-i18n="field.comment">Comment</span>
-          <span class="required-mark" aria-hidden="true">*</span>
-          <button class="help-dot" type="button" data-i18n-tooltip="help.comment" data-tooltip="Visible update for everyone watching the ticket.">?</button>
-        </span>
-        <textarea name="body" rows="4" required placeholder="Add an update" data-i18n-placeholder="placeholder.comment" data-mention-input data-mention-project="{{ ticket.project_key }}"></textarea>
-      </label>
-      <button class="secondary" type="submit" data-icon="message-square" data-i18n="action.comment">Comment</button>
-    </form>
-    <div class="comment-list">
-      {% for comment in comments %}
-        <article class="comment">
-          <div class="comment-head">
-            <span class="profile-line">
-              <span class="avatar-dot" aria-hidden="true">
-                {% if comment.user_avatar_url %}
-                  <img src="{{ comment.user_avatar_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
-                {% else %}
-                  {{ (comment.user_login or "?")[:1]|upper }}
-                {% endif %}
-              </span>
-              <strong>{{ comment.user_name or comment.user_login or "Unknown" }}</strong>
-            </span>
-            <time>{{ comment.created_at }}</time>
-          </div>
-          <p>{{ comment.body_html }}</p>
-        </article>
-      {% endfor %}
-    </div>
-  </div>
+<section class="ticket-layout ticket-activity-layout">
   <aside class="side-panel">
     <div class="panel">
       <h2 data-i18n="ticket.activity">Activity</h2>
@@ -375,4 +365,19 @@
     </div>
   </aside>
 </section>
+{% if can_delete_ticket %}
+  <section class="panel danger-zone ticket-danger-panel">
+    <div>
+      <p class="eyebrow" data-i18n="projects.settings_danger">Danger</p>
+      <h2 data-i18n="ticket.delete">Delete ticket</h2>
+    </div>
+    <p class="muted" data-i18n="ticket.delete_help">Deleting a ticket permanently removes its comments, links, watchers, and history. This cannot be undone.</p>
+    <p class="muted"><span data-i18n="ticket.delete_confirm">Type the ticket key to confirm:</span> <code>{{ ticket.key }}</code></p>
+    <form class="danger-confirm-form" method="post" action="/api/tickets/{{ ticket.key }}/delete">
+      <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+      <input name="confirm" required placeholder="{{ ticket.key }}">
+      <button class="danger" type="submit" data-icon="trash-2" data-i18n="ticket.delete">Delete ticket</button>
+    </form>
+  </section>
+{% endif %}
 {% endblock %}

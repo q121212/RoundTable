@@ -29,7 +29,7 @@ GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
 SPRINT_STATUSES = {"planned", "active", "closed"}
-STATS_VISIBILITIES = {"all", "admin"}
+STATS_VISIBILITIES = {"viewer", "member", "admin"}
 TICKET_DELETE_POLICIES = {"admin", "member", "viewer"}
 
 
@@ -115,6 +115,8 @@ def project_ticket_types(project: Dict[str, Any]) -> List[str]:
 
 def normalize_stats_visibility(value: Optional[str]) -> str:
     clean = (value or "all").strip().lower()
+    if clean == "all":
+        clean = "viewer"
     if clean not in STATS_VISIBILITIES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid statistics visibility")
     return clean
@@ -133,6 +135,10 @@ def normalize_ticket_delete_policy(value: Optional[str]) -> str:
 
 def project_ticket_delete_policy(project: Dict[str, Any]) -> str:
     return normalize_ticket_delete_policy(project.get("ticket_delete_policy") or "admin")
+
+
+def project_ticket_delete_own_only(project: Dict[str, Any]) -> bool:
+    return bool(int(project.get("ticket_delete_own_only") or 0))
 
 
 def validate_project_ticket_type(project: Dict[str, Any], value: str) -> str:
@@ -334,15 +340,34 @@ def require_project_admin(user: Dict[str, Any], project_id: int) -> None:
 
 def require_project_stats_access(user: Dict[str, Any], project: Dict[str, Any]) -> None:
     require_project_access(user, int(project["id"]))
-    if project_stats_visibility(project) == "admin":
+    role = project_role_for_user(user, int(project["id"]))
+    visibility = project_stats_visibility(project)
+    if visibility == "admin":
         require_project_admin(user, int(project["id"]))
+    if visibility == "member" and role == "viewer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project member required")
 
 
-def can_delete_ticket(user: Dict[str, Any], project: Dict[str, Any]) -> bool:
+def can_view_project_stats(user: Dict[str, Any], project: Dict[str, Any]) -> bool:
+    role = project_role_for_user(user, int(project["id"]))
+    visibility = project_stats_visibility(project)
+    if role == "admin":
+        return True
+    if visibility == "viewer":
+        return role in {"member", "viewer"}
+    if visibility == "member":
+        return role == "member"
+    return False
+
+
+def can_delete_ticket(user: Dict[str, Any], project: Dict[str, Any], ticket: Optional[Dict[str, Any]] = None) -> bool:
     role = project_role_for_user(user, int(project["id"]))
     policy = project_ticket_delete_policy(project)
     if role == "admin":
         return True
+    if project_ticket_delete_own_only(project):
+        if not ticket or int(ticket.get("reporter_id") or 0) != int(user["id"]):
+            return False
     if policy == "member" and role == "member":
         return True
     if policy == "viewer" and role in {"member", "viewer"}:
@@ -350,9 +375,9 @@ def can_delete_ticket(user: Dict[str, Any], project: Dict[str, Any]) -> bool:
     return False
 
 
-def require_ticket_delete_access(user: Dict[str, Any], project: Dict[str, Any]) -> None:
+def require_ticket_delete_access(user: Dict[str, Any], project: Dict[str, Any], ticket: Dict[str, Any]) -> None:
     require_project_access(user, int(project["id"]))
-    if not can_delete_ticket(user, project):
+    if not can_delete_ticket(user, project, ticket):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ticket delete access denied")
 
 
@@ -581,6 +606,7 @@ def update_project_settings(
     ticket_types: Optional[List[str]] = None,
     stats_visibility: Optional[str] = None,
     ticket_delete_policy: Optional[str] = None,
+    ticket_delete_own_only: Optional[bool] = None,
 ) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_admin(user, int(project["id"]))
@@ -598,6 +624,11 @@ def update_project_settings(
         project_ticket_delete_policy(project)
         if ticket_delete_policy is None
         else normalize_ticket_delete_policy(ticket_delete_policy)
+    )
+    enabled_ticket_delete_own_only = (
+        project_ticket_delete_own_only(project)
+        if ticket_delete_own_only is None
+        else bool(ticket_delete_own_only)
     )
     with get_conn() as conn:
         used_statuses = {
@@ -635,7 +666,8 @@ def update_project_settings(
                 statuses_json = ?,
                 ticket_types_json = ?,
                 stats_visibility = ?,
-                ticket_delete_policy = ?
+                ticket_delete_policy = ?,
+                ticket_delete_own_only = ?
             WHERE id = ?
             """,
             (
@@ -646,6 +678,7 @@ def update_project_settings(
                 json_dumps(enabled_ticket_types),
                 enabled_stats_visibility,
                 enabled_ticket_delete_policy,
+                1 if enabled_ticket_delete_own_only else 0,
                 project["id"],
             ),
         )
@@ -2027,11 +2060,11 @@ def delete_ticket(user: Dict[str, Any], ticket_key: str, confirmation: str = "")
     if confirmation.strip().upper() != ticket_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Type the ticket key to confirm deletion.")
     project = get_project_for_ticket_key(ticket_key)
-    require_ticket_delete_access(user, project)
     with get_conn() as conn:
         ticket = get_ticket_by_key_conn(conn, ticket_key)
         if int(ticket["project_id"]) != int(project["id"]):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+        require_ticket_delete_access(user, project, ticket)
         deleted = dict(ticket)
         deleted["project_key"] = project["key"]
         log_action(

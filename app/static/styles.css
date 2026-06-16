@@ -356,7 +356,7 @@ button,
   position: absolute;
   left: 50%;
   bottom: calc(100% + 10px);
-  z-index: 60;
+  z-index: 220;
   width: min(280px, calc(100vw - 32px));
   padding: 9px 10px;
   border: 1px solid var(--line);
@@ -381,7 +381,7 @@ button,
   position: absolute;
   left: 50%;
   bottom: calc(100% + 4px);
-  z-index: 61;
+  z-index: 221;
   border: 6px solid transparent;
   border-top-color: var(--ink);
   opacity: 0;
@@ -933,6 +933,48 @@ button,
   width: min(100%, 320px);
 }
 
+.board-tools-menu {
+  position: relative;
+  width: min(100%, 320px);
+}
+
+.board-tools-menu summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--green-dark);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.board-tools-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.board-tools-menu[open] summary {
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+}
+
+.board-tools-menu .board-admin-links {
+  position: absolute;
+  z-index: 85;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
 .board-admin-links .ghost,
 .board-admin-links .secondary,
 .board-head-actions .sprint-filter-form {
@@ -1345,11 +1387,13 @@ time {
 
 .sprint-filter-form {
   width: min(100%, 320px);
+  min-width: 0;
 }
 
 .sprint-filter-form label {
   display: grid;
   gap: 5px;
+  min-width: 0;
   font-size: 0.8rem;
   font-weight: 800;
   color: var(--muted);
@@ -1362,11 +1406,13 @@ time {
 
 .sprint-filter-combo {
   position: relative;
-  width: min(100%, 320px);
+  width: 100%;
+  min-width: 0;
 }
 
 .sprint-filter-button {
   width: 100%;
+  min-width: 0;
   min-height: 38px;
   display: flex;
   align-items: center;
@@ -1410,28 +1456,28 @@ time {
   gap: 8px;
 }
 
+.sprint-filter-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 6px;
+  align-items: center;
+}
+
 .sprint-filter-menu input {
   min-height: 38px;
   padding: 7px 10px;
   font-size: 0.9rem;
 }
 
-.sprint-filter-create {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-.sprint-filter-create input {
-  min-width: 0;
-}
-
-.sprint-filter-create .tiny {
+.sprint-filter-create-button {
+  width: 38px;
+  min-width: 38px;
   min-height: 38px;
-  white-space: nowrap;
+  padding: 0;
+}
+
+.sprint-filter-create-button:disabled {
+  opacity: 0.45;
 }
 
 .sprint-filter-group {
@@ -1647,7 +1693,14 @@ code {
   }
 
   .board-admin-links,
+  .board-tools-menu,
   .board-head-actions .sprint-filter-form {
+    width: 100%;
+  }
+
+  .board-tools-menu .board-admin-links {
+    left: 0;
+    right: auto;
     width: 100%;
   }
 }
@@ -1683,9 +1736,12 @@ code {
     position: sticky;
     top: 112px;
     z-index: 12;
+    max-width: 100%;
     display: flex;
     gap: 8px;
     overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
     padding: 8px 0 12px;
     background: var(--bg);
   }
@@ -1961,6 +2017,7 @@ button,
   padding: 10px;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .column-head h2 {
@@ -1972,6 +2029,7 @@ button,
   gap: 8px;
   min-height: 152px;
   align-content: start;
+  overflow: visible;
 }
 
 .ticket-card-top {
@@ -2159,7 +2217,7 @@ a.ticket-key:hover {
   align-items: center;
   gap: 6px;
   max-height: 86px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chip {
@@ -2861,8 +2919,8 @@ a.ticket-key:hover {
     padding: 14px 10px 118px;
   }
 
-  .board-admin-links {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .board-tools-menu summary {
+    min-height: 48px;
   }
 
   .board-admin-links .tiny {
@@ -3188,6 +3246,25 @@ a.ticket-key:hover {
 
 .board-status-settings .status-choice {
   background: var(--surface-soft);
+}
+
+.settings-field-note {
+  margin-top: -2px;
+}
+
+.own-ticket-choice {
+  margin-top: 10px;
+}
+
+.own-ticket-choice > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.own-ticket-choice .muted {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .member-row {

@@ -465,11 +465,13 @@ def test_project_settings_details_and_board_are_autosaved(temp_db):
     assert "data-project-settings-root" in response.text
     assert "data-project-details-form" in response.text
     assert "data-board-settings-form" in response.text
-    assert 'name="stats_visibility" value="all"' in response.text
+    assert 'name="stats_visibility" value="viewer"' in response.text
+    assert 'name="stats_visibility" value="member"' in response.text
     assert 'name="stats_visibility" value="admin"' in response.text
     assert 'name="ticket_delete_policy" value="admin"' in response.text
     assert 'name="ticket_delete_policy" value="member"' in response.text
     assert 'name="ticket_delete_policy" value="viewer"' in response.text
+    assert 'name="ticket_delete_own_only" value="1"' in response.text
     assert 'data-i18n="projects.save_details"' not in response.text
     assert 'data-i18n="projects.save_board_settings"' not in response.text
 
@@ -897,6 +899,41 @@ def test_ticket_delete_policy_can_allow_members_and_ui_is_hidden_until_allowed(t
     delete_ticket(member, ticket["key"], ticket["key"])
     with get_conn() as conn:
         assert conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (ticket["key"],)).fetchone()["c"] == 0
+
+
+def test_ticket_delete_own_only_limits_non_admins(temp_db):
+    from app.config import settings
+
+    object.__setattr__(settings, "allow_dev_login", False)
+    object.__setattr__(settings, "admin_github_logins", ["alice"])
+
+    owner = upsert_user("alice", email="alice@example.com")
+    project = create_project(owner, "OPS", "Operations")
+    member = upsert_user("bob", email="bob@example.com")
+    add_project_member(int(project["id"]), "bob", "member")
+    owner_ticket = create_ticket(owner, "OPS", "Owner ticket")
+    member_ticket = create_ticket(member, "OPS", "Member ticket")
+    admin_ticket = create_ticket(member, "OPS", "Admin may remove")
+
+    update_project_settings(
+        owner,
+        "OPS",
+        "Operations",
+        ticket_delete_policy="member",
+        ticket_delete_own_only=True,
+    )
+
+    with pytest.raises(HTTPException) as denied:
+        delete_ticket(member, owner_ticket["key"], owner_ticket["key"])
+    assert denied.value.status_code == 403
+
+    delete_ticket(member, member_ticket["key"], member_ticket["key"])
+    delete_ticket(owner, admin_ticket["key"], admin_ticket["key"])
+
+    with get_conn() as conn:
+        assert conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (member_ticket["key"],)).fetchone()["c"] == 0
+        assert conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (admin_ticket["key"],)).fetchone()["c"] == 0
+        assert conn.execute("SELECT COUNT(*) c FROM tickets WHERE key = ?", (owner_ticket["key"],)).fetchone()["c"] == 1
 
 
 def test_ticket_delete_route_redirects_to_board_and_removes_from_counts(temp_db):

@@ -303,6 +303,7 @@ def init_db() -> None:
         _add_column_if_missing(conn, "projects", "ticket_types_json", "TEXT")
         _add_column_if_missing(conn, "projects", "stats_visibility", "TEXT NOT NULL DEFAULT 'all'")
         _add_column_if_missing(conn, "projects", "ticket_delete_policy", "TEXT NOT NULL DEFAULT 'admin'")
+        _add_column_if_missing(conn, "projects", "ticket_delete_own_only", "INTEGER NOT NULL DEFAULT 0")
         _add_column_if_missing(conn, "tickets", "ticket_type", "TEXT NOT NULL DEFAULT 'Task'")
         _add_column_if_missing(conn, "tickets", "sort_order", "REAL")
         _add_column_if_missing(conn, "tickets", "sprint_id", "INTEGER REFERENCES sprints(id) ON DELETE SET NULL")

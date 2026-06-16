@@ -45,6 +45,7 @@ from .store import (
     create_test_notification,
     create_ticket,
     can_delete_ticket,
+    can_view_project_stats,
     delete_project,
     delete_ticket,
     get_project_by_key,
@@ -58,7 +59,6 @@ from .store import (
     normalize_github_repo,
     project_members,
     project_statistics,
-    project_stats_visibility,
     project_ticket_types,
     project_statuses,
     remove_project_member,
@@ -367,8 +367,7 @@ async def board_page(request: Request, project_key: str) -> HTMLResponse:
     sprint_filter = str(request.query_params.get("sprint") or "")
     board = board_for_project(project_key, user, sprint_filter=sprint_filter)
     members = project_members(int(board["project"]["id"]))
-    project_role = board["project_role"]
-    can_view_stats = project_stats_visibility(board["project"]) == "all" or project_role == "admin"
+    can_view_stats = can_view_project_stats(user, board["project"])
     return render(
         request,
         "board.html",
@@ -476,6 +475,9 @@ async def api_update_project_settings(request: Request, project_key: str) -> Red
         [str(value) for value in form.getlist("ticket_types")],
         str(form.get("stats_visibility")) if "stats_visibility" in form else None,
         str(form.get("ticket_delete_policy")) if "ticket_delete_policy" in form else None,
+        "1" in [str(value) for value in form.getlist("ticket_delete_own_only")]
+        if "ticket_delete_own_only" in form
+        else None,
     )
     return redirect("/p/%s/settings" % project_key.upper())
 
@@ -643,7 +645,7 @@ async def ticket_page(request: Request, ticket_key: str) -> HTMLResponse:
             "ticket_types": project_ticket_types(project),
             "sprints": sprints,
             "link_types": TICKET_LINK_TYPES,
-            "can_delete_ticket": can_delete_ticket(user, project),
+            "can_delete_ticket": can_delete_ticket(user, project, bundle["ticket"]),
         },
     )
 
