@@ -3,6 +3,8 @@ import hmac
 import json
 from urllib.parse import parse_qs, unquote, urlparse
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.db import get_conn, row_to_dict
@@ -298,6 +300,17 @@ def test_github_webhook_signature_is_checked(temp_db):
 
     assert denied.status_code == 401
     assert allowed.status_code == 200
+
+
+def test_github_installation_id_must_be_numeric(temp_db):
+    from app.store import normalize_github_installation_id
+
+    assert normalize_github_installation_id("") == ""
+    assert normalize_github_installation_id("  12345 ") == "12345"
+    with pytest.raises(HTTPException):
+        normalize_github_installation_id("../../evil")
+    with pytest.raises(HTTPException):
+        normalize_github_installation_id("123abc")
 
 
 def test_mcp_internal_error_is_masked(temp_db, monkeypatch):

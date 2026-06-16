@@ -191,6 +191,18 @@ def normalize_github_repo(value: str) -> str:
     return raw
 
 
+def normalize_github_installation_id(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if not raw.isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub installation id must be numeric.",
+        )
+    return raw
+
+
 def normalize_github_link_url(value: str) -> str:
     raw = value.strip()
     if not raw:

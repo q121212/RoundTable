@@ -57,6 +57,7 @@ from .store import (
     list_project_sprints,
     list_projects,
     notification_preferences,
+    normalize_github_installation_id,
     normalize_github_repo,
     project_members,
     project_statistics,
@@ -663,7 +664,7 @@ async def api_project_github(request: Request, project_key: str) -> RedirectResp
             """,
             (
                 normalize_github_repo(str(form.get("repo") or "")) or None,
-                str(form.get("installation_id") or "").strip() or None,
+                normalize_github_installation_id(str(form.get("installation_id") or "")) or None,
                 project["id"],
             ),
         )
