@@ -2355,15 +2355,26 @@ def notification_preferences_conn(conn: Any, user_id: int) -> Dict[str, Any]:
     ) or {}
 
 
-def purge_expired_records(retention_days: Optional[int] = None) -> Dict[str, int]:
+def purge_expired_records(
+    retention_days: Optional[int] = None,
+    action_log_retention_days: Optional[int] = None,
+) -> Dict[str, int]:
     """Delete rows that are safe to drop so service tables do not grow forever:
     expired sessions, expired/old-used telegram link tokens, and audit/history
-    rows past the retention window. Returns a count of rows removed per table."""
-    days = settings.audit_retention_days if retention_days is None else retention_days
+    rows past the retention window. api_audit and action_log have separate
+    retention because action_log backs the ticket activity history. Returns a
+    count of rows removed per table."""
+    audit_days = settings.audit_retention_days if retention_days is None else retention_days
+    log_days = (
+        settings.action_log_retention_days
+        if action_log_retention_days is None
+        else action_log_retention_days
+    )
     now_dt = datetime.now(timezone.utc)
     now = now_dt.replace(microsecond=0).isoformat()
     used_cutoff = (now_dt - timedelta(days=1)).replace(microsecond=0).isoformat()
-    audit_cutoff = (now_dt - timedelta(days=max(0, days))).replace(microsecond=0).isoformat()
+    audit_cutoff = (now_dt - timedelta(days=max(0, audit_days))).replace(microsecond=0).isoformat()
+    log_cutoff = (now_dt - timedelta(days=max(0, log_days))).replace(microsecond=0).isoformat()
     with get_conn() as conn:
         sessions = conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,)).rowcount
         tokens = conn.execute(
@@ -2374,7 +2385,7 @@ def purge_expired_records(retention_days: Optional[int] = None) -> Dict[str, int
             (now, used_cutoff),
         ).rowcount
         audit = conn.execute("DELETE FROM api_audit WHERE created_at < ?", (audit_cutoff,)).rowcount
-        actions = conn.execute("DELETE FROM action_log WHERE created_at < ?", (audit_cutoff,)).rowcount
+        actions = conn.execute("DELETE FROM action_log WHERE created_at < ?", (log_cutoff,)).rowcount
     return {
         "sessions": int(sessions or 0),
         "telegram_link_tokens": int(tokens or 0),

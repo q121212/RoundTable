@@ -65,9 +65,13 @@ class Settings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_webhook_secret: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
-    # Retention for the append-only audit/history tables (api_audit, action_log).
-    # Rows older than this are pruned by the background maintenance pass.
+    # Retention for the operational audit table (api_audit). Rows older than this
+    # are pruned by the background maintenance pass.
     audit_retention_days: int = int(os.getenv("AUDIT_RETENTION_DAYS", "90"))
+    # action_log also backs the ticket activity history shown in the UI, so it
+    # keeps a much longer default (~10 years) and is configured separately. It is
+    # still bounded so the table cannot grow without limit forever.
+    action_log_retention_days: int = int(os.getenv("ACTION_LOG_RETENTION_DAYS", "3650"))
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "admin_github_logins", _list("ADMIN_GITHUB_LOGINS"))

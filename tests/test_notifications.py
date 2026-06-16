@@ -66,7 +66,7 @@ def test_purge_removes_expired_sessions_keeps_active(temp_db):
     assert get_user_by_session(active["token"]) is not None  # active session untouched
 
 
-def test_purge_applies_audit_retention(temp_db):
+def test_purge_audit_and_action_log_have_separate_retention(temp_db):
     user = upsert_user("alice")
     with get_conn() as conn:
         conn.execute(
@@ -77,23 +77,31 @@ def test_purge_applies_audit_retention(temp_db):
             "INSERT INTO api_audit (user_id, route, action, created_at) VALUES (?, '/mcp', 'recent', ?)",
             (int(user["id"]), _iso(5)),
         )
-        conn.execute(
-            "INSERT INTO action_log (action, created_at) VALUES ('old', ?)",
-            (_iso(120),),
-        )
-        conn.execute(
-            "INSERT INTO action_log (action, created_at) VALUES ('recent', ?)",
-            (_iso(5),),
-        )
+        conn.execute("INSERT INTO action_log (action, created_at) VALUES ('old', ?)", (_iso(120),))
+        conn.execute("INSERT INTO action_log (action, created_at) VALUES ('recent', ?)", (_iso(5),))
 
-    removed = purge_expired_records(retention_days=90)
+    # Default: api_audit pruned at 90d, but action_log keeps its long history.
+    removed = purge_expired_records()
 
     assert removed["api_audit"] == 1
-    assert removed["action_log"] == 1
+    assert removed["action_log"] == 0
     with get_conn() as conn:
         audit_actions = [r["action"] for r in conn.execute("SELECT action FROM api_audit").fetchall()]
-        log_actions = [r["action"] for r in conn.execute("SELECT action FROM action_log").fetchall()]
+        log_actions = sorted(r["action"] for r in conn.execute("SELECT action FROM action_log").fetchall())
     assert audit_actions == ["recent"]
+    assert log_actions == ["old", "recent"]  # 120-day history retained by default
+
+
+def test_action_log_is_pruned_when_its_retention_is_short(temp_db):
+    with get_conn() as conn:
+        conn.execute("INSERT INTO action_log (action, created_at) VALUES ('old', ?)", (_iso(120),))
+        conn.execute("INSERT INTO action_log (action, created_at) VALUES ('recent', ?)", (_iso(5),))
+
+    removed = purge_expired_records(action_log_retention_days=90)
+
+    assert removed["action_log"] == 1
+    with get_conn() as conn:
+        log_actions = [r["action"] for r in conn.execute("SELECT action FROM action_log").fetchall()]
     assert log_actions == ["recent"]
 
 
