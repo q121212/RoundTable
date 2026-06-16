@@ -326,6 +326,19 @@ def init_db() -> None:
                 ON tickets(project_id, sprint_id, status, sort_order)
             """
         )
+        # Indexes for the statistics page group-bys (priority/type/assignee).
+        # Created here, after the additive column migrations, so the columns are
+        # guaranteed to exist on legacy databases. (project_id, sprint_id) is
+        # already served by idx_tickets_project_sprint above.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tickets_project_priority ON tickets(project_id, priority)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tickets_project_type ON tickets(project_id, ticket_type)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tickets_project_assignee ON tickets(project_id, assignee_id)"
+        )
         _backfill_ticket_sort_order(conn)
 
 

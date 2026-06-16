@@ -47,6 +47,36 @@ def test_init_db_dedupes_legacy_ticket_links(tmp_path):
     assert index_present == 1
 
 
+def test_init_db_creates_statistics_indexes(temp_db):
+    expected = {
+        "idx_tickets_project_priority",
+        "idx_tickets_project_type",
+        "idx_tickets_project_assignee",
+        "idx_tickets_project_sprint",
+    }
+    with get_conn() as conn:
+        names = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'tickets'"
+            ).fetchall()
+        }
+    assert expected.issubset(names)
+
+
+def test_statistics_group_by_uses_index_not_full_scan(temp_db):
+    # A priority group-by scoped to one project should be served by the index
+    # (SEARCH ... USING INDEX), not a full table SCAN.
+    with get_conn() as conn:
+        plan = conn.execute(
+            "EXPLAIN QUERY PLAN "
+            "SELECT priority, COUNT(*) FROM tickets WHERE project_id = 1 GROUP BY priority"
+        ).fetchall()
+    detail = " ".join(str(row["detail"]) for row in plan)
+    assert "idx_tickets_project_priority" in detail
+    assert "SCAN tickets" not in detail
+
+
 def test_connection_sets_busy_timeout(temp_db):
     # Without a busy_timeout, a brief writer overlap surfaces as a
     # "database is locked" error instead of waiting. Connections must opt in.
