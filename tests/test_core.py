@@ -213,7 +213,13 @@ def test_board_sprint_filter_can_create_sprint_inline_for_admins(temp_db):
     board_response = client.get("/p/RT/board")
     response = client.post(
         "/api/projects/RT/sprints/quick",
-        data={"name": "Inline sprint"},
+        data={
+            "name": "Inline sprint",
+            "goal": "Ship the board polish",
+            "starts_on": "2026-06-16",
+            "ends_on": "2026-06-30",
+            "status": "active",
+        },
         headers={"x-csrf-token": session["csrf"]},
     )
 
@@ -221,7 +227,10 @@ def test_board_sprint_filter_can_create_sprint_inline_for_admins(temp_db):
     assert "data-sprint-filter-create" in board_response.text
     assert response.status_code == 200
     assert response.json()["name"] == "Inline sprint"
-    assert response.json()["status"] == "planned"
+    assert response.json()["goal"] == "Ship the board polish"
+    assert response.json()["starts_on"] == "2026-06-16"
+    assert response.json()["ends_on"] == "2026-06-30"
+    assert response.json()["status"] == "active"
 
 
 def test_board_page_exposes_stable_counts_filter_and_priority_picker(temp_db):

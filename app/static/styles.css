@@ -981,6 +981,17 @@ button,
   width: min(100%, 320px);
 }
 
+.board-admin-links a {
+  background: var(--surface);
+  color: var(--green-dark);
+  border-color: var(--line);
+}
+
+.board-admin-links a:hover,
+.board-admin-links a:focus-visible {
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+}
+
 .board-ticket-toolbar {
   display: flex;
   justify-content: flex-start;
@@ -1480,6 +1491,37 @@ time {
   opacity: 0.45;
 }
 
+.sprint-quick-create-panel {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--green) 5%, var(--surface));
+}
+
+.sprint-quick-create-panel[hidden] {
+  display: none;
+}
+
+.sprint-quick-create-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.46fr);
+  gap: 8px;
+}
+
+.sprint-quick-create-grid label {
+  gap: 4px;
+}
+
+.sprint-quick-create-goal {
+  grid-column: 1 / -1;
+}
+
+.sprint-quick-create-panel .primary {
+  width: 100%;
+}
+
 .sprint-filter-group {
   display: grid;
   gap: 3px;
@@ -1497,7 +1539,7 @@ time {
   width: 100%;
   min-height: 36px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   padding: 6px 8px;
@@ -1518,6 +1560,21 @@ time {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sprint-filter-status {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--green) 34%, var(--line));
+  border-radius: 999px;
+  color: var(--green-dark);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.sprint-filter-option.is-active-sprint {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--green) 70%, var(--line));
 }
 
 .sprint-filter-option-meta {
@@ -2566,11 +2623,42 @@ a.ticket-key:hover {
   text-align: left;
 }
 
+.popover-option:has(.popover-option-meta) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
 .popover-option > span:last-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.popover-option-meta {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.popover-option-badge {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--green) 34%, var(--line));
+  border-radius: 999px;
+  color: var(--green-dark);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  font-size: 0.66rem;
+  font-weight: 900;
 }
 
 .popover-option .priority-icon {
@@ -2919,8 +3007,55 @@ a.ticket-key:hover {
     padding: 14px 10px 118px;
   }
 
+  .board-head-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 8px;
+    align-items: end;
+  }
+
+  .board-tools-menu,
+  .board-head-actions .sprint-filter-form {
+    width: 100%;
+  }
+
   .board-tools-menu summary {
-    min-height: 48px;
+    min-height: 52px;
+    border-radius: 9px;
+    font-size: 0.92rem;
+  }
+
+  .sprint-filter-button {
+    min-height: 52px;
+    border-radius: 9px;
+    font-size: 0.92rem;
+  }
+
+  .sprint-filter-form label > span:first-child {
+    font-size: 0.78rem;
+  }
+
+  .sprint-filter-menu {
+    left: auto;
+    right: 0;
+    width: min(92vw, 380px);
+    max-height: min(70vh, 540px);
+  }
+
+  .sprint-filter-option {
+    min-height: 46px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+    padding: 9px 10px;
+  }
+
+  .sprint-filter-option-meta,
+  .sprint-filter-status {
+    justify-self: start;
+  }
+
+  .sprint-quick-create-grid {
+    grid-template-columns: 1fr;
   }
 
   .board-admin-links .tiny {
@@ -3082,6 +3217,7 @@ a.ticket-key:hover {
 
   .popover-menu {
     min-width: 190px;
+    max-width: min(340px, calc(100vw - 24px));
     padding: 7px;
     gap: 3px;
   }
@@ -3090,6 +3226,27 @@ a.ticket-key:hover {
     min-height: 46px;
     padding: 10px 12px;
     font-size: 0.98rem;
+  }
+
+  .ticket-card .tooltip-anchor::after {
+    left: 0;
+    width: min(300px, calc(100vw - 32px));
+    transform: translate(0, 4px);
+  }
+
+  .ticket-card .tooltip-anchor::before {
+    left: 18px;
+    transform: translateX(0);
+  }
+
+  .ticket-card .tooltip-anchor:hover::after,
+  .ticket-card .tooltip-anchor:focus-visible::after {
+    transform: translate(0, 0);
+  }
+
+  .ticket-card .tooltip-anchor:hover::before,
+  .ticket-card .tooltip-anchor:focus-visible::before {
+    transform: translateX(0);
   }
 
   .assignee-option {
@@ -3314,6 +3471,18 @@ a.ticket-key:hover {
   box-shadow: var(--shadow);
 }
 
+.stat-summary-card.tooltip-anchor::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.stat-summary-card.tooltip-anchor::before {
+  bottom: auto;
+  top: calc(100% + 2px);
+  border-top-color: transparent;
+  border-bottom-color: var(--ink);
+}
+
 .stat-summary-card > span {
   color: var(--green);
 }
@@ -3359,6 +3528,32 @@ a.ticket-key:hover {
 
 .stats-sprint-list {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.stat-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.stat-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-swatch {
+  width: 18px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 72%, var(--surface));
+}
+
+.legend-points {
+  background: color-mix(in srgb, var(--amber) 78%, var(--surface));
 }
 
 .stat-bar-card,
@@ -3408,7 +3603,7 @@ a.ticket-key:hover {
 .stat-bar-track {
   position: relative;
   height: 12px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 999px;
   background: color-mix(in srgb, var(--muted) 14%, var(--surface));
 }
@@ -3416,6 +3611,7 @@ a.ticket-key:hover {
 .stat-bar-fill {
   position: absolute;
   inset: 0 auto 0 0;
+  max-width: 100%;
   border-radius: inherit;
   background: color-mix(in srgb, var(--green) 72%, var(--surface));
 }

@@ -181,27 +181,44 @@
       "stats.assignees": "Assignees",
       "stats.board_return": "Back to board",
       "stats.closed": "Closed",
+      "stats.closed_help": "Tickets currently in Closed.",
       "stats.done": "Done",
+      "stats.done_help": "Tickets currently in Done.",
       "stats.empty": "No tickets here yet.",
+      "stats.flow": "Flow",
       "stats.more_tickets": "more",
       "stats.open": "Open",
+      "stats.open_help": "Tickets that are not Done or Closed.",
       "stats.open_points": "Open SP",
+      "stats.open_points_help": "Story points from open tickets.",
+      "stats.people": "People",
       "stats.points": "Story points",
       "stats.priorities": "Priorities",
+      "stats.assignees_help": "Work currently assigned to each person.",
+      "stats.priorities_help": "Ticket count and story points grouped by priority.",
+      "stats.shape": "Shape",
       "stats.sprints": "Sprints",
+      "stats.sprints_help": "Tickets and story points planned by sprint.",
       "stats.statuses": "Statuses",
+      "stats.statuses_help": "How tickets and story points are distributed across board statuses.",
+      "stats.status_bar_help": "Green shows ticket share; gold shows story point share.",
       "stats.ticket_count": "Tickets",
+      "stats.timeline": "Timeline",
       "stats.title": "Statistics",
       "stats.total": "Total tickets",
+      "stats.total_help": "All tickets in this project.",
       "stats.types": "Types",
+      "stats.types_help": "How work is split between tasks, epics, bugs, and stories.",
       "stats.visibility": "Statistics visibility",
       "stats.visibility_admin": "Project admins only",
       "stats.visibility_all": "Everyone in project",
       "stats.visibility_help": "By default, every project member can open project statistics.",
       "stats.visibility_member": "Members and admins",
       "stats.visibility_viewer": "Viewers, members, and admins",
+      "stats.workload": "Workload",
       "sprint.activate": "Activate",
       "sprint.active": "Active sprint",
+      "sprint.active_short": "Active",
       "sprint.all": "All sprints",
       "sprint.backlog": "No sprint",
       "sprint.close": "Close",
@@ -213,6 +230,7 @@
       "sprint.find_placeholder": "Find sprint",
       "sprint.find_or_create_placeholder": "Find or name sprint",
       "sprint.goal": "Goal",
+      "sprint.goal_placeholder": "What should this sprint achieve?",
       "sprint.manage": "Sprint planning",
       "sprint.manage_copy": "Plan, activate, close, and reopen project sprints.",
       "sprint.manage_link": "Manage sprints",
@@ -480,27 +498,44 @@
       "stats.assignees": "Исполнители",
       "stats.board_return": "К доске",
       "stats.closed": "Закрыто",
+      "stats.closed_help": "Тикеты, которые сейчас в статусе «Закрыто».",
       "stats.done": "Готово",
+      "stats.done_help": "Тикеты, которые сейчас в статусе «Готово».",
       "stats.empty": "Тут пока нет тикетов.",
+      "stats.flow": "Поток",
       "stats.more_tickets": "еще",
       "stats.open": "Открыто",
+      "stats.open_help": "Тикеты, которые еще не в «Готово» или «Закрыто».",
       "stats.open_points": "Открытые SP",
+      "stats.open_points_help": "Сторипоинты в открытых тикетах.",
+      "stats.people": "Люди",
       "stats.points": "Сторипоинты",
       "stats.priorities": "Приоритеты",
+      "stats.assignees_help": "Работа, которая сейчас назначена каждому человеку.",
+      "stats.priorities_help": "Количество тикетов и сторипоинтов по приоритетам.",
+      "stats.shape": "Структура",
       "stats.sprints": "Спринты",
+      "stats.sprints_help": "Тикеты и сторипоинты, запланированные по спринтам.",
       "stats.statuses": "Статусы",
+      "stats.statuses_help": "Распределение тикетов и сторипоинтов по статусам доски.",
+      "stats.status_bar_help": "Зеленая линия показывает долю тикетов, золотая — долю сторипоинтов.",
       "stats.ticket_count": "Тикеты",
+      "stats.timeline": "План",
       "stats.title": "Статистика",
       "stats.total": "Всего тикетов",
+      "stats.total_help": "Все тикеты в этом проекте.",
       "stats.types": "Типы",
+      "stats.types_help": "Как работа распределена между задачами, эпиками, багами и историями.",
       "stats.visibility": "Видимость статистики",
       "stats.visibility_admin": "Только админы проекта",
       "stats.visibility_all": "Все участники проекта",
       "stats.visibility_help": "По умолчанию статистику проекта видят все участники.",
       "stats.visibility_member": "Участники и админы",
       "stats.visibility_viewer": "Наблюдатели, участники и админы",
+      "stats.workload": "Нагрузка",
       "sprint.activate": "Активировать",
       "sprint.active": "Активный спринт",
+      "sprint.active_short": "Активный",
       "sprint.all": "Все спринты",
       "sprint.backlog": "Без спринта",
       "sprint.close": "Закрыть",
@@ -512,6 +547,7 @@
       "sprint.find_placeholder": "Найти спринт",
       "sprint.find_or_create_placeholder": "Найти или назвать спринт",
       "sprint.goal": "Цель",
+      "sprint.goal_placeholder": "Что должен дать этот спринт?",
       "sprint.manage": "Планирование спринтов",
       "sprint.manage_copy": "Планируйте, запускайте, закрывайте и переоткрывайте спринты проекта.",
       "sprint.manage_link": "Управлять спринтами",
@@ -1391,7 +1427,12 @@
       options = [{ value: "", label: translate("sprint.none", currentLang()) || "No sprint" }];
       boardData("sprints", [])
         .filter((s) => s.status !== "closed")
-        .forEach((s) => options.push({ value: String(s.id), label: sprintDisplayLabel(s) }));
+        .forEach((s) => options.push({
+          value: String(s.id),
+          label: s.name,
+          meta: sprintDateRangeLabel(s.starts_on, s.ends_on),
+          status: s.status,
+        }));
     } else if (field === "assignee_id") {
       options = [{ value: "", label: translate("ticket.unassigned", currentLang()) || "Unassigned" }];
       boardData("members", []).forEach((m) => options.push({ value: String(m.id), label: m.name || m.login }));
@@ -1418,6 +1459,18 @@
       const label = document.createElement("span");
       label.textContent = opt.label;
       button.appendChild(label);
+      if (opt.meta || opt.status === "active") {
+        const meta = document.createElement("span");
+        meta.className = "popover-option-meta";
+        meta.textContent = opt.meta || "";
+        if (opt.status === "active") {
+          const badge = document.createElement("span");
+          badge.className = "popover-option-badge";
+          badge.textContent = translate("sprint.active_short", currentLang()) || "Active";
+          meta.appendChild(badge);
+        }
+        button.appendChild(meta);
+      }
       button.addEventListener("click", () => applyFieldChange(card, field, opt.value));
       pop.appendChild(button);
     });
@@ -2673,7 +2726,8 @@
       const toggle = combo.querySelector("[data-sprint-filter-toggle]");
       const menu = combo.querySelector("[data-sprint-filter-menu]");
       const search = combo.querySelector("[data-sprint-filter-search]");
-      const createButton = combo.querySelector("[data-sprint-filter-create]");
+      const createButton = combo.querySelector("[data-sprint-filter-create-toggle]");
+      const createForm = combo.querySelector("[data-sprint-quick-create-form]");
       if (!toggle || !menu || !search) return;
 
       const close = () => {
@@ -2715,9 +2769,20 @@
       });
       if (createButton) {
         updateCreateButton();
-        createButton.addEventListener("click", async (event) => {
+        createButton.addEventListener("click", (event) => {
           event.preventDefault();
-          await createQuickSprint(combo.dataset.projectKey || "", search.value.trim(), [search, createButton]);
+          if (!createForm) return;
+          const nameInput = createForm.querySelector('[name="name"]');
+          if (nameInput && !nameInput.value.trim()) nameInput.value = search.value.trim();
+          createForm.hidden = !createForm.hidden;
+          if (!createForm.hidden) window.setTimeout(() => (nameInput || createForm.querySelector("input"))?.focus(), 0);
+        });
+      }
+      if (createForm) {
+        createForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const controls = Array.from(createForm.querySelectorAll("input, select, button")).concat([search, createButton].filter(Boolean));
+          await createQuickSprint(combo.dataset.projectKey || "", new FormData(createForm), controls);
         });
       }
       combo.addEventListener("keydown", (event) => {
@@ -2734,15 +2799,18 @@
     });
   }
 
-  async function createQuickSprint(projectKey, name, controls = []) {
-    if (!projectKey || !name) return;
+  async function createQuickSprint(projectKey, formDataOrName, controls = []) {
+    if (!projectKey) return;
+    const formData = formDataOrName instanceof FormData ? formDataOrName : new FormData();
+    if (!(formDataOrName instanceof FormData)) formData.append("name", String(formDataOrName || ""));
+    const name = String(formData.get("name") || "").trim();
+    if (!name) return;
+    formData.set("name", name);
+    if (!formData.get("status")) formData.set("status", "planned");
     controls.forEach((control) => {
       if (control) control.disabled = true;
     });
     try {
-      const formData = new FormData();
-      formData.append("name", name);
-      formData.append("status", "planned");
       const response = await fetch(`/api/projects/${encodeURIComponent(projectKey)}/sprints/quick`, {
         method: "POST",
         headers: { "x-csrf-token": csrfToken(), accept: "application/json" },
@@ -2771,7 +2839,7 @@
     return [
       { value: "", label: translate("sprint.all", currentLang()) || "All sprints" },
       { value: "none", label: translate("sprint.none", currentLang()) || "No sprint" },
-      { value: "active", label: translate("sprint.active", currentLang()) || "Active" },
+      { value: "active", label: translate("sprint.active", currentLang()) || "Active sprint" },
     ];
   }
 
@@ -2829,6 +2897,13 @@
         main.className = "sprint-filter-option-main";
         main.textContent = option.label;
         button.appendChild(main);
+        if (option.status === "active") {
+          button.classList.add("is-active-sprint");
+          const badge = document.createElement("span");
+          badge.className = "sprint-filter-status";
+          badge.textContent = translate("sprint.active_short", currentLang()) || "Active";
+          button.appendChild(badge);
+        }
         if (option.meta) {
           const meta = document.createElement("span");
           meta.className = "sprint-filter-option-meta";
@@ -2853,6 +2928,7 @@
             value: String(sprint.id),
             label: sprint.name,
             meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+            status: sprint.status,
           }))
       );
       const recentClosed = allSprints.filter((sprint) => sprint.status === "closed").slice(0, 6);
@@ -2862,6 +2938,7 @@
           value: String(sprint.id),
           label: sprint.name,
           meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+          status: sprint.status,
         }))
       );
       const visibleIds = new Set(recentClosed.concat(allSprints.filter((sprint) => sprint.status !== "closed")).map((sprint) => String(sprint.id)));
@@ -2872,6 +2949,7 @@
           value: String(sprint.id),
           label: sprint.name,
           meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+          status: sprint.status,
         }))
       );
       return;
@@ -2884,6 +2962,7 @@
         value: String(sprint.id),
         label: sprint.name,
         meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+        status: sprint.status,
       }));
     addGroup(translate("sprint.sprints", currentLang()) || "Sprints", matches);
     if (!matches.length) {

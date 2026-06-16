@@ -43,27 +43,27 @@
 </section>
 
 <section class="stats-summary-grid">
-  <div class="stat-summary-card">
+  <div class="stat-summary-card tooltip-anchor" data-i18n-tooltip="stats.total_help" data-tooltip="All tickets in this project.">
     <span data-icon="list-checks" aria-hidden="true"></span>
     <p data-i18n="stats.total">Total tickets</p>
     <strong>{{ summary.total_tickets }}</strong>
   </div>
-  <div class="stat-summary-card">
+  <div class="stat-summary-card tooltip-anchor" data-i18n-tooltip="stats.open_help" data-tooltip="Tickets that are not Done or Closed.">
     <span data-icon="loader-circle" aria-hidden="true"></span>
     <p data-i18n="stats.open">Open</p>
     <strong>{{ summary.open_tickets }}</strong>
   </div>
-  <div class="stat-summary-card">
+  <div class="stat-summary-card tooltip-anchor" data-i18n-tooltip="stats.open_points_help" data-tooltip="Story points from open tickets.">
     <span data-icon="gauge" aria-hidden="true"></span>
     <p data-i18n="stats.open_points">Open SP</p>
     <strong>{{ summary.open_story_points }}</strong>
   </div>
-  <div class="stat-summary-card">
+  <div class="stat-summary-card tooltip-anchor" data-i18n-tooltip="stats.done_help" data-tooltip="Tickets currently in Done.">
     <span data-icon="check-circle-2" aria-hidden="true"></span>
     <p data-i18n="stats.done">Done</p>
     <strong>{{ summary.done_tickets }}</strong>
   </div>
-  <div class="stat-summary-card">
+  <div class="stat-summary-card tooltip-anchor" data-i18n-tooltip="stats.closed_help" data-tooltip="Tickets currently in Closed.">
     <span data-icon="archive" aria-hidden="true"></span>
     <p data-i18n="stats.closed">Closed</p>
     <strong>{{ summary.closed_tickets }}</strong>
@@ -74,8 +74,13 @@
   <div class="panel stats-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" data-i18n="stats.statuses">Statuses</p>
+        <p class="eyebrow" data-i18n="stats.flow">Flow</p>
         <h2 data-i18n="stats.statuses">Statuses</h2>
+        <p class="muted" data-i18n="stats.statuses_help">How tickets and story points are distributed across board statuses.</p>
+      </div>
+      <div class="stat-legend" aria-label="Chart legend">
+        <span class="stat-legend-item"><i class="legend-swatch legend-tickets"></i><span data-i18n="stats.ticket_count">Tickets</span></span>
+        <span class="stat-legend-item"><i class="legend-swatch legend-points"></i><span data-i18n="stats.points">Story points</span></span>
       </div>
     </div>
     <div class="stat-bars">
@@ -88,7 +93,7 @@
             </span>
             <span class="stat-bar-count">{{ group.count }} / {{ group.story_points }} SP</span>
           </div>
-          <div class="stat-bar-track" aria-hidden="true">
+          <div class="stat-bar-track tooltip-anchor" data-i18n-tooltip="stats.status_bar_help" data-tooltip="Green shows ticket share; gold shows story point share.">
             <span class="stat-bar-fill" style="width: {{ group.count_percent }}%"></span>
             <span class="stat-bar-fill stat-bar-fill-points" style="width: {{ group.points_percent }}%"></span>
           </div>
@@ -101,8 +106,9 @@
   <div class="panel stats-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" data-i18n="stats.priorities">Priorities</p>
+        <p class="eyebrow" data-i18n="stats.workload">Workload</p>
         <h2 data-i18n="stats.priorities">Priorities</h2>
+        <p class="muted" data-i18n="stats.priorities_help">Ticket count and story points grouped by priority.</p>
       </div>
     </div>
     <div class="stats-chip-grid">
@@ -121,8 +127,9 @@
   <div class="panel stats-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" data-i18n="stats.types">Types</p>
+        <p class="eyebrow" data-i18n="stats.shape">Shape</p>
         <h2 data-i18n="stats.types">Types</h2>
+        <p class="muted" data-i18n="stats.types_help">How work is split between tasks, epics, bugs, and stories.</p>
       </div>
     </div>
     <div class="stats-chip-grid">
@@ -141,8 +148,9 @@
   <div class="panel stats-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" data-i18n="stats.assignees">Assignees</p>
+        <p class="eyebrow" data-i18n="stats.people">People</p>
         <h2 data-i18n="stats.assignees">Assignees</h2>
+        <p class="muted" data-i18n="stats.assignees_help">Work currently assigned to each person.</p>
       </div>
     </div>
     <div class="stats-chip-grid">
@@ -169,8 +177,9 @@
   <div class="panel stats-panel stats-wide-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" data-i18n="stats.sprints">Sprints</p>
+        <p class="eyebrow" data-i18n="stats.timeline">Timeline</p>
         <h2 data-i18n="stats.sprints">Sprints</h2>
+        <p class="muted" data-i18n="stats.sprints_help">Tickets and story points planned by sprint.</p>
       </div>
       {% if active_sprint %}
         <span class="field-badge" data-i18n="sprint.active">Active</span>

@@ -34,9 +34,42 @@
             <div class="sprint-filter-search-row">
               <input type="search" data-sprint-filter-search placeholder="Find or name sprint" data-i18n-placeholder="sprint.find_or_create_placeholder" autocomplete="off">
               {% if can_manage_project %}
-                <button class="secondary tiny sprint-filter-create-button" type="button" data-sprint-filter-create data-icon="plus" data-i18n-aria="sprint.quick_create" aria-label="Create sprint" disabled></button>
+                <button class="secondary tiny sprint-filter-create-button" type="button" data-sprint-filter-create-toggle data-icon="plus" data-i18n-aria="sprint.quick_create" aria-label="Create sprint" disabled></button>
               {% endif %}
             </div>
+            {% if can_manage_project %}
+              <form class="sprint-quick-create-panel" data-sprint-quick-create-form hidden>
+                <div class="sprint-quick-create-grid">
+                  <label>
+                    <span class="label-row">
+                      <span data-i18n="field.name">Name</span>
+                      <span class="required-mark" aria-hidden="true">*</span>
+                    </span>
+                    <input name="name" required placeholder="Sprint 1" data-i18n-placeholder="sprint.quick_create_placeholder">
+                  </label>
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.status">Status</span></span>
+                    <select name="status">
+                      <option value="planned" data-i18n="sprint.planned">Planned</option>
+                      <option value="active" data-i18n="sprint.active_short">Active</option>
+                    </select>
+                  </label>
+                  <label class="sprint-quick-create-goal">
+                    <span class="label-row"><span data-i18n="sprint.goal">Goal</span></span>
+                    <input name="goal" placeholder="What should this sprint achieve?" data-i18n-placeholder="sprint.goal_placeholder">
+                  </label>
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.starts_on">Starts</span></span>
+                    <input name="starts_on" type="date">
+                  </label>
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.ends_on">Ends</span></span>
+                    <input name="ends_on" type="date">
+                  </label>
+                </div>
+                <button class="primary tiny" type="submit" data-icon="timer" data-i18n="sprint.create">Create sprint</button>
+              </form>
+            {% endif %}
             <div class="sprint-filter-options" data-sprint-filter-options role="listbox"></div>
           </div>
         </div>
