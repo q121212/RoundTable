@@ -45,6 +45,8 @@
       "column.story_points": "Story points in this status",
       "column.ticket_count": "Tickets in this status",
       "column.collapse": "Collapse column",
+      "column.collapsed": "Collapsed",
+      "column.collapsed_hint": "Tickets are hidden here. Expand the column to review them, or drop a card here to move it.",
       "column.expand": "Expand column",
       "github.create_project_first": "Create a project first.",
       "github.how_copy": "Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.",
@@ -375,6 +377,8 @@
       "column.story_points": "Сторипоинты в этом статусе",
       "column.ticket_count": "Тикетов в этом статусе",
       "column.collapse": "Свернуть колонку",
+      "column.collapsed": "Свернуто",
+      "column.collapsed_hint": "Тикеты здесь скрыты. Разверните колонку, чтобы посмотреть их, или перетащите сюда карточку.",
       "column.expand": "Развернуть колонку",
       "github.create_project_first": "Сначала создайте проект.",
       "github.how_copy": "Вставьте owner/repo или ссылку GitHub. Этого достаточно, чтобы webhook связывал ветки, коммиты и PR с тикетами.",
@@ -2158,12 +2162,17 @@
 
   function refreshColumnCounts() {
     document.querySelectorAll(".board-column").forEach((column) => {
+      const ticketCount = column.querySelectorAll(".ticket-card").length;
       const counter = column.querySelector(".column-count");
-      if (counter) counter.textContent = column.querySelectorAll(".ticket-card").length;
+      if (counter) counter.textContent = ticketCount;
+      const collapsedCounter = column.querySelector("[data-collapsed-count]");
+      if (collapsedCounter) collapsedCounter.textContent = ticketCount;
       const points = Array.from(column.querySelectorAll('.ticket-card .chip-edit[data-edit="story_points"]'))
         .reduce((sum, chip) => sum + (Number.parseInt(chip.dataset.value || "0", 10) || 0), 0);
       const pointsEl = column.querySelector("[data-column-points]");
       if (pointsEl) pointsEl.textContent = String(points);
+      const collapsedPointsEl = column.querySelector("[data-collapsed-points]");
+      if (collapsedPointsEl) collapsedPointsEl.textContent = String(points);
     });
   }
 

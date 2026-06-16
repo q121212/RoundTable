@@ -103,12 +103,21 @@ def test_board_supports_keyboard_navigation_and_column_collapsing():
 
     assert 'data-column-toggle' in template
     assert 'aria-controls="column-zone-' in template
+    assert 'class="column-collapsed-note"' in template
+    assert 'data-collapsed-count' in template
+    assert 'data-collapsed-points' in template
     assert "function setupColumnCollapsing()" in script
     assert "function onBoardKeyboardInteraction(event)" in script
     assert "function handleTicketKeyboardMove(event, handle)" in script
     assert "function applyStatusFilter(status)" in script
     assert 'translateTemplate("keyboard.ticket_moved"' in script
     assert 'translateTemplate("keyboard.ticket_sorted"' in script
+    assert '"column.collapsed": "Collapsed"' in script
+    assert '"column.collapsed": "Свернуто"' in script
+    assert 'querySelector("[data-collapsed-count]")' in script
+    assert 'querySelector("[data-collapsed-points]")' in script
     assert ".skip-links" in styles
+    assert "pointer-events: none;" in styles
     assert ".column-toggle" in styles
+    assert ".column-collapsed-note" in styles
     assert ".board-column.is-collapsed .dropzone" in styles
