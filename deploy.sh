@@ -23,6 +23,8 @@
 #   DEPLOY_MODE        auto | git | rsync       (default: auto)
 #   DEPLOY_PUBLIC      true requires safe public .env settings
 #   DEPLOY_ENV_FILE    optional private deploy env file to source
+#   DEPLOY_APP_USER    optional system user that owns/runs the app
+#   DEPLOY_APP_GROUP   optional system group; defaults to DEPLOY_APP_USER
 #
 # Usage:
 #   ./deploy.sh                          # uses env / .env.deploy
@@ -54,6 +56,8 @@ HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8380/login}"
 PY="${DEPLOY_PYTHON:-python3}"
 MODE="${DEPLOY_MODE:-auto}"
 PUBLIC="${DEPLOY_PUBLIC:-false}"
+APP_USER="${DEPLOY_APP_USER:-}"
+APP_GROUP="${DEPLOY_APP_GROUP:-${APP_USER:-}}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -113,6 +117,8 @@ if [ "$effective_mode" = "rsync" ]; then
   echo "==> Syncing local working tree to server"
   ssh "$HOST" "mkdir -p '$APP_DIR'"
   rsync -az --delete \
+    --no-owner \
+    --no-group \
     --exclude '.git/' \
     --exclude '.venv/' \
     --exclude '.env' \
@@ -127,9 +133,36 @@ if [ "$effective_mode" = "rsync" ]; then
 fi
 
 # Remote build/restart. Local vars are expanded here, then run on the server.
-ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' MODE='$effective_mode' PUBLIC='$PUBLIC' bash -s" <<'REMOTE'
+ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' MODE='$effective_mode' PUBLIC='$PUBLIC' APP_USER='$APP_USER' APP_GROUP='$APP_GROUP' bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$APP_DIR"
+
+ensure_app_user() {
+  if [ -z "${APP_USER:-}" ]; then
+    return
+  fi
+  if ! id "$APP_USER" >/dev/null 2>&1; then
+    echo "--> create app user $APP_USER"
+    sudo useradd --system --home "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
+  fi
+  if [ -n "${APP_GROUP:-}" ] && ! getent group "$APP_GROUP" >/dev/null 2>&1; then
+    sudo groupadd --system "$APP_GROUP"
+  fi
+}
+
+fix_app_ownership() {
+  if [ -z "${APP_USER:-}" ]; then
+    return
+  fi
+  local group="${APP_GROUP:-$APP_USER}"
+  echo "--> set app ownership to $APP_USER:$group"
+  sudo chown -R "$APP_USER:$group" "$APP_DIR"
+  if [ -f "$APP_DIR/.env" ]; then
+    sudo chmod 0640 "$APP_DIR/.env"
+  fi
+}
+
+ensure_app_user
 
 if [ "$MODE" = "git" ]; then
   echo "--> git fetch & fast-forward"
@@ -203,6 +236,7 @@ fi
 if [ ! -d .venv ]; then "$PY" -m venv .venv; fi
 ./.venv/bin/python -m pip install --upgrade pip --quiet
 ./.venv/bin/python -m pip install -r requirements.txt --quiet
+fix_app_ownership
 
 echo "--> restart service"
 sudo systemctl restart "$SERVICE"

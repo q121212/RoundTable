@@ -59,6 +59,8 @@ uvicorn bound to `127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
 RoundTable is intentionally operated as a single app process with SQLite; do not
 run multiple web workers against the same local deployment unless the architecture
 is changed deliberately.
+For hardened deployments, set `DEPLOY_APP_USER=roundtable` in the private deploy
+env so `deploy.sh` keeps the app and SQLite data owned by a non-root system user.
 
 For public repo vs private server configuration separation, see
 [docs/deployment-separation.md](docs/deployment-separation.md). In short: keep

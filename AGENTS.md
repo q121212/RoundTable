@@ -112,6 +112,8 @@ it fails unless the server `.env` has `BASE_URL=https://...`,
 `ALLOW_DEV_LOGIN=false`, `SESSION_COOKIE_SECURE=true`, and signed webhook secrets
 for enabled integrations. The app sets up its own schema on boot, so there is no
 separate migration step.
+For hardened servers, set `DEPLOY_APP_USER=roundtable` in the private deploy env;
+`deploy.sh` will keep app files owned by that system user after rsync/build.
 
 Keep this repo reusable/public. Real server inventory, `.env` values, nginx
 configs with domains, and operational runbooks belong in the private ops repo
