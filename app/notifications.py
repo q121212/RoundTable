@@ -45,7 +45,10 @@ async def process_due_notifications(limit: int = 20) -> None:
 async def send_outbox_item(item: Dict[str, Any]) -> None:
     try:
         if item["channel"] == "email":
-            send_email(item)
+            # smtplib is blocking; run it in a worker thread so a slow or hung
+            # SMTP server cannot stall the single event loop (and with it every
+            # HTTP request and SSE stream).
+            await asyncio.to_thread(send_email, item)
         elif item["channel"] == "telegram":
             await send_telegram(item)
         else:
