@@ -35,6 +35,10 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(settings.database_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Wait (instead of failing immediately) when another writer holds the lock.
+    # SQLite serializes writers even in WAL mode; without this a brief overlap
+    # surfaces as "database is locked" 500s under concurrency.
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
