@@ -131,6 +131,7 @@ if [ "$effective_mode" = "rsync" ]; then
     --exclude '*.pyc' \
     --exclude '.DS_Store' \
     --exclude 'data/' \
+    --exclude 'backups/' \
     ./ "$HOST:$APP_DIR/"
 fi
 
