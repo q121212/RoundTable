@@ -21,9 +21,11 @@ from ..security import hash_token, new_token
 
 TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
 MENTION_RE = re.compile(r"(?<![\w.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)")
-NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
 SPRINT_STATUSES = {"planned", "active", "closed"}
+
+# log_action (action_log writes + notify fan-out) lives in _action_log.py.
+from ._action_log import log_action as log_action  # noqa: E402
 
 # Validators, normalizers, and per-project config helpers now live in
 # _validation.py. Re-exported here so app.store stays the single public facade
@@ -1792,32 +1794,6 @@ def set_watch(user: Dict[str, Any], ticket_key: str, watch: bool = True) -> None
             conn.execute("DELETE FROM watchers WHERE ticket_id = ? AND user_id = ?", (ticket["id"], user["id"]))
             action = "unwatching"
         log_action(conn, ticket["project_id"], ticket["id"], user["id"], action)
-
-
-def log_action(
-    conn: Any,
-    project_id: Optional[int],
-    ticket_id: Optional[int],
-    actor_id: Optional[int],
-    action: str,
-    field: Optional[str] = None,
-    old_value: Optional[str] = None,
-    new_value: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> int:
-    now = utcnow()
-    cur = conn.execute(
-        """
-        INSERT INTO action_log
-            (project_id, ticket_id, actor_id, action, field, old_value, new_value, metadata_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (project_id, ticket_id, actor_id, action, field, old_value, new_value, json_dumps(metadata or {}), now),
-    )
-    action_id = int(cur.lastrowid)
-    if ticket_id and action in NOTIFY_ACTIONS:
-        enqueue_notifications(conn, action_id, project_id, ticket_id, actor_id, action)
-    return action_id
 
 
 def purge_expired_records(
