@@ -2668,6 +2668,15 @@
     });
   }
 
+  function setupSprintRangeLabels() {
+    document.querySelectorAll("[data-sprint-range]").forEach((element) => {
+      const range = compactSprintDateRangeLabel(element.dataset.sprintStart, element.dataset.sprintEnd);
+      element.textContent = range;
+      element.hidden = !range;
+      if (range) element.title = sprintDateRangeLabel(element.dataset.sprintStart, element.dataset.sprintEnd);
+    });
+  }
+
   function setupActionLabels() {
     document.querySelectorAll("[data-action-label]").forEach((element) => {
       const key = `ticket.action.${element.dataset.actionLabel}`;
@@ -2928,6 +2937,7 @@
 
   function updateSprintFilterLabels() {
     setupSprintOptionLabels();
+    setupSprintRangeLabels();
     document.querySelectorAll("[data-sprint-filter-combo]").forEach((combo) => {
       updateSprintFilterCurrent(combo);
       if (combo.classList.contains("is-open")) renderSprintFilterOptions(combo);
@@ -3081,6 +3091,7 @@
     setupConfirms();
     setupCopyButtons();
     setupLocalTimes();
+    setupSprintRangeLabels();
     setupActionLabels();
     setupActionDetails();
     setupMemberRoleForms();

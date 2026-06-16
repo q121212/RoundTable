@@ -43,7 +43,11 @@ def test_sprint_dates_use_localized_option_labels():
     assert "function sprintDisplayLabel" in script
     assert "function compactSprintDateRangeLabel" in script
     assert "function sprintMenuMeta" in script
+    assert "function setupSprintRangeLabels" in script
     assert "setupSprintOptionLabels();" in script
+    assert "setupSprintRangeLabels();" in script
+    assert 'class="sprint-row-details"' in template
+    assert 'data-sprint-range' in template
     assert "data-local-date" not in template
     assert "data-sprint-filter-combo" in board_template
     assert "data-sprint-filter-search" in board_template

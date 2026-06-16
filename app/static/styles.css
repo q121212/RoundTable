@@ -1636,15 +1636,87 @@ time {
 .sprint-row {
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 10px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sprint-row-details {
+  display: grid;
+  min-width: 0;
 }
 
 .sprint-row-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   min-width: 0;
+  min-height: 54px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sprint-row-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sprint-row-summary:hover,
+.sprint-row-details[open] .sprint-row-summary {
+  background: color-mix(in srgb, var(--green) 5%, transparent);
+}
+
+.sprint-row-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 0.9fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sprint-row-title,
+.sprint-row-goal,
+.sprint-row-range {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sprint-row-title {
+  font-size: 0.98rem;
+}
+
+.sprint-row-goal {
+  font-size: 0.82rem;
+}
+
+.sprint-row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.sprint-row-toggle .icon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.15s ease;
+}
+
+.sprint-row-details[open] .sprint-row-toggle .icon {
+  transform: rotate(180deg);
+}
+
+.sprint-row-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--line);
 }
 
 .sprint-edit-form {
@@ -1685,6 +1757,8 @@ time {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .sprint-actions {
@@ -1753,6 +1827,44 @@ code {
   .sprint-edit-main,
   .sprint-edit-dates {
     grid-template-columns: 1fr;
+  }
+
+  .sprint-row-summary {
+    min-height: 62px;
+    padding: 10px;
+  }
+
+  .sprint-row-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 8px;
+  }
+
+  .sprint-row-meta {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  .sprint-row-title {
+    font-size: 0.98rem;
+  }
+
+  .sprint-row-range {
+    justify-self: end;
+    max-width: 132px;
+    font-size: 0.78rem;
+  }
+
+  .sprint-row-goal {
+    grid-column: 1 / -1;
+    font-size: 0.76rem;
+  }
+
+  .sprint-row-toggle > span:first-child {
+    display: none;
+  }
+
+  .sprint-row-body {
+    padding: 0 10px 10px;
   }
 
   .sprint-edit-form .tiny {

@@ -67,75 +67,90 @@
     <div class="table-list sprint-list">
       {% for sprint in sprints %}
         <div class="table-row sprint-row">
-          <div class="sprint-row-summary">
-            <div class="sprint-row-meta">
-              {% if sprint.status == "active" %}
-                <span class="field-badge" data-i18n="sprint.active_short">active</span>
-              {% else %}
-                <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
-              {% endif %}
-              <span class="muted {% if sprint.ticket_preview %}tooltip-anchor{% endif %}"
-                {% if sprint.ticket_preview %}
-                  data-tooltip="{% for ticket in sprint.ticket_preview %}{{ ticket.key }} · {{ ticket.title }}{% if not loop.last %}; {% endif %}{% endfor %}{% if sprint.ticket_preview_more %}; +{{ sprint.ticket_preview_more }}{% endif %}"
-                {% endif %}
-              >{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
-            </div>
-          </div>
-          <form class="sprint-edit-form" method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}">
-            <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-            <div class="sprint-edit-main">
-              <label>
-                <span class="label-row">
-                  <span data-i18n="field.name">Name</span>
-                  <span class="required-mark" aria-hidden="true">*</span>
+          <details class="sprint-row-details">
+            <summary class="sprint-row-summary">
+              <span class="sprint-row-main">
+                <span class="sprint-row-meta">
+                  {% if sprint.status == "active" %}
+                    <span class="field-badge" data-i18n="sprint.active_short">active</span>
+                  {% else %}
+                    <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
+                  {% endif %}
+                  <span class="muted {% if sprint.ticket_preview %}tooltip-anchor{% endif %}"
+                    {% if sprint.ticket_preview %}
+                      data-tooltip="{% for ticket in sprint.ticket_preview %}{{ ticket.key }} · {{ ticket.title }}{% if not loop.last %}; {% endif %}{% endfor %}{% if sprint.ticket_preview_more %}; +{{ sprint.ticket_preview_more }}{% endif %}"
+                    {% endif %}
+                  >{{ sprint.ticket_count }} <span data-i18n="sprint.ticket_count">tickets</span></span>
                 </span>
-                <input name="name" required value="{{ sprint.name }}">
-              </label>
-              <label>
-                <span class="label-row"><span data-i18n="sprint.goal">Goal</span></span>
-                <input name="goal" value="{{ sprint.goal or '' }}">
-              </label>
+                <strong class="sprint-row-title">{{ sprint.name }}</strong>
+                <span class="muted sprint-row-range" data-sprint-range data-sprint-start="{{ sprint.starts_on or '' }}" data-sprint-end="{{ sprint.ends_on or '' }}"></span>
+                {% if sprint.goal %}
+                  <span class="muted sprint-row-goal">{{ sprint.goal }}</span>
+                {% endif %}
+              </span>
+              <span class="sprint-row-toggle">
+                <span data-i18n="action.update">Update</span>
+                <span data-icon="chevron-down" aria-hidden="true"></span>
+              </span>
+            </summary>
+            <div class="sprint-row-body">
+              <form class="sprint-edit-form" method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}">
+                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                <div class="sprint-edit-main">
+                  <label>
+                    <span class="label-row">
+                      <span data-i18n="field.name">Name</span>
+                      <span class="required-mark" aria-hidden="true">*</span>
+                    </span>
+                    <input name="name" required value="{{ sprint.name }}">
+                  </label>
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.goal">Goal</span></span>
+                    <input name="goal" value="{{ sprint.goal or '' }}">
+                  </label>
+                </div>
+                <div class="sprint-edit-dates">
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.starts_on">Starts</span></span>
+                    <input name="starts_on" type="date" value="{{ sprint.starts_on or '' }}">
+                  </label>
+                  <label>
+                    <span class="label-row"><span data-i18n="sprint.ends_on">Ends</span></span>
+                    <input name="ends_on" type="date" value="{{ sprint.ends_on or '' }}">
+                  </label>
+                </div>
+                <button class="secondary tiny" type="submit" data-icon="save" data-i18n="sprint.save">Save sprint</button>
+              </form>
+              <div class="sprint-actions">
+                {% if sprint.status != "active" and sprint.status != "closed" %}
+                  <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                    <input type="hidden" name="status" value="active">
+                    <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
+                  </form>
+                {% endif %}
+                {% if sprint.status == "closed" %}
+                  <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                    <input type="hidden" name="status" value="planned">
+                    <button class="secondary tiny" type="submit" data-icon="rotate-ccw" data-i18n="sprint.reopen">Reopen</button>
+                  </form>
+                  <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                    <input type="hidden" name="status" value="active">
+                    <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
+                  </form>
+                {% endif %}
+                {% if sprint.status != "closed" %}
+                  <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
+                    <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
+                    <input type="hidden" name="status" value="closed">
+                    <button class="ghost tiny" type="submit" data-icon="archive" data-i18n="sprint.close">Close</button>
+                  </form>
+                {% endif %}
+              </div>
             </div>
-            <div class="sprint-edit-dates">
-              <label>
-                <span class="label-row"><span data-i18n="sprint.starts_on">Starts</span></span>
-                <input name="starts_on" type="date" value="{{ sprint.starts_on or '' }}">
-              </label>
-              <label>
-                <span class="label-row"><span data-i18n="sprint.ends_on">Ends</span></span>
-                <input name="ends_on" type="date" value="{{ sprint.ends_on or '' }}">
-              </label>
-            </div>
-            <button class="secondary tiny" type="submit" data-icon="save" data-i18n="sprint.save">Save sprint</button>
-          </form>
-          <div class="sprint-actions">
-            {% if sprint.status != "active" and sprint.status != "closed" %}
-              <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                <input type="hidden" name="status" value="active">
-                <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
-              </form>
-            {% endif %}
-            {% if sprint.status == "closed" %}
-              <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                <input type="hidden" name="status" value="planned">
-                <button class="secondary tiny" type="submit" data-icon="rotate-ccw" data-i18n="sprint.reopen">Reopen</button>
-              </form>
-              <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                <input type="hidden" name="status" value="active">
-                <button class="secondary tiny" type="submit" data-icon="play" data-i18n="sprint.activate">Activate</button>
-              </form>
-            {% endif %}
-            {% if sprint.status != "closed" %}
-              <form method="post" action="/api/projects/{{ project.key }}/sprints/{{ sprint.id }}/status">
-                <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
-                <input type="hidden" name="status" value="closed">
-                <button class="ghost tiny" type="submit" data-icon="archive" data-i18n="sprint.close">Close</button>
-              </form>
-            {% endif %}
-          </div>
+          </details>
         </div>
       {% else %}
         <p class="muted" data-i18n="sprint.empty">No sprints yet.</p>
