@@ -82,6 +82,9 @@ deploy.sh, deploy/   deployment (see below)
   shared channel. RoundTable is intentionally deployed as one app process with
   SQLite; do not add Redis, external queues, or multi-worker coordination unless
   the product decision changes.
+- **Load testing:** use `tools/load_test.py` and `docs/load-testing.md`. Keep
+  ramps small, use stop thresholds, and do not run large write tests against the
+  shared server without an explicit go-ahead.
 
 ## Gotchas (learned the hard way)
 

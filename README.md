@@ -67,6 +67,10 @@ For public repo vs private server configuration separation, see
 RoundTable reusable and public, keep real server env/nginx/runbooks in a private
 ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 
+For cautious capacity checks, see [docs/load-testing.md](docs/load-testing.md).
+The load runner is intentionally lightweight and stops on latency/error
+thresholds so it does not accidentally hammer a shared server.
+
 ## Features
 
 - Projects with short keys like `CRM`, `OPS`, or `AI`.
