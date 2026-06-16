@@ -1177,18 +1177,6 @@ button,
   flex-wrap: wrap;
 }
 
-.ticket-link-target-summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  color: var(--ink);
-}
-
-.ticket-link-type-badge {
-  color: var(--green-dark);
-}
-
 .ticket-link-edit-fields {
   display: grid;
   grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr);
@@ -4037,7 +4025,67 @@ a.ticket-key:hover {
   }
 
   .stat-summary-card {
-    padding: 12px;
+    gap: 4px;
+    padding: 10px 11px;
+    box-shadow: none;
+  }
+
+  .stat-summary-card > span .icon,
+  .stat-summary-card > span svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .stat-summary-card p {
+    font-size: 0.72rem;
+  }
+
+  .stat-summary-card strong {
+    font-size: 1.34rem;
+  }
+
+  .stats-panel {
+    gap: 10px;
+  }
+
+  .stat-bar-card,
+  .stats-mini-card {
+    gap: 7px;
+    padding: 8px;
+    box-shadow: none;
+  }
+
+  .stat-bar-label,
+  .stats-mini-card h3 {
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  .stat-bar-count {
+    font-size: 0.72rem;
+  }
+
+  .stat-drill summary {
+    min-height: 26px;
+    gap: 5px;
+    font-size: 0.72rem;
+  }
+
+  .stat-ticket-list {
+    gap: 4px;
+    padding-top: 4px;
+  }
+
+  .stat-ticket-row {
+    gap: 6px;
+    padding: 4px 5px;
+    font-size: 0.84rem;
+  }
+
+  .stat-board-link {
+    min-height: 28px;
+    padding: 3px 7px;
+    font-size: 0.74rem;
   }
 
   .stat-ticket-row {

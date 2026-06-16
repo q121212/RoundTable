@@ -709,10 +709,8 @@ def test_ticket_page_link_context_is_unambiguous(temp_db):
 
     assert response.status_code == 200
     html = response.text
-    assert 'class="ticket-link-edit-head"' in html
-    assert f'<span class="field-badge">{current["key"]}</span>' not in html
-    assert f'href="/t/{target["key"]}"' in html
-    assert 'class="ticket-link-target-summary"' in html
+    assert 'class="ticket-link-edit-head"' not in html
+    assert 'class="ticket-link-target-summary"' not in html
     assert f'value="{target["key"]} · Target epic"' in html
     assert html.count('data-i18n="field.target_ticket"') == 2
 
