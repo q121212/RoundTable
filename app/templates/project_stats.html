@@ -116,6 +116,42 @@
   <div class="panel stats-panel">
     <div class="section-heading">
       <div>
+        <p class="eyebrow" data-i18n="stats.flow">Flow</p>
+        <h2 data-i18n="stats.time_in_status">Time in status</h2>
+        <p class="muted" data-i18n="stats.time_in_status_help">Average time tickets spend in each status before moving on, reconstructed from the action log.</p>
+      </div>
+    </div>
+    <div class="stat-bars">
+      {% for group in status_time_groups %}
+        <article class="stat-bar-card">
+          <div class="stat-bar-head">
+            <span class="stat-bar-label">
+              <span class="status-dot status-{{ group.value|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
+              <span data-i18n="status.{{ group.value }}">{{ group.label }}</span>
+            </span>
+            <span class="stat-bar-count">{% if group.completed_count %}{{ group.avg_completed_label }}{% else %}—{% endif %}</span>
+          </div>
+          <div class="stat-bar-rows tooltip-anchor" data-i18n-tooltip="stats.time_bar_help" data-tooltip="Average time a ticket spent in this status before moving to another one.">
+            <div class="stat-bar-row">
+              <span class="stat-bar-row-label" data-i18n="stats.avg_time">Avg time</span>
+              <span class="stat-bar-track">
+                <span class="stat-bar-fill" style="width: {{ group.completed_percent }}%"></span>
+              </span>
+            </div>
+          </div>
+          <p class="muted">
+            {% if group.completed_count %}<span data-i18n="stats.moved_on">moved on</span>: {{ group.completed_count }}{% endif %}
+            {% if group.current_count %}<span aria-hidden="true">·</span> <span data-i18n="stats.here_now">here now</span>: {{ group.current_count }} ({{ group.avg_current_label }}){% endif %}
+            {% if not group.completed_count and not group.current_count %}<span data-i18n="stats.empty">No tickets here yet.</span>{% endif %}
+          </p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel stats-panel">
+    <div class="section-heading">
+      <div>
         <p class="eyebrow" data-i18n="stats.workload">Workload</p>
         <h2 data-i18n="stats.priorities">Priorities</h2>
         <p class="muted" data-i18n="stats.priorities_help">Ticket count and story points grouped by priority.</p>

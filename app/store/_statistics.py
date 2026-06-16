@@ -1,13 +1,128 @@
 """Project statistics: single-scan aggregation and previews by status,
-priority, type, assignee, and sprint."""
+priority, type, assignee, and sprint, plus time-in-status from the action log."""
 
-from typing import Any, Dict, List
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from ..db import PRIORITIES, get_conn, rows_to_dicts
 from ._policies import project_role_for_user, require_project_stats_access
 from ._projects import get_project_by_key
 from ._sprints import list_project_sprints
 from ._validation import project_statuses, project_ticket_types
+
+
+def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _format_duration(seconds: float) -> str:
+    seconds = int(seconds)
+    if seconds < 60:
+        return "%ds" % seconds
+    minutes = seconds // 60
+    if minutes < 60:
+        return "%dm" % minutes
+    hours = minutes // 60
+    if hours < 24:
+        rem = minutes % 60
+        return "%dh %dm" % (hours, rem) if rem else "%dh" % hours
+    days = hours // 24
+    rem = hours % 24
+    return "%dd %dh" % (days, rem) if rem else "%dd" % days
+
+
+def _status_time_groups(conn: Any, project_id: int, statuses: List[str]) -> List[Dict[str, Any]]:
+    """Average time tickets spend in each status, reconstructed from the status
+    transitions recorded in action_log.
+
+    For each ticket the timeline is: created_at -> first transition -> ... -> now
+    (or closed_at). A segment that the ticket has already left is "completed"
+    (its duration is known); the ticket's current status is an open segment whose
+    age is measured to now. Completed segments drive the average; open segments
+    report how long tickets have been waiting in their current status.
+    """
+    tickets = conn.execute(
+        "SELECT id, created_at, closed_at, status FROM tickets WHERE project_id = ?",
+        (project_id,),
+    ).fetchall()
+    events_by_ticket: Dict[int, List[Any]] = defaultdict(list)
+    for event in conn.execute(
+        """
+        SELECT ticket_id, old_value, new_value, created_at
+        FROM action_log
+        WHERE project_id = ? AND field = 'status'
+        ORDER BY ticket_id, created_at, id
+        """,
+        (project_id,),
+    ).fetchall():
+        events_by_ticket[int(event["ticket_id"])].append(event)
+
+    now = datetime.now(timezone.utc)
+    completed = {status: {"seconds": 0.0, "count": 0} for status in statuses}
+    current = {status: {"seconds": 0.0, "count": 0} for status in statuses}
+
+    for ticket in tickets:
+        created = _parse_iso(ticket["created_at"])
+        if created is None:
+            continue
+        events = events_by_ticket.get(int(ticket["id"]), [])
+        # Build (status, start, end) segments; end=None for the open one.
+        segments: List[Any] = []
+        if events:
+            start = created
+            seg_status = events[0]["old_value"] or ticket["status"]
+            for event in events:
+                end = _parse_iso(event["created_at"])
+                if end is None:
+                    continue
+                segments.append((seg_status, start, end))
+                start, seg_status = end, event["new_value"]
+            segments.append((seg_status, start, None))
+        else:
+            segments.append((ticket["status"], created, None))
+
+        for seg_status, start, end in segments:
+            if seg_status not in completed:
+                continue  # status no longer enabled for this project
+            if end is not None:
+                seconds = (end - start).total_seconds()
+                if seconds >= 0:
+                    completed[seg_status]["seconds"] += seconds
+                    completed[seg_status]["count"] += 1
+            else:
+                seconds = (now - start).total_seconds()
+                if seconds >= 0:
+                    current[seg_status]["seconds"] += seconds
+                    current[seg_status]["count"] += 1
+
+    groups = []
+    for status in statuses:
+        done, here = completed[status], current[status]
+        avg_completed = done["seconds"] / done["count"] if done["count"] else 0.0
+        avg_current = here["seconds"] / here["count"] if here["count"] else 0.0
+        groups.append(
+            {
+                "value": status,
+                "label": status,
+                "avg_completed_seconds": avg_completed,
+                "completed_count": done["count"],
+                "avg_completed_label": _format_duration(avg_completed) if done["count"] else "",
+                "avg_current_seconds": avg_current,
+                "current_count": here["count"],
+                "avg_current_label": _format_duration(avg_current) if here["count"] else "",
+            }
+        )
+    max_avg = max([1.0] + [group["avg_completed_seconds"] for group in groups])
+    for group in groups:
+        group["completed_percent"] = int(round((group["avg_completed_seconds"] / max_avg) * 100))
+    return groups
 
 
 def _stats_assignee_key(row: Dict[str, Any]) -> str:
@@ -105,6 +220,7 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
                 (project["id"],),
             ).fetchall()
         )
+        status_time_groups = _status_time_groups(conn, int(project["id"]), statuses)
 
     sorted_rows = sorted(rows, key=lambda row: (row["updated_at"], row["number"]), reverse=True)
 
@@ -231,6 +347,7 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
             "open_story_points": int(summary_row.get("open_story_points") or 0),
         },
         "status_groups": status_groups,
+        "status_time_groups": status_time_groups,
         "priority_groups": priority_groups,
         "type_groups": type_groups,
         "assignee_groups": assignee_groups,
