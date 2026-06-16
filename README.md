@@ -56,6 +56,9 @@ DEPLOY_PUBLIC=true DEPLOY_HOST=deploy@example.com ./deploy.sh
 Public deploy mode requires `BASE_URL=https://...`, `ALLOW_DEV_LOGIN=false`,
 `SESSION_COOKIE_SECURE=true`, and signed webhooks in the server `.env`. Keep
 uvicorn bound to `127.0.0.1:8380` and publish it through an HTTPS reverse proxy.
+RoundTable is intentionally operated as a single app process with SQLite; do not
+run multiple web workers against the same local deployment unless the architecture
+is changed deliberately.
 
 For public repo vs private server configuration separation, see
 [docs/deployment-separation.md](docs/deployment-separation.md). In short: keep
@@ -87,8 +90,9 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
   visibility.
 - GitHub App OAuth login and webhook-based linking for branches, commits, and PRs.
 - MCP-style JSON-RPC endpoint for ticket automation.
-- Telegram notifications through a SQLite outbox with retries. SMTP support exists
-  for teams that configure it, but Telegram is the primary phone-friendly channel.
+- Telegram notifications through an in-process SQLite outbox loop with retries.
+  SMTP support exists for teams that configure it, but Telegram is the primary
+  phone-friendly channel.
 
 ## Web Routes
 
@@ -210,8 +214,9 @@ RoundTable includes a notification system based on a SQLite outbox.
 Supported channels:
 
 - Telegram through Bot API as the primary phone notification channel
-- Email through SMTP remains available in the worker, but the UI treats it as
-  optional because GitHub profiles often do not expose email addresses
+- Email through SMTP remains available in the same in-process outbox loop, but
+  the UI treats it as optional because GitHub profiles often do not expose email
+  addresses
 
 Notifications are queued, retried with exponential backoff, and filtered by
 user preferences. Typical notification events are assignment, comments, status

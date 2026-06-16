@@ -29,7 +29,7 @@ app/
   store.py           data layer — ALL sql goes here
   db.py              schema + init_db(); TICKET_STATUSES, PRIORITIES
   security.py        sessions, CSRF, hashing, webhook signatures
-  notifications.py   SQLite outbox worker (email + telegram)
+  notifications.py   in-process SQLite outbox loop (email + telegram)
   github_integration.py / mcp_server.py
   templates/*.html   Jinja pages (extend base.html)
   static/app.js      i18n, theming, board DnD, inline edits
@@ -74,8 +74,11 @@ deploy.sh, deploy/   deployment (see below)
   Status changes by drag (pointer events) or inline `[data-inline-field]` → `PATCH
   /api/tickets/{key}`. Quick comments are handled through the compact comment chip
   popover → `POST .../comments`.
-- **Notifications** go through the SQLite outbox + background worker; Telegram is a
-  **per-user bot DM** (each user links their own chat). There is no shared channel.
+- **Notifications** go through the SQLite outbox + an in-process async loop;
+  Telegram is a **per-user bot DM** (each user links their own chat). There is no
+  shared channel. RoundTable is intentionally deployed as one app process with
+  SQLite; do not add Redis, external queues, or multi-worker coordination unless
+  the product decision changes.
 
 ## Gotchas (learned the hard way)
 

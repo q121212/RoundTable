@@ -35,7 +35,6 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(settings.database_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
@@ -54,6 +53,7 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 
 def init_db() -> None:
     with get_conn() as conn:
+        conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (

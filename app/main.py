@@ -8,7 +8,7 @@ import secrets
 from contextlib import asynccontextmanager
 from json import JSONDecodeError
 from typing import Any, AsyncIterator, Dict, Optional
-from urllib.parse import urlencode
+from urllib.parse import urlparse, urlencode
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
@@ -230,6 +230,25 @@ def render(
 
 def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+def safe_redirect_target(request: Request, fallback: str) -> str:
+    """Return a same-site redirect target, ignoring hostile Referer values."""
+    candidate = str(request.headers.get("referer") or "").strip()
+    if not candidate:
+        return fallback
+    parsed = urlparse(candidate)
+    if parsed.scheme or parsed.netloc:
+        base = urlparse(settings.base_url)
+        if parsed.scheme != base.scheme or parsed.netloc != base.netloc:
+            return fallback
+        target = parsed.path or "/"
+        if parsed.query:
+            target = "%s?%s" % (target, parsed.query)
+        return target
+    if not candidate.startswith("/") or candidate.startswith("//"):
+        return fallback
+    return candidate
 
 
 def render_mentions(text: str, members: list[Dict[str, Any]]) -> Markup:
@@ -519,7 +538,7 @@ async def api_update_sprint_status(request: Request, project_key: str, sprint_id
     user = await validate_csrf_request(request)
     form = await request.form()
     update_sprint_status(user, project_key, sprint_id, str(form.get("status") or "planned"))
-    return redirect(str(request.headers.get("referer") or "/p/%s/sprints" % project_key.upper()))
+    return redirect(safe_redirect_target(request, "/p/%s/sprints" % project_key.upper()))
 
 
 @app.post("/api/projects/{project_key}/sprints/{sprint_id}")
@@ -535,7 +554,7 @@ async def api_update_sprint(request: Request, project_key: str, sprint_id: int) 
         str(form.get("starts_on") or ""),
         str(form.get("ends_on") or ""),
     )
-    return redirect(str(request.headers.get("referer") or "/p/%s/sprints" % project_key.upper()))
+    return redirect(safe_redirect_target(request, "/p/%s/sprints" % project_key.upper()))
 
 
 @app.post("/api/projects/{project_key}/members")
@@ -545,7 +564,7 @@ async def api_add_member(request: Request, project_key: str) -> RedirectResponse
     require_project_admin(user, int(project["id"]))
     form = await request.form()
     add_project_member(int(project["id"]), str(form.get("login") or ""), str(form.get("role") or "member"))
-    return redirect(str(request.headers.get("referer") or "/p/%s/settings" % project["key"]))
+    return redirect(safe_redirect_target(request, "/p/%s/settings" % project["key"]))
 
 
 @app.post("/api/projects/{project_key}/members/{member_id}")
@@ -689,7 +708,7 @@ async def api_update_ticket_form(request: Request, ticket_key: str) -> RedirectR
         sprint_touched="sprint_id" in form,
     )
     await publish_ticket_event(ticket)
-    return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
+    return redirect(safe_redirect_target(request, "/t/%s" % ticket_key))
 
 
 @app.post("/api/tickets/{ticket_key}/quick-update")
@@ -714,7 +733,7 @@ async def api_quick_update_ticket(request: Request, ticket_key: str) -> Redirect
         add_comment(user, ticket_key, comment)
         ticket = get_ticket_bundle(ticket_key)["ticket"]
     await publish_ticket_event(ticket, "ticket_changed")
-    return redirect(str(request.headers.get("referer") or "/t/%s" % ticket_key))
+    return redirect(safe_redirect_target(request, "/t/%s" % ticket_key))
 
 
 @app.patch("/api/tickets/{ticket_key}")

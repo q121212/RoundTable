@@ -308,6 +308,25 @@ def test_sprint_page_is_project_admin_only_and_actions_return_there(temp_db):
     assert forbidden.status_code == 403
 
 
+def test_mutation_redirects_ignore_external_referer(temp_db):
+    admin = upsert_user("alice", email="alice@example.com")
+    create_project(admin, "SPR", "Sprint Project")
+    sprint = create_sprint(admin, "SPR", "Sprint 1", status_value="closed")
+    session = create_session(int(admin["id"]))
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+
+    response = client.post(
+        f"/api/projects/SPR/sprints/{sprint['id']}/status",
+        data={"csrf_token": session["csrf"], "status": "planned"},
+        headers={"referer": "https://evil.example/phish"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/p/SPR/sprints"
+
+
 def test_only_one_sprint_can_be_active_per_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
