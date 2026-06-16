@@ -1667,52 +1667,44 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
     }
 
 
-def _preview_tickets_by_group_conn(conn: Any, project_id: int, group_sql: str) -> Dict[str, List[Dict[str, Any]]]:
-    rows = rows_to_dicts(
-        conn.execute(
-            """
-            SELECT group_value, key, title, story_points
-            FROM (
-                SELECT %s AS group_value,
-                       tickets.key,
-                       tickets.title,
-                       tickets.story_points,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY %s
-                           ORDER BY tickets.updated_at DESC, tickets.number DESC
-                       ) AS row_number
-                FROM tickets
-                WHERE tickets.project_id = ?
-            )
-            WHERE row_number <= 8
-            ORDER BY group_value, row_number
-            """
-            % (group_sql, group_sql),
-            (project_id,),
-        ).fetchall()
-    )
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
+def _stats_assignee_key(row: Dict[str, Any]) -> str:
+    return str(row["assignee_id"]) if row["assignee_id"] is not None else "unassigned"
+
+
+def _stats_sprint_key(row: Dict[str, Any]) -> str:
+    return str(row["sprint_id"]) if row["sprint_id"] is not None else "none"
+
+
+def _stats_aggregate(rows: List[Dict[str, Any]], key_fn) -> Dict[str, Dict[str, Any]]:
+    """Count and sum story points per group value, in one pass over rows.
+    Replaces a per-dimension SQL GROUP BY scan."""
+    aggregates: Dict[str, Dict[str, Any]] = {}
     for row in rows:
-        grouped.setdefault(str(row["group_value"]), []).append(row)
-    return grouped
+        value = key_fn(row)
+        slot = aggregates.setdefault(value, {"group_value": value, "count": 0, "story_points": 0})
+        slot["count"] += 1
+        slot["story_points"] += int(row["story_points"] or 0)
+    return aggregates
 
 
-def _aggregate_counts_conn(conn: Any, project_id: int, group_sql: str) -> Dict[str, Dict[str, Any]]:
-    rows = rows_to_dicts(
-        conn.execute(
-            """
-            SELECT %s AS group_value,
-                   COUNT(*) AS count,
-                   COALESCE(SUM(story_points), 0) AS story_points
-            FROM tickets
-            WHERE project_id = ?
-            GROUP BY %s
-            """
-            % (group_sql, group_sql),
-            (project_id,),
-        ).fetchall()
-    )
-    return {str(row["group_value"]): row for row in rows}
+def _stats_previews(sorted_rows: List[Dict[str, Any]], key_fn, limit: int = 8) -> Dict[str, List[Dict[str, Any]]]:
+    """Top-`limit` preview tickets per group value. `sorted_rows` must already be
+    ordered (updated_at DESC, number DESC); taking the first `limit` per group in
+    that order reproduces the per-partition ROW_NUMBER window."""
+    previews: Dict[str, List[Dict[str, Any]]] = {}
+    for row in sorted_rows:
+        value = key_fn(row)
+        bucket = previews.setdefault(value, [])
+        if len(bucket) < limit:
+            bucket.append(
+                {
+                    "group_value": value,
+                    "key": row["key"],
+                    "title": row["title"],
+                    "story_points": row["story_points"],
+                }
+            )
+    return previews
 
 
 def _stats_group_from_maps(
@@ -1742,56 +1734,76 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
     statuses = project_statuses(project)
     ticket_types = project_ticket_types(project)
     sprints = list_project_sprints(int(project["id"]))
+    # Single scan over the project's tickets; all summaries, per-dimension
+    # aggregates, and previews are then computed in Python. This replaces the
+    # previous 12 separate SQL scans (1 summary + 5 group-bys + 5 windowed
+    # previews + 1 assignee-label query) with one query.
     with get_conn() as conn:
-        summary_row = row_to_dict(
+        rows = rows_to_dicts(
             conn.execute(
                 """
-                SELECT COUNT(*) AS total_tickets,
-                       COALESCE(SUM(story_points), 0) AS story_points,
-                       SUM(CASE WHEN status NOT IN ('Done', 'Closed') THEN 1 ELSE 0 END) AS open_tickets,
-                       COALESCE(SUM(CASE WHEN status NOT IN ('Done', 'Closed') THEN story_points ELSE 0 END), 0)
-                           AS open_story_points,
-                       SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) AS done_tickets,
-                       SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) AS closed_tickets
-                FROM tickets
-                WHERE tickets.project_id = ?
-                """,
-                (project["id"],),
-            ).fetchone()
-        ) or {}
-        status_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "status")
-        priority_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "priority")
-        type_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "ticket_type")
-        assignee_aggregates = _aggregate_counts_conn(
-            conn, int(project["id"]), "COALESCE(CAST(assignee_id AS TEXT), 'unassigned')"
-        )
-        sprint_aggregates = _aggregate_counts_conn(
-            conn, int(project["id"]), "COALESCE(CAST(sprint_id AS TEXT), 'none')"
-        )
-        status_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "status")
-        priority_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "priority")
-        type_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "ticket_type")
-        assignee_previews = _preview_tickets_by_group_conn(
-            conn, int(project["id"]), "COALESCE(CAST(assignee_id AS TEXT), 'unassigned')"
-        )
-        sprint_previews = _preview_tickets_by_group_conn(
-            conn, int(project["id"]), "COALESCE(CAST(sprint_id AS TEXT), 'none')"
-        )
-        assignee_rows = rows_to_dicts(
-            conn.execute(
-                """
-                SELECT COALESCE(CAST(users.id AS TEXT), 'unassigned') AS value,
-                       COALESCE(users.name, users.login, 'Unassigned') AS label,
-                       COALESCE(users.login, '') AS login,
-                       COALESCE(users.avatar_url, '') AS avatar_url
+                SELECT tickets.status,
+                       tickets.priority,
+                       tickets.ticket_type,
+                       tickets.assignee_id,
+                       tickets.sprint_id,
+                       tickets.story_points,
+                       tickets.key,
+                       tickets.title,
+                       tickets.updated_at,
+                       tickets.number,
+                       users.name AS assignee_name,
+                       users.login AS assignee_login,
+                       users.avatar_url AS assignee_avatar_url
                 FROM tickets
                 LEFT JOIN users ON users.id = tickets.assignee_id
                 WHERE tickets.project_id = ?
-                GROUP BY tickets.assignee_id
                 """,
                 (project["id"],),
             ).fetchall()
         )
+
+    sorted_rows = sorted(rows, key=lambda row: (row["updated_at"], row["number"]), reverse=True)
+
+    status_aggregates = _stats_aggregate(rows, lambda row: row["status"])
+    priority_aggregates = _stats_aggregate(rows, lambda row: row["priority"])
+    type_aggregates = _stats_aggregate(rows, lambda row: row["ticket_type"])
+    assignee_aggregates = _stats_aggregate(rows, _stats_assignee_key)
+    sprint_aggregates = _stats_aggregate(rows, _stats_sprint_key)
+    status_previews = _stats_previews(sorted_rows, lambda row: row["status"])
+    priority_previews = _stats_previews(sorted_rows, lambda row: row["priority"])
+    type_previews = _stats_previews(sorted_rows, lambda row: row["ticket_type"])
+    assignee_previews = _stats_previews(sorted_rows, _stats_assignee_key)
+    sprint_previews = _stats_previews(sorted_rows, _stats_sprint_key)
+
+    # Distinct assignees that have tickets (matches GROUP BY tickets.assignee_id).
+    assignee_rows = []
+    seen_assignees = set()
+    for row in rows:
+        value = _stats_assignee_key(row)
+        if value in seen_assignees:
+            continue
+        seen_assignees.add(value)
+        assignee_rows.append(
+            {
+                "value": value,
+                "label": row["assignee_name"] or row["assignee_login"] or "Unassigned",
+                "login": row["assignee_login"] or "",
+                "avatar_url": row["assignee_avatar_url"] or "",
+            }
+        )
+
+    open_statuses = ("Done", "Closed")
+    summary_row = {
+        "total_tickets": len(rows),
+        "story_points": sum(int(row["story_points"] or 0) for row in rows),
+        "open_tickets": sum(1 for row in rows if row["status"] not in open_statuses),
+        "open_story_points": sum(
+            int(row["story_points"] or 0) for row in rows if row["status"] not in open_statuses
+        ),
+        "done_tickets": sum(1 for row in rows if row["status"] == "Done"),
+        "closed_tickets": sum(1 for row in rows if row["status"] == "Closed"),
+    }
 
     total_points = int(summary_row.get("story_points") or 0)
     status_groups = [
