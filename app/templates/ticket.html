@@ -233,10 +233,13 @@
               <form class="ticket-link-edit-form" method="post" action="/api/tickets/{{ ticket.key }}/links/{{ link.id }}">
                 <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
                 <div class="ticket-link-edit-head">
-                  <span class="field-badge">{{ ticket.key }}</span>
-                  <a class="ticket-link-type-badge field-badge ticket-type-badge" href="/t/{{ link.other_key }}">
-                    <span class="type-icon type-{{ link.other_ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(link.other_ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
-                    <span data-i18n="type.{{ link.other_ticket_type }}">{{ link.other_ticket_type }}</span>
+                  <a class="ticket-link-target-summary" href="/t/{{ link.other_key }}">
+                    <span class="ticket-link-type-badge field-badge ticket-type-badge">
+                      <span class="type-icon type-{{ link.other_ticket_type|lower }}" data-icon="{{ ticket_type_icons.get(link.other_ticket_type, 'circle-dot') }}" aria-hidden="true"></span>
+                      <span data-i18n="type.{{ link.other_ticket_type }}">{{ link.other_ticket_type }}</span>
+                    </span>
+                    <strong>{{ link.other_key }}</strong>
+                    <span>{{ link.other_title }}</span>
                   </a>
                 </div>
                 <div class="ticket-link-edit-fields">
@@ -267,10 +270,12 @@
                       <div class="ticket-search-menu" data-ticket-search-results role="listbox"></div>
                     </div>
                   </label>
+                </div>
+                <div class="ticket-link-actions">
                   <button class="secondary tiny" type="submit" data-icon="save" data-i18n="action.save">Save</button>
                 </div>
               </form>
-              <form method="post" action="/api/tickets/{{ ticket.key }}/links/{{ link.id }}/delete">
+              <form class="ticket-link-remove-form" method="post" action="/api/tickets/{{ ticket.key }}/links/{{ link.id }}/delete">
                 <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
                 <button class="ghost tiny" type="submit" data-icon="unlink" data-i18n="action.remove">Remove</button>
               </form>

@@ -1177,15 +1177,32 @@ button,
   flex-wrap: wrap;
 }
 
+.ticket-link-target-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--ink);
+}
+
 .ticket-link-type-badge {
   color: var(--green-dark);
 }
 
 .ticket-link-edit-fields {
   display: grid;
-  grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr) auto;
+  grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr);
   align-items: start;
   gap: 8px;
+}
+
+.ticket-link-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ticket-link-remove-form {
+  display: flex;
 }
 
 .ticket-link-edit-form label {
@@ -3559,6 +3576,15 @@ a.ticket-key:hover {
 
   .ticket-link-edit-form {
     grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .ticket-link-edit-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-link-actions,
+  .ticket-link-remove-form {
     width: 100%;
   }
 
