@@ -282,6 +282,20 @@ def init_db() -> None:
                 ON ticket_mentions(ticket_id, mentioned_user_id);
             CREATE INDEX IF NOT EXISTS idx_ticket_mentions_user
                 ON ticket_mentions(mentioned_user_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_notification_outbox_due
+                ON notification_outbox(status, next_attempt_at);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_created
+                ON api_audit(created_at);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_user
+                ON api_audit(user_id, created_at);
+            """
+        )
+        # The unique pair index is created AFTER deduplicating, because a
+        # database that predates the index may already contain mirrored
+        # duplicates. Creating the index first would raise and abort startup.
+        _dedupe_ticket_links_conn(conn)
+        conn.execute(
+            """
             CREATE UNIQUE INDEX IF NOT EXISTS idx_ticket_links_unique_pair
                 ON ticket_links(
                     CASE
@@ -292,13 +306,7 @@ def init_db() -> None:
                         WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
                         ELSE source_ticket_id
                     END
-                );
-            CREATE INDEX IF NOT EXISTS idx_notification_outbox_due
-                ON notification_outbox(status, next_attempt_at);
-            CREATE INDEX IF NOT EXISTS idx_api_audit_created
-                ON api_audit(created_at);
-            CREATE INDEX IF NOT EXISTS idx_api_audit_user
-                ON api_audit(user_id, created_at);
+                )
             """
         )
         # Additive, idempotent column migrations for existing databases.
@@ -321,30 +329,41 @@ def init_db() -> None:
         _backfill_ticket_sort_order(conn)
 
 
+def _dedupe_ticket_links_conn(conn: sqlite3.Connection) -> int:
+    """Collapse mirrored/duplicate ticket links to one row per normalized pair,
+    keeping the lowest id. Safe no-op on a fresh (empty) table. Shared by
+    init_db (before the unique index is created) and the manual repair command."""
+    if not conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'ticket_links'"
+    ).fetchone():
+        return 0
+    before = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
+    conn.execute(
+        """
+        DELETE FROM ticket_links
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM ticket_links
+            GROUP BY
+                CASE
+                    WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
+                    ELSE target_ticket_id
+                END,
+                CASE
+                    WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
+                    ELSE source_ticket_id
+                END
+        )
+        """
+    )
+    after = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
+    return int(before - after)
+
+
 def repair_ticket_link_duplicates() -> int:
     """Explicit maintenance command for old databases that predate the unique link index."""
     with get_conn() as conn:
-        before = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
-        conn.execute(
-            """
-            DELETE FROM ticket_links
-            WHERE id NOT IN (
-                SELECT MIN(id)
-                FROM ticket_links
-                GROUP BY
-                    CASE
-                        WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
-                        ELSE target_ticket_id
-                    END,
-                    CASE
-                        WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
-                        ELSE source_ticket_id
-                    END
-            )
-            """
-        )
-        after = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
-        return int(before - after)
+        return _dedupe_ticket_links_conn(conn)
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
