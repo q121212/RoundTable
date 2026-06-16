@@ -67,6 +67,9 @@ deploy.sh, deploy/   deployment (see below)
 - **Statistics:** `/p/{project_key}/stats` summarizes tickets/story points by
   status, priority, type, assignee, and sprint. Visibility is project-configured
   (`all` by default, or project admins only).
+- **Sprints:** projects may have multiple active sprints. The board's
+  `Active sprints` filter is a view over all active sprints, not a singleton
+  sprint selector. Activating a sprint must not silently deactivate another one.
 - **Ticket deletion:** available only from the ticket page and only when allowed
   by the project's deletion policy. Default policy is project admins only. Keep
   confirmation-by-ticket-key and live board removal/count refresh intact.

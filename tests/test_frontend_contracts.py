@@ -58,8 +58,8 @@ def test_sprint_dates_use_localized_option_labels():
     assert 'data-i18n-tooltip="help.priority"' in script
     assert 'translate("sprint.filter_modes"' in script
     assert 'translate("sprint.open_sprints"' in script
-    assert '"sprint.active": "Active sprint"' in script
-    assert '"sprint.active": "Активный спринт"' in script
+    assert '"sprint.active": "Active sprints"' in script
+    assert '"sprint.active": "Активные спринты"' in script
 
 
 def test_popover_icons_render_after_menu_enters_dom():

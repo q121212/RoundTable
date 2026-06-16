@@ -484,8 +484,6 @@ def create_sprint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sprint end date cannot be before start date")
     now = utcnow()
     with get_conn() as conn:
-        if status_value == "active":
-            conn.execute("UPDATE sprints SET status = 'planned' WHERE project_id = ? AND status = 'active'", (project["id"],))
         try:
             cur = conn.execute(
                 """
@@ -577,8 +575,6 @@ def update_sprint_status(user: Dict[str, Any], project_key: str, sprint_id: int,
         )
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found")
-        if status_value == "active":
-            conn.execute("UPDATE sprints SET status = 'planned' WHERE project_id = ? AND status = 'active'", (project["id"],))
         conn.execute(
             "UPDATE sprints SET status = ?, closed_at = ? WHERE id = ?",
             (status_value, now if status_value == "closed" else None, sprint_id),
@@ -1560,15 +1556,16 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
         if sprint_filter == "none":
             where.append("tickets.sprint_id IS NULL")
         elif sprint_filter == "active":
-            current_sprint = row_to_dict(
+            active_sprints = rows_to_dicts(
                 conn.execute(
-                    "SELECT * FROM sprints WHERE project_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1",
+                    "SELECT * FROM sprints WHERE project_id = ? AND status = 'active' ORDER BY starts_on DESC, created_at DESC",
                     (project["id"],),
-                ).fetchone()
+                ).fetchall()
             )
-            if current_sprint:
-                where.append("tickets.sprint_id = ?")
-                params.append(current_sprint["id"])
+            if active_sprints:
+                placeholders = ",".join("?" for _ in active_sprints)
+                where.append("tickets.sprint_id IN (%s)" % placeholders)
+                params.extend([sprint["id"] for sprint in active_sprints])
             else:
                 where.append("1 = 0")
         elif sprint_filter:
@@ -1781,7 +1778,7 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
         "type_groups": type_groups,
         "assignee_groups": assignee_groups,
         "sprint_groups": sprint_groups,
-        "active_sprint": next((sprint for sprint in sprints if sprint.get("status") == "active"), None),
+        "active_sprints": [sprint for sprint in sprints if sprint.get("status") == "active"],
     }
 
 

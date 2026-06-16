@@ -181,8 +181,8 @@
         <h2 data-i18n="stats.sprints">Sprints</h2>
         <p class="muted" data-i18n="stats.sprints_help">Tickets and story points planned by sprint.</p>
       </div>
-      {% if active_sprint %}
-        <span class="field-badge" data-i18n="sprint.active">Active</span>
+      {% if active_sprints %}
+        <span class="field-badge"><span data-i18n="sprint.active">Active sprints</span> · {{ active_sprints|length }}</span>
       {% endif %}
     </div>
     <div class="stats-sprint-list">
@@ -197,7 +197,11 @@
               {% endif %}
             </h3>
             {% if group.status %}
-              <span class="field-badge" data-i18n="sprint.{{ group.status }}">{{ group.status }}</span>
+              {% if group.status == "active" %}
+                <span class="field-badge" data-i18n="sprint.active_short">active</span>
+              {% else %}
+                <span class="field-badge" data-i18n="sprint.{{ group.status }}">{{ group.status }}</span>
+              {% endif %}
             {% endif %}
           </div>
           {% if group.href %}

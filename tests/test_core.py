@@ -327,17 +327,21 @@ def test_mutation_redirects_ignore_external_referer(temp_db):
     assert response.headers["location"] == "/p/SPR/sprints"
 
 
-def test_only_one_sprint_can_be_active_per_project(temp_db):
+def test_multiple_sprints_can_be_active_per_project(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "RT", "RoundTable")
     first = create_sprint(user, "RT", "Sprint 1", status_value="active")
-    second = create_sprint(user, "RT", "Sprint 2")
+    second = create_sprint(user, "RT", "Sprint 2", status_value="active")
+    first_ticket = create_ticket(user, "RT", "First sprint work", sprint_id=first["id"])
+    second_ticket = create_ticket(user, "RT", "Second sprint work", sprint_id=second["id"])
 
     update_sprint_status(user, "RT", int(second["id"]), "active")
     sprints = {sprint["name"]: sprint["status"] for sprint in list_project_sprints(int(first["project_id"]))}
+    active_board_keys = [ticket["key"] for ticket in board_for_project("RT", user, sprint_filter="active")["columns"]["Backlog"]]
 
-    assert sprints["Sprint 1"] == "planned"
+    assert sprints["Sprint 1"] == "active"
     assert sprints["Sprint 2"] == "active"
+    assert active_board_keys == [second_ticket["key"], first_ticket["key"]]
 
 
 def test_project_admin_can_reopen_closed_sprint(temp_db):

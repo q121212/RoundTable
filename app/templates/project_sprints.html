@@ -35,7 +35,7 @@
           <span class="label-row"><span data-i18n="sprint.status">Status</span></span>
           <select name="status">
             <option value="planned" data-i18n="sprint.planned">Planned</option>
-            <option value="active" data-i18n="sprint.active">Active</option>
+            <option value="active" data-i18n="sprint.active_short">Active</option>
           </select>
         </label>
       </div>
@@ -69,7 +69,11 @@
         <div class="table-row sprint-row">
           <div class="sprint-row-summary">
             <div class="sprint-row-meta">
-              <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
+              {% if sprint.status == "active" %}
+                <span class="field-badge" data-i18n="sprint.active_short">active</span>
+              {% else %}
+                <span class="field-badge" data-i18n="sprint.{{ sprint.status }}">{{ sprint.status }}</span>
+              {% endif %}
               <span class="muted {% if sprint.ticket_preview %}tooltip-anchor{% endif %}"
                 {% if sprint.ticket_preview %}
                   data-tooltip="{% for ticket in sprint.ticket_preview %}{{ ticket.key }} · {{ ticket.title }}{% if not loop.last %}; {% endif %}{% endfor %}{% if sprint.ticket_preview_more %}; +{{ sprint.ticket_preview_more }}{% endif %}"

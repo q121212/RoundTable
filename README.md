@@ -76,8 +76,9 @@ ops repo, and pass private deploy settings with `DEPLOY_ENV_FILE`.
 - Ticket details with title, markdown-ready description, configurable type,
   status, priority, story points, sprint, assignee, reporter, watchers,
   comments, GitHub links, ticket-to-ticket links, and timestamps.
-- Sprint planning with planned/active/closed sprints, sprint filtering on the
-  board, sprint progress hints on cards, and project-admin sprint management.
+- Sprint planning with planned/active/closed sprints, including multiple active
+  sprints, sprint filtering on the board, sprint progress hints on cards, and
+  project-admin sprint management.
 - Project statistics with ticket and story-point breakdowns by status,
   priority, type, assignee, and sprint.
 - Project-configurable ticket deletion policy. By default only project admins can

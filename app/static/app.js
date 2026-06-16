@@ -217,7 +217,7 @@
       "stats.visibility_viewer": "Viewers, members, and admins",
       "stats.workload": "Workload",
       "sprint.activate": "Activate",
-      "sprint.active": "Active sprint",
+      "sprint.active": "Active sprints",
       "sprint.active_short": "Active",
       "sprint.all": "All sprints",
       "sprint.backlog": "No sprint",
@@ -534,7 +534,7 @@
       "stats.visibility_viewer": "Наблюдатели, участники и админы",
       "stats.workload": "Нагрузка",
       "sprint.activate": "Активировать",
-      "sprint.active": "Активный спринт",
+      "sprint.active": "Активные спринты",
       "sprint.active_short": "Активный",
       "sprint.all": "Все спринты",
       "sprint.backlog": "Без спринта",
@@ -2839,7 +2839,7 @@
     return [
       { value: "", label: translate("sprint.all", currentLang()) || "All sprints" },
       { value: "none", label: translate("sprint.none", currentLang()) || "No sprint" },
-      { value: "active", label: translate("sprint.active", currentLang()) || "Active sprint" },
+      { value: "active", label: translate("sprint.active", currentLang()) || "Active sprints" },
     ];
   }
 
