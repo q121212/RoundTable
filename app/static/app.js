@@ -251,6 +251,7 @@
       "sprint.starts_on": "Starts",
       "sprint.status": "Status",
       "sprint.ticket_count": "tickets",
+      "sprint.ticket_count_short": "t",
       "sprint.days_left": "days left",
       "sprint.ended": "ended",
       "sprint.ends_today": "ends today",
@@ -568,6 +569,7 @@
       "sprint.starts_on": "Начало",
       "sprint.status": "Статус",
       "sprint.ticket_count": "тикетов",
+      "sprint.ticket_count_short": "т",
       "sprint.days_left": "дн. осталось",
       "sprint.ended": "завершился",
       "sprint.ends_today": "закончится сегодня",
@@ -1435,13 +1437,16 @@
         priorityIcon: true,
       }));
     } else if (field === "sprint_id") {
+      pop.classList.add("popover-sprint-options");
       options = [{ value: "", label: translate("sprint.none", currentLang()) || "No sprint" }];
       boardData("sprints", [])
         .filter((s) => s.status !== "closed")
         .forEach((s) => options.push({
           value: String(s.id),
           label: s.name,
-          meta: sprintDateRangeLabel(s.starts_on, s.ends_on),
+          meta: sprintMenuMeta(s),
+          title: sprintDisplayLabel(s),
+          ticket_count: Number(s.ticket_count || 0),
           status: s.status,
         }));
     } else if (field === "assignee_id") {
@@ -1457,6 +1462,11 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "popover-option";
+      if (opt.title) button.title = opt.title;
+      if (field === "sprint_id") {
+        button.classList.add("popover-sprint-option");
+        if (Number(opt.ticket_count || 0) > 0) button.classList.add("is-filled");
+      }
       if (String(opt.value) === String(current)) button.classList.add("is-current");
       if (opt.statusDot) {
         const dot = document.createElement("span");
@@ -1479,6 +1489,7 @@
         button.appendChild(avatar);
       }
       const label = document.createElement("span");
+      label.className = "popover-option-label";
       label.textContent = opt.label;
       button.appendChild(label);
       if (opt.meta || opt.status === "active") {
@@ -2605,10 +2616,48 @@
     return end;
   }
 
+  function compactDateOnly(value, includeYear = false) {
+    const date = parseDateOnly(value);
+    if (!date) return "";
+    const enMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const ruMonths = ["янв.", "фев.", "мар.", "апр.", "май", "июн.", "июл.", "авг.", "сен.", "окт.", "ноя.", "дек."];
+    const months = currentLang() === "ru" ? ruMonths : enMonths;
+    return `${date.getDate()} ${months[date.getMonth()]}${includeYear ? ` ${date.getFullYear()}` : ""}`;
+  }
+
+  function compactSprintDateRangeLabel(startValue, endValue) {
+    const start = parseDateOnly(startValue);
+    const end = parseDateOnly(endValue);
+    if (!start && !end) return "";
+    if (start && end) {
+      const sameYear = start.getFullYear() === end.getFullYear();
+      const sameMonth = sameYear && start.getMonth() === end.getMonth();
+      if (sameMonth) {
+        const endLabel = compactDateOnly(endValue, true);
+        return `${start.getDate()}-${endLabel}`;
+      }
+      return `${compactDateOnly(startValue, !sameYear)}-${compactDateOnly(endValue, true)}`;
+    }
+    return compactDateOnly(startValue || endValue, true);
+  }
+
+  function sprintShortLabel(sprint) {
+    return sprint?.name || "";
+  }
+
   function sprintDisplayLabel(sprint) {
     const name = sprint?.name || "";
     const range = sprintDateRangeLabel(sprint?.starts_on, sprint?.ends_on);
     return range ? `${name} · ${range}` : name;
+  }
+
+  function sprintMenuMeta(sprint) {
+    const parts = [];
+    const range = compactSprintDateRangeLabel(sprint?.starts_on, sprint?.ends_on);
+    if (range) parts.push(range);
+    const count = Number(sprint?.ticket_count || 0);
+    if (count > 0) parts.push(`${count} ${translate("sprint.ticket_count_short", currentLang()) || "t"}`);
+    return parts.join(" · ");
   }
 
   function setupSprintOptionLabels() {
@@ -2869,10 +2918,12 @@
     const service = sprintFilterServiceOptions().find((option) => option.value === current);
     if (service) {
       target.textContent = service.label;
+      target.removeAttribute("title");
       return;
     }
     const sprint = boardData("sprints", []).find((item) => String(item.id) === String(current));
-    target.textContent = sprint ? sprintDisplayLabel(sprint) : current;
+    target.textContent = sprint ? sprintShortLabel(sprint) : current;
+    if (sprint) target.title = sprintDisplayLabel(sprint);
   }
 
   function updateSprintFilterLabels() {
@@ -2905,6 +2956,8 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "sprint-filter-option";
+        if (option.title) button.title = option.title;
+        if (Number(option.ticket_count || 0) > 0) button.classList.add("is-filled");
         button.setAttribute("role", "option");
         if (String(option.value) === String(current)) {
           button.classList.add("is-current");
@@ -2946,7 +2999,9 @@
           .map((sprint) => ({
             value: String(sprint.id),
             label: sprint.name,
-            meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+            meta: sprintMenuMeta(sprint),
+            title: sprintDisplayLabel(sprint),
+            ticket_count: Number(sprint.ticket_count || 0),
             status: sprint.status,
           }))
       );
@@ -2956,7 +3011,9 @@
         recentClosed.map((sprint) => ({
           value: String(sprint.id),
           label: sprint.name,
-          meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+          meta: sprintMenuMeta(sprint),
+          title: sprintDisplayLabel(sprint),
+          ticket_count: Number(sprint.ticket_count || 0),
           status: sprint.status,
         }))
       );
@@ -2967,7 +3024,9 @@
         selectedArchived.map((sprint) => ({
           value: String(sprint.id),
           label: sprint.name,
-          meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+          meta: sprintMenuMeta(sprint),
+          title: sprintDisplayLabel(sprint),
+          ticket_count: Number(sprint.ticket_count || 0),
           status: sprint.status,
         }))
       );
@@ -2980,7 +3039,9 @@
       .map((sprint) => ({
         value: String(sprint.id),
         label: sprint.name,
-        meta: sprintDateRangeLabel(sprint.starts_on, sprint.ends_on),
+        meta: sprintMenuMeta(sprint),
+        title: sprintDisplayLabel(sprint),
+        ticket_count: Number(sprint.ticket_count || 0),
         status: sprint.status,
       }));
     addGroup(translate("sprint.sprints", currentLang()) || "Sprints", matches);

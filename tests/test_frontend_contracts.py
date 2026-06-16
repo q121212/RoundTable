@@ -37,9 +37,12 @@ def test_sprint_dates_use_localized_option_labels():
     script = (ROOT / "app/static/app.js").read_text()
     template = (ROOT / "app/templates/project_sprints.html").read_text()
     board_template = (ROOT / "app/templates/board.html").read_text()
+    styles = (ROOT / "app/static/styles.css").read_text()
 
     assert "function formatDateOnly" in script
     assert "function sprintDisplayLabel" in script
+    assert "function compactSprintDateRangeLabel" in script
+    assert "function sprintMenuMeta" in script
     assert "setupSprintOptionLabels();" in script
     assert "data-local-date" not in template
     assert "data-sprint-filter-combo" in board_template
@@ -60,6 +63,11 @@ def test_sprint_dates_use_localized_option_labels():
     assert 'translate("sprint.open_sprints"' in script
     assert '"sprint.active": "Active sprints"' in script
     assert '"sprint.active": "Активные спринты"' in script
+    assert '"sprint.ticket_count_short": "t"' in script
+    assert '"sprint.ticket_count_short": "т"' in script
+    assert "popover-sprint-option" in script
+    assert ".popover-sprint-option" in styles
+    assert ".sprint-filter-option.is-filled" in styles
 
 
 def test_popover_icons_render_after_menu_enters_dom():
