@@ -1,6 +1,14 @@
+from app.db import get_conn
 from app.live import project_events
 from app.main import publish_ticket_event
 from app.store import create_project, create_ticket, update_ticket, upsert_user
+
+
+def _action_log_count(ticket_id):
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM action_log WHERE ticket_id = ?", (ticket_id,)
+        ).fetchone()[0]
 
 
 async def test_noop_update_is_not_broadcast(temp_db):
@@ -11,16 +19,20 @@ async def test_noop_update_is_not_broadcast(temp_db):
     create_project(user, "NO", "NoOp")
     ticket = create_ticket(user, "NO", "Telemetry", story_points=3)
 
+    before = _action_log_count(int(ticket["id"]))
+
     queue = await project_events.subscribe("NO")
     try:
         noop = update_ticket(user, ticket["key"], story_points=3, story_points_touched=True)
         assert noop["_changed"] is False
+        assert _action_log_count(int(ticket["id"])) == before  # no audit row written
         action = await publish_ticket_event(noop)
         assert action is None
         assert queue.empty()  # nothing broadcast
 
         changed = update_ticket(user, ticket["key"], story_points=8, story_points_touched=True)
         assert changed["_changed"] is True
+        assert _action_log_count(int(ticket["id"])) > before  # real change is audited
         await publish_ticket_event(changed)
         assert not queue.empty()  # real change broadcast
     finally:

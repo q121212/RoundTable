@@ -47,6 +47,34 @@ def test_user_facing_strings_are_translated_in_both_languages():
         assert key in en_keys and key in ru_keys, "missing translation: %s" % key
 
 
+def test_all_i18n_keys_exist_in_every_locale():
+    """Guards the exact bug class 'RU selected but a caption stays English':
+    every key present in one locale must exist in all of them, so translate()
+    never silently falls back to English for a visible label."""
+    import re
+
+    lines = (ROOT / "app/static/app.js").read_text().splitlines()
+
+    def block_keys(opener):
+        start = next(i for i, line in enumerate(lines) if line.strip() == opener)
+        keys = []
+        for line in lines[start + 1:]:
+            match = re.match(r'\s*"([^"]+)"\s*:', line)
+            if match:
+                keys.append(match.group(1))
+            elif line.strip() in ("},", "}"):  # end of this locale block
+                break
+        return set(keys)
+
+    en_keys = block_keys("en: {")
+    ru_keys = block_keys("ru: {")
+    assert len(en_keys) > 100, "i18n dict not parsed as expected"
+    assert en_keys == ru_keys, "i18n locales out of sync — only in en: %s | only in ru: %s" % (
+        sorted(en_keys - ru_keys),
+        sorted(ru_keys - en_keys),
+    )
+
+
 def test_mention_menu_selection_does_not_close_board_popover():
     script = (ROOT / "app/static/app.js").read_text()
 
