@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import smtplib
+import time
 from email.message import EmailMessage
 from typing import Any, Dict, Optional
 
@@ -8,21 +9,46 @@ import httpx
 
 from .config import settings
 from .db import get_conn, row_to_dict, rows_to_dicts, utcnow
+from .rate_limit import rate_limiter
+from .store import purge_expired_records
 
 
 logger = logging.getLogger("roundtable.notifications")
 
+MAINTENANCE_INTERVAL_SECONDS = 3600
+
 
 async def notification_worker(stop_event: asyncio.Event) -> None:
+    last_maintenance = 0.0
     while not stop_event.is_set():
         try:
             await process_due_notifications()
         except Exception:
             logger.exception("notification worker iteration failed")
+        if time.monotonic() - last_maintenance >= MAINTENANCE_INTERVAL_SECONDS:
+            last_maintenance = time.monotonic()
+            await run_maintenance()
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=5)
         except asyncio.TimeoutError:
             continue
+
+
+async def run_maintenance() -> None:
+    """Periodic housekeeping: prune expired DB rows and stale rate-limit buckets.
+    Runs in the same in-process worker; no external scheduler or service."""
+    try:
+        # Blocking sqlite -> worker thread so it never stalls the event loop.
+        removed = await asyncio.to_thread(purge_expired_records)
+        if any(removed.values()):
+            logger.info("maintenance pruned records: %s", removed)
+    except Exception:
+        logger.exception("record purge failed")
+    try:
+        # prune() must run on the event loop thread (same as allow()).
+        rate_limiter.prune()
+    except Exception:
+        logger.exception("rate limiter prune failed")
 
 
 async def process_due_notifications(limit: int = 20) -> None:

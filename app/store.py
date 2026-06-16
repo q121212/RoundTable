@@ -2336,6 +2336,34 @@ def notification_preferences_conn(conn: Any, user_id: int) -> Dict[str, Any]:
     ) or {}
 
 
+def purge_expired_records(retention_days: Optional[int] = None) -> Dict[str, int]:
+    """Delete rows that are safe to drop so service tables do not grow forever:
+    expired sessions, expired/old-used telegram link tokens, and audit/history
+    rows past the retention window. Returns a count of rows removed per table."""
+    days = settings.audit_retention_days if retention_days is None else retention_days
+    now_dt = datetime.now(timezone.utc)
+    now = now_dt.replace(microsecond=0).isoformat()
+    used_cutoff = (now_dt - timedelta(days=1)).replace(microsecond=0).isoformat()
+    audit_cutoff = (now_dt - timedelta(days=max(0, days))).replace(microsecond=0).isoformat()
+    with get_conn() as conn:
+        sessions = conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,)).rowcount
+        tokens = conn.execute(
+            """
+            DELETE FROM telegram_link_tokens
+            WHERE expires_at <= ? OR (used_at IS NOT NULL AND used_at <= ?)
+            """,
+            (now, used_cutoff),
+        ).rowcount
+        audit = conn.execute("DELETE FROM api_audit WHERE created_at < ?", (audit_cutoff,)).rowcount
+        actions = conn.execute("DELETE FROM action_log WHERE created_at < ?", (audit_cutoff,)).rowcount
+    return {
+        "sessions": int(sessions or 0),
+        "telegram_link_tokens": int(tokens or 0),
+        "api_audit": int(audit or 0),
+        "action_log": int(actions or 0),
+    }
+
+
 def record_api_audit(
     user_id: Optional[int],
     token_id: Optional[int],

@@ -65,6 +65,10 @@ class Settings:
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_webhook_secret: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
+    # Retention for the append-only audit/history tables (api_audit, action_log).
+    # Rows older than this are pruned by the background maintenance pass.
+    audit_retention_days: int = int(os.getenv("AUDIT_RETENTION_DAYS", "90"))
+
     def __post_init__(self) -> None:
         object.__setattr__(self, "admin_github_logins", _list("ADMIN_GITHUB_LOGINS"))
 
