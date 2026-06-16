@@ -167,21 +167,6 @@ def init_db() -> None:
                 CHECK (source_ticket_id != target_ticket_id)
             );
 
-            DELETE FROM ticket_links
-            WHERE id NOT IN (
-                SELECT MIN(id)
-                FROM ticket_links
-                GROUP BY
-                    CASE
-                        WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
-                        ELSE target_ticket_id
-                    END,
-                    CASE
-                        WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
-                        ELSE source_ticket_id
-                    END
-            );
-
             CREATE TABLE IF NOT EXISTS action_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
@@ -268,6 +253,17 @@ def init_db() -> None:
                 sent_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS api_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                token_id INTEGER REFERENCES mcp_tokens(id) ON DELETE SET NULL,
+                route TEXT NOT NULL,
+                action TEXT NOT NULL,
+                client TEXT,
+                user_agent TEXT,
+                created_at TEXT NOT NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_tickets_project_status
                 ON tickets(project_id, status, sort_order, updated_at);
             CREATE INDEX IF NOT EXISTS idx_sprints_project_status
@@ -295,6 +291,10 @@ def init_db() -> None:
                 );
             CREATE INDEX IF NOT EXISTS idx_notification_outbox_due
                 ON notification_outbox(status, next_attempt_at);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_created
+                ON api_audit(created_at);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_user
+                ON api_audit(user_id, created_at);
             """
         )
         # Additive, idempotent column migrations for existing databases.
@@ -315,6 +315,32 @@ def init_db() -> None:
             """
         )
         _backfill_ticket_sort_order(conn)
+
+
+def repair_ticket_link_duplicates() -> int:
+    """Explicit maintenance command for old databases that predate the unique link index."""
+    with get_conn() as conn:
+        before = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
+        conn.execute(
+            """
+            DELETE FROM ticket_links
+            WHERE id NOT IN (
+                SELECT MIN(id)
+                FROM ticket_links
+                GROUP BY
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN source_ticket_id
+                        ELSE target_ticket_id
+                    END,
+                    CASE
+                        WHEN source_ticket_id < target_ticket_id THEN target_ticket_id
+                        ELSE source_ticket_id
+                    END
+            )
+            """
+        )
+        after = conn.execute("SELECT COUNT(*) FROM ticket_links").fetchone()[0]
+        return int(before - after)
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:

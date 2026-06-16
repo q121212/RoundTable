@@ -460,6 +460,20 @@ def test_sprint_list_includes_ticket_preview_for_management_tooltips(temp_db):
     assert listed["ticket_preview_more"] == 0
 
 
+def test_sprint_management_preview_is_capped(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "SPR", "Sprint Project")
+    sprint = create_sprint(user, "SPR", "Sprint 1")
+    for index in range(12):
+        create_ticket(user, "SPR", f"Preview {index}", sprint_id=sprint["id"])
+
+    listed = list_project_sprints(int(get_project_by_key("SPR")["id"]))[0]
+
+    assert listed["ticket_count"] == 12
+    assert len(listed["ticket_preview"]) == 8
+    assert listed["ticket_preview_more"] == 4
+
+
 def test_project_accepts_github_repo_url(temp_db):
     user = upsert_user("alice", email="alice@example.com")
 
@@ -506,6 +520,20 @@ def test_project_settings_details_and_board_are_autosaved(temp_db):
     assert 'name="ticket_delete_own_only" value="1"' in response.text
     assert 'data-i18n="projects.save_details"' not in response.text
     assert 'data-i18n="projects.save_board_settings"' not in response.text
+
+
+def test_project_settings_noop_does_not_log_update(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "OPS", "Operations", description="Ops work", repo="acme/ops")
+    update_project_settings(user, "OPS", "Operations", description="Ops work", repo="acme/ops")
+    with get_conn() as conn:
+        conn.execute("DELETE FROM action_log")
+
+    update_project_settings(user, "OPS", "Operations", description="Ops work", repo="acme/ops")
+
+    with get_conn() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM action_log WHERE action = 'project_updated'").fetchone()[0]
+    assert count == 0
 
 
 def test_project_statistics_page_and_visibility_setting(temp_db):
@@ -665,6 +693,27 @@ def test_ticket_links_reject_self_and_cross_project(temp_db):
     with pytest.raises(HTTPException) as cross_exc:
         link_ticket(user, one["key"], two["key"])
     assert cross_exc.value.status_code == 400
+
+
+def test_ticket_page_link_context_is_unambiguous(temp_db):
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    current = create_ticket(user, "RT", "Current ticket")
+    target = create_ticket(user, "RT", "Target epic", ticket_type="Epic")
+    link_ticket(user, current["key"], target["key"], "relates")
+    session = create_session(int(user["id"]))
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, session["token"])
+    response = client.get(f"/t/{current['key']}")
+
+    assert response.status_code == 200
+    html = response.text
+    assert '<div class="ticket-link-context">' in html
+    assert f'<span class="field-badge">{current["key"]}</span>' in html
+    assert f'href="/t/{target["key"]}"' in html
+    assert f'value="{target["key"]} · Target epic"' in html
+    assert html.count('data-i18n="field.target_ticket"') == 2
 
 
 def test_search_linkable_tickets_filters_by_key_and_title(temp_db):

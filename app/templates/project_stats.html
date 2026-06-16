@@ -93,9 +93,19 @@
             </span>
             <span class="stat-bar-count">{{ group.count }} / {{ group.story_points }} SP</span>
           </div>
-          <div class="stat-bar-track tooltip-anchor" data-i18n-tooltip="stats.status_bar_help" data-tooltip="Green shows ticket share; gold shows story point share.">
-            <span class="stat-bar-fill" style="width: {{ group.count_percent }}%"></span>
-            <span class="stat-bar-fill stat-bar-fill-points" style="width: {{ group.points_percent }}%"></span>
+          <div class="stat-bar-rows tooltip-anchor" data-i18n-tooltip="stats.status_bar_help" data-tooltip="Each row compares this status with the busiest status and total story points.">
+            <div class="stat-bar-row">
+              <span class="stat-bar-row-label" data-i18n="stats.ticket_count">Tickets</span>
+              <span class="stat-bar-track">
+                <span class="stat-bar-fill" style="width: {{ group.count_percent }}%"></span>
+              </span>
+            </div>
+            <div class="stat-bar-row">
+              <span class="stat-bar-row-label" data-i18n="stats.points">Story points</span>
+              <span class="stat-bar-track">
+                <span class="stat-bar-fill stat-bar-fill-points" style="width: {{ group.points_percent }}%"></span>
+              </span>
+            </div>
           </div>
           {{ ticket_preview(group) }}
         </article>

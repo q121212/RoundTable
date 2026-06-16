@@ -6,6 +6,7 @@ from fastapi import HTTPException, Request, status
 
 from .db import get_conn, row_to_dict, utcnow
 from .security import hash_token
+from .rate_limit import client_identity
 from .store import (
     add_comment,
     board_for_project,
@@ -18,6 +19,7 @@ from .store import (
     link_github_ref,
     list_project_sprints,
     list_projects,
+    record_api_audit,
     reopen_ticket,
     require_project_access,
     search_tickets,
@@ -58,14 +60,34 @@ async def handle_mcp(request: Request, on_ticket_changed: Optional[TicketChanged
         payload = await request.json()
     except JSONDecodeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON body") from exc
-    if isinstance(payload, list):
-        responses = []
-        for entry in payload:
-            item = await dispatch_rpc(entry, user, on_ticket_changed)
-            if item is not None:
-                responses.append(item)
-        return responses or None
-    return await dispatch_rpc(payload, user, on_ticket_changed)
+    try:
+        if isinstance(payload, list):
+            responses = []
+            for entry in payload:
+                item = await dispatch_rpc(entry, user, on_ticket_changed)
+                if item is not None:
+                    responses.append(item)
+            return responses or None
+        return await dispatch_rpc(payload, user, on_ticket_changed)
+    finally:
+        if isinstance(payload, list):
+            methods = ",".join(
+                str(entry.get("method") or "")
+                for entry in payload
+                if isinstance(entry, dict)
+            )
+        elif isinstance(payload, dict):
+            methods = str(payload.get("method") or "")
+        else:
+            methods = "invalid"
+        record_api_audit(
+            int(user["id"]),
+            int(user["token_id"]),
+            "/mcp",
+            methods[:120] or "unknown",
+            client_identity(request),
+            request.headers.get("user-agent", ""),
+        )
 
 
 async def dispatch_rpc(

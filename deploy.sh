@@ -25,6 +25,7 @@
 #   DEPLOY_ENV_FILE    optional private deploy env file to source
 #   DEPLOY_APP_USER    optional system user that owns/runs the app
 #   DEPLOY_APP_GROUP   optional system group; defaults to DEPLOY_APP_USER
+#   DEPLOY_BACKUP      true runs an online SQLite backup before restart
 #
 # Usage:
 #   ./deploy.sh                          # uses env / .env.deploy
@@ -58,6 +59,7 @@ MODE="${DEPLOY_MODE:-auto}"
 PUBLIC="${DEPLOY_PUBLIC:-false}"
 APP_USER="${DEPLOY_APP_USER:-}"
 APP_GROUP="${DEPLOY_APP_GROUP:-${APP_USER:-}}"
+BACKUP="${DEPLOY_BACKUP:-$PUBLIC}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -133,7 +135,7 @@ if [ "$effective_mode" = "rsync" ]; then
 fi
 
 # Remote build/restart. Local vars are expanded here, then run on the server.
-ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' MODE='$effective_mode' PUBLIC='$PUBLIC' APP_USER='$APP_USER' APP_GROUP='$APP_GROUP' bash -s" <<'REMOTE'
+ssh "$HOST" "APP_DIR='$APP_DIR' BRANCH='$BRANCH' SERVICE='$SERVICE' PY='$PY' MODE='$effective_mode' PUBLIC='$PUBLIC' APP_USER='$APP_USER' APP_GROUP='$APP_GROUP' BACKUP='$BACKUP' bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$APP_DIR"
 
@@ -190,6 +192,7 @@ SESSION_COOKIE_SECURE="$(env_get SESSION_COOKIE_SECURE)"
 GITHUB_WEBHOOK_SECRET="$(env_get GITHUB_WEBHOOK_SECRET)"
 TELEGRAM_BOT_TOKEN="$(env_get TELEGRAM_BOT_TOKEN)"
 TELEGRAM_WEBHOOK_SECRET="$(env_get TELEGRAM_WEBHOOK_SECRET)"
+DATABASE_PATH="$(env_get DATABASE_PATH)"
 
 echo "--> deployment env summary"
 echo "    BASE_URL=${BASE_URL:-<unset>}"
@@ -221,6 +224,46 @@ if [ "${PUBLIC,,}" = "true" ]; then
     echo "error: DEPLOY_PUBLIC=true with TELEGRAM_BOT_TOKEN requires TELEGRAM_WEBHOOK_SECRET" >&2
     exit 1
   fi
+fi
+
+backup_sqlite() {
+  local database="${DATABASE_PATH:-./data/roundtable.db}"
+  case "$database" in
+    /*) ;;
+    *) database="$APP_DIR/$database" ;;
+  esac
+  if [ ! -f "$database" ]; then
+    echo "--> SQLite backup skipped: database does not exist yet ($database)"
+    return
+  fi
+  local backup_dir="$APP_DIR/backups"
+  local backup_file="$backup_dir/roundtable-$(date -u +%Y%m%dT%H%M%SZ).db"
+  mkdir -p "$backup_dir"
+  echo "--> SQLite backup: $backup_file"
+  DB_SRC="$database" DB_DEST="$backup_file" "$PY" - <<'PYBACKUP'
+import os
+import sqlite3
+
+src = os.environ["DB_SRC"]
+dest = os.environ["DB_DEST"]
+source = sqlite3.connect(src)
+try:
+    target = sqlite3.connect(dest)
+    try:
+        source.backup(target)
+        result = target.execute("PRAGMA integrity_check").fetchone()[0]
+        if result != "ok":
+            raise SystemExit(f"backup integrity_check failed: {result}")
+    finally:
+        target.close()
+finally:
+    source.close()
+PYBACKUP
+  chmod 0640 "$backup_file" || true
+}
+
+if [ "${BACKUP,,}" = "true" ]; then
+  backup_sqlite
 fi
 
 echo "--> python deps"

@@ -76,6 +76,10 @@ def test_mcp_lists_projects_with_token(temp_db):
     payload = response.json()
     assert payload["result"]["content"][0]["type"] == "text"
     assert "WEB" in payload["result"]["content"][0]["text"]
+    with get_conn() as conn:
+        audit = row_to_dict(conn.execute("SELECT * FROM api_audit WHERE route = '/mcp'").fetchone())
+    assert audit is not None
+    assert audit["action"] == "tools/call"
 
 
 def test_mcp_link_github_ref_uses_project_repo_by_default(temp_db):

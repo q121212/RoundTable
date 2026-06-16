@@ -432,10 +432,20 @@ def list_project_sprints(project_id: int, include_closed: bool = True) -> List[D
             conn.execute(
                 """
                 SELECT sprint_id, key, title
-                FROM tickets
-                WHERE project_id = ?
-                  AND sprint_id IN (%s)
-                ORDER BY sprint_id, sort_order ASC, updated_at DESC, number DESC
+                FROM (
+                    SELECT sprint_id,
+                           key,
+                           title,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY sprint_id
+                               ORDER BY sort_order ASC, updated_at DESC, number DESC
+                           ) AS row_number
+                    FROM tickets
+                    WHERE project_id = ?
+                      AND sprint_id IN (%s)
+                )
+                WHERE row_number <= 8
+                ORDER BY sprint_id, row_number
                 """
                 % placeholders,
                 (project_id, *sprint_ids),
@@ -653,32 +663,48 @@ def update_project_settings(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot disable ticket types that are still used: %s" % ", ".join(disabled_used_types),
             )
-        conn.execute(
-            """
-            UPDATE projects
-            SET name = ?,
-                description = ?,
-                github_repo_full_name = ?,
-                statuses_json = ?,
-                ticket_types_json = ?,
-                stats_visibility = ?,
-                ticket_delete_policy = ?,
-                ticket_delete_own_only = ?
-            WHERE id = ?
-            """,
-            (
-                name,
-                description.strip(),
-                normalize_github_repo(repo) or None,
-                json_dumps(enabled_statuses),
-                json_dumps(enabled_ticket_types),
-                enabled_stats_visibility,
-                enabled_ticket_delete_policy,
-                1 if enabled_ticket_delete_own_only else 0,
-                project["id"],
-            ),
-        )
-        log_action(conn, int(project["id"]), None, user["id"], "project_updated")
+        next_values = {
+            "name": name,
+            "description": description.strip(),
+            "github_repo_full_name": normalize_github_repo(repo) or None,
+            "statuses_json": json_dumps(enabled_statuses),
+            "ticket_types_json": json_dumps(enabled_ticket_types),
+            "stats_visibility": enabled_stats_visibility,
+            "ticket_delete_policy": enabled_ticket_delete_policy,
+            "ticket_delete_own_only": 1 if enabled_ticket_delete_own_only else 0,
+        }
+        changes = {
+            key: [project.get(key), value]
+            for key, value in next_values.items()
+            if (project.get(key) or "") != (value or "")
+        }
+        if changes:
+            conn.execute(
+                """
+                UPDATE projects
+                SET name = ?,
+                    description = ?,
+                    github_repo_full_name = ?,
+                    statuses_json = ?,
+                    ticket_types_json = ?,
+                    stats_visibility = ?,
+                    ticket_delete_policy = ?,
+                    ticket_delete_own_only = ?
+                WHERE id = ?
+                """,
+                (
+                    next_values["name"],
+                    next_values["description"],
+                    next_values["github_repo_full_name"],
+                    next_values["statuses_json"],
+                    next_values["ticket_types_json"],
+                    next_values["stats_visibility"],
+                    next_values["ticket_delete_policy"],
+                    next_values["ticket_delete_own_only"],
+                    project["id"],
+                ),
+            )
+            log_action(conn, int(project["id"]), None, user["id"], "project_updated", metadata={"changes": changes})
         return row_to_dict(conn.execute("SELECT * FROM projects WHERE id = ?", (project["id"],)).fetchone()) or {}
 
 
@@ -1629,6 +1655,75 @@ def board_for_project(project_key: str, user: Dict[str, Any], sprint_filter: str
     }
 
 
+def _preview_tickets_by_group_conn(conn: Any, project_id: int, group_sql: str) -> Dict[str, List[Dict[str, Any]]]:
+    rows = rows_to_dicts(
+        conn.execute(
+            """
+            SELECT group_value, key, title, story_points
+            FROM (
+                SELECT %s AS group_value,
+                       tickets.key,
+                       tickets.title,
+                       tickets.story_points,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY %s
+                           ORDER BY tickets.updated_at DESC, tickets.number DESC
+                       ) AS row_number
+                FROM tickets
+                WHERE tickets.project_id = ?
+            )
+            WHERE row_number <= 8
+            ORDER BY group_value, row_number
+            """
+            % (group_sql, group_sql),
+            (project_id,),
+        ).fetchall()
+    )
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(str(row["group_value"]), []).append(row)
+    return grouped
+
+
+def _aggregate_counts_conn(conn: Any, project_id: int, group_sql: str) -> Dict[str, Dict[str, Any]]:
+    rows = rows_to_dicts(
+        conn.execute(
+            """
+            SELECT %s AS group_value,
+                   COUNT(*) AS count,
+                   COALESCE(SUM(story_points), 0) AS story_points
+            FROM tickets
+            WHERE project_id = ?
+            GROUP BY %s
+            """
+            % (group_sql, group_sql),
+            (project_id,),
+        ).fetchall()
+    )
+    return {str(row["group_value"]): row for row in rows}
+
+
+def _stats_group_from_maps(
+    value: str,
+    label: str,
+    aggregates: Dict[str, Dict[str, Any]],
+    previews: Dict[str, List[Dict[str, Any]]],
+    href: str = "",
+) -> Dict[str, Any]:
+    aggregate = aggregates.get(value, {})
+    count = int(aggregate.get("count") or 0)
+    tickets = previews.get(value, [])
+    return {
+        "value": value,
+        "label": label,
+        "count": count,
+        "story_points": int(aggregate.get("story_points") or 0),
+        "tickets": tickets,
+        "ticket_more": max(0, count - len(tickets)),
+        "href": href,
+    }
+
+
 def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]:
     project = get_project_by_key(project_key)
     require_project_stats_access(user, project)
@@ -1636,103 +1731,101 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
     ticket_types = project_ticket_types(project)
     sprints = list_project_sprints(int(project["id"]))
     with get_conn() as conn:
-        tickets = rows_to_dicts(
+        summary_row = row_to_dict(
             conn.execute(
                 """
-                SELECT tickets.key,
-                       tickets.title,
-                       tickets.status,
-                       tickets.priority,
-                       tickets.ticket_type,
-                       tickets.story_points,
-                       tickets.sprint_id,
-                       sprints.name AS sprint_name,
-                       sprints.status AS sprint_status,
-                       assignee.id AS assignee_id,
-                       assignee.login AS assignee_login,
-                       assignee.name AS assignee_name,
-                       assignee.avatar_url AS assignee_avatar_url
+                SELECT COUNT(*) AS total_tickets,
+                       COALESCE(SUM(story_points), 0) AS story_points,
+                       SUM(CASE WHEN status NOT IN ('Done', 'Closed') THEN 1 ELSE 0 END) AS open_tickets,
+                       COALESCE(SUM(CASE WHEN status NOT IN ('Done', 'Closed') THEN story_points ELSE 0 END), 0)
+                           AS open_story_points,
+                       SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) AS done_tickets,
+                       SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) AS closed_tickets
                 FROM tickets
-                LEFT JOIN sprints ON sprints.id = tickets.sprint_id
-                LEFT JOIN users assignee ON assignee.id = tickets.assignee_id
                 WHERE tickets.project_id = ?
-                ORDER BY tickets.updated_at DESC, tickets.number DESC
+                """,
+                (project["id"],),
+            ).fetchone()
+        ) or {}
+        status_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "status")
+        priority_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "priority")
+        type_aggregates = _aggregate_counts_conn(conn, int(project["id"]), "ticket_type")
+        assignee_aggregates = _aggregate_counts_conn(
+            conn, int(project["id"]), "COALESCE(CAST(assignee_id AS TEXT), 'unassigned')"
+        )
+        sprint_aggregates = _aggregate_counts_conn(
+            conn, int(project["id"]), "COALESCE(CAST(sprint_id AS TEXT), 'none')"
+        )
+        status_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "status")
+        priority_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "priority")
+        type_previews = _preview_tickets_by_group_conn(conn, int(project["id"]), "ticket_type")
+        assignee_previews = _preview_tickets_by_group_conn(
+            conn, int(project["id"]), "COALESCE(CAST(assignee_id AS TEXT), 'unassigned')"
+        )
+        sprint_previews = _preview_tickets_by_group_conn(
+            conn, int(project["id"]), "COALESCE(CAST(sprint_id AS TEXT), 'none')"
+        )
+        assignee_rows = rows_to_dicts(
+            conn.execute(
+                """
+                SELECT COALESCE(CAST(users.id AS TEXT), 'unassigned') AS value,
+                       COALESCE(users.name, users.login, 'Unassigned') AS label,
+                       COALESCE(users.login, '') AS login,
+                       COALESCE(users.avatar_url, '') AS avatar_url
+                FROM tickets
+                LEFT JOIN users ON users.id = tickets.assignee_id
+                WHERE tickets.project_id = ?
+                GROUP BY tickets.assignee_id
                 """,
                 (project["id"],),
             ).fetchall()
         )
 
-    def make_group(value: str, label: str, group_tickets: List[Dict[str, Any]], href: str = "") -> Dict[str, Any]:
-        points = sum(int(ticket.get("story_points") or 0) for ticket in group_tickets)
-        return {
-            "value": value,
-            "label": label,
-            "count": len(group_tickets),
-            "story_points": points,
-            "tickets": group_tickets[:8],
-            "ticket_more": max(0, len(group_tickets) - 8),
-            "href": href,
-        }
-
-    total_points = sum(int(ticket.get("story_points") or 0) for ticket in tickets)
-    max_count = max([1, *[len([ticket for ticket in tickets if ticket["status"] == status]) for status in statuses]])
-    max_points = max(1, total_points)
+    total_points = int(summary_row.get("story_points") or 0)
     status_groups = [
-        make_group(
+        _stats_group_from_maps(
             status_name,
             status_name,
-            [ticket for ticket in tickets if ticket["status"] == status_name],
+            status_aggregates,
+            status_previews,
             "#status-%s" % status_name.lower().replace(" ", "-"),
         )
         for status_name in statuses
     ]
+    max_count = max([1, *[int(group["count"]) for group in status_groups]])
+    max_points = max(1, total_points)
     for group in status_groups:
         group["count_percent"] = int(round((group["count"] / max_count) * 100)) if max_count else 0
         group["points_percent"] = int(round((group["story_points"] / max_points) * 100)) if max_points else 0
 
     priority_groups = [
-        make_group(priority, priority, [ticket for ticket in tickets if ticket["priority"] == priority])
+        _stats_group_from_maps(priority, priority, priority_aggregates, priority_previews)
         for priority in PRIORITIES
     ]
     type_groups = [
-        make_group(ticket_type, ticket_type, [ticket for ticket in tickets if ticket["ticket_type"] == ticket_type])
+        _stats_group_from_maps(ticket_type, ticket_type, type_aggregates, type_previews)
         for ticket_type in ticket_types
     ]
 
-    assignee_values: Dict[str, Dict[str, Any]] = {}
-    for ticket in tickets:
-        key = str(ticket.get("assignee_id") or "unassigned")
-        if key not in assignee_values:
-            assignee_values[key] = {
-                "value": key,
-                "label": ticket.get("assignee_name") or ticket.get("assignee_login") or "Unassigned",
-                "login": ticket.get("assignee_login") or "",
-                "avatar_url": ticket.get("assignee_avatar_url") or "",
-                "tickets": [],
-            }
-        assignee_values[key]["tickets"].append(ticket)
     assignee_groups = sorted(
         [
             {
-                **make_group(
-                    str(group["value"]),
-                    str(group["label"]),
-                    group["tickets"],
-                ),
+                **_stats_group_from_maps(str(group["value"]), str(group["label"]), assignee_aggregates, assignee_previews),
                 "login": group["login"],
                 "avatar_url": group["avatar_url"],
             }
-            for group in assignee_values.values()
+            for group in assignee_rows
         ],
         key=lambda item: (-int(item["story_points"]), -int(item["count"]), item["label"].lower()),
     )
 
     sprint_groups = [
         {
-            **make_group(
+            **_stats_group_from_maps(
                 "none",
                 "No sprint",
-                [ticket for ticket in tickets if not ticket.get("sprint_id")],
+                sprint_aggregates,
+                sprint_previews,
                 "/p/%s/board?sprint=none" % project["key"],
             ),
             "status": "",
@@ -1741,13 +1834,14 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
         }
     ]
     for sprint_item in sprints:
-        sprint_tickets = [ticket for ticket in tickets if ticket.get("sprint_id") == sprint_item["id"]]
+        sprint_key = str(sprint_item["id"])
         sprint_groups.append(
             {
-                **make_group(
-                    str(sprint_item["id"]),
+                **_stats_group_from_maps(
+                    sprint_key,
                     sprint_item["name"],
-                    sprint_tickets,
+                    sprint_aggregates,
+                    sprint_previews,
                     "/p/%s/board?sprint=%s" % (project["key"], sprint_item["id"]),
                 ),
                 "status": sprint_item.get("status") or "",
@@ -1756,22 +1850,18 @@ def project_statistics(project_key: str, user: Dict[str, Any]) -> Dict[str, Any]
             }
         )
 
-    open_tickets = [ticket for ticket in tickets if ticket["status"] not in {"Done", "Closed"}]
-    done_tickets = [ticket for ticket in tickets if ticket["status"] == "Done"]
-    closed_tickets = [ticket for ticket in tickets if ticket["status"] == "Closed"]
     return {
         "project": project,
         "project_role": project_role_for_user(user, int(project["id"])),
         "statuses": statuses,
         "ticket_types": ticket_types,
-        "tickets": tickets,
         "summary": {
-            "total_tickets": len(tickets),
-            "open_tickets": len(open_tickets),
-            "done_tickets": len(done_tickets),
-            "closed_tickets": len(closed_tickets),
+            "total_tickets": int(summary_row.get("total_tickets") or 0),
+            "open_tickets": int(summary_row.get("open_tickets") or 0),
+            "done_tickets": int(summary_row.get("done_tickets") or 0),
+            "closed_tickets": int(summary_row.get("closed_tickets") or 0),
             "story_points": total_points,
-            "open_story_points": sum(int(ticket.get("story_points") or 0) for ticket in open_tickets),
+            "open_story_points": int(summary_row.get("open_story_points") or 0),
         },
         "status_groups": status_groups,
         "priority_groups": priority_groups,
@@ -2244,6 +2334,24 @@ def notification_preferences_conn(conn: Any, user_id: int) -> Dict[str, Any]:
     return row_to_dict(
         conn.execute("SELECT * FROM notification_preferences WHERE user_id = ?", (user_id,)).fetchone()
     ) or {}
+
+
+def record_api_audit(
+    user_id: Optional[int],
+    token_id: Optional[int],
+    route: str,
+    action: str,
+    client: str = "",
+    user_agent: str = "",
+) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO api_audit (user_id, token_id, route, action, client, user_agent, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, token_id, route, action, client[:200], user_agent[:300], utcnow()),
+        )
 
 
 def notification_preferences(user_id: int) -> Dict[str, Any]:

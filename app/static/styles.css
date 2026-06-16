@@ -1064,6 +1064,7 @@ button,
   border-radius: 8px;
 }
 
+.ticket-link-context,
 .ticket-link-list a,
 .ticket-link-edit-form {
   display: inline-flex;
@@ -1077,10 +1078,35 @@ button,
   color: var(--ink);
 }
 
+.ticket-link-current {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ticket-link-relation {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
 .ticket-link-edit-form {
   display: grid;
   grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr) auto;
   align-items: start;
+}
+
+.ticket-link-edit-form label {
+  display: grid;
+  gap: 3px;
+}
+
+.mini-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 760;
+  line-height: 1;
 }
 
 .ticket-link-edit-form select,
@@ -1776,6 +1802,10 @@ code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     min-width: 0;
+  }
+
+  .page-head .board-head-actions {
+    grid-template-columns: 1fr;
   }
 
   .page-head .head-actions > a,
@@ -3009,9 +3039,9 @@ a.ticket-key:hover {
 
   .board-head-actions {
     display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-columns: 1fr;
     gap: 8px;
-    align-items: end;
+    align-items: stretch;
   }
 
   .board-tools-menu,
@@ -3020,13 +3050,13 @@ a.ticket-key:hover {
   }
 
   .board-tools-menu summary {
-    min-height: 52px;
+    min-height: 48px;
     border-radius: 9px;
     font-size: 0.92rem;
   }
 
   .sprint-filter-button {
-    min-height: 52px;
+    min-height: 48px;
     border-radius: 9px;
     font-size: 0.92rem;
   }
@@ -3600,25 +3630,42 @@ a.ticket-key:hover {
   font-weight: 800;
 }
 
+.stat-bar-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.stat-bar-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.stat-bar-row-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .stat-bar-track {
   position: relative;
-  height: 12px;
-  overflow: visible;
+  height: 9px;
+  overflow: hidden;
   border-radius: 999px;
   background: color-mix(in srgb, var(--muted) 14%, var(--surface));
 }
 
 .stat-bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
+  display: block;
+  height: 100%;
   max-width: 100%;
   border-radius: inherit;
   background: color-mix(in srgb, var(--green) 72%, var(--surface));
 }
 
 .stat-bar-fill-points {
-  top: 7px;
-  height: 5px;
   background: color-mix(in srgb, var(--amber) 78%, var(--surface));
 }
 

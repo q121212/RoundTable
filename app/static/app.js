@@ -201,7 +201,7 @@
       "stats.sprints_help": "Tickets and story points planned by sprint.",
       "stats.statuses": "Statuses",
       "stats.statuses_help": "How tickets and story points are distributed across board statuses.",
-      "stats.status_bar_help": "Green shows ticket share; gold shows story point share.",
+      "stats.status_bar_help": "Top row compares ticket count with the busiest status; bottom row compares story points with total project points.",
       "stats.ticket_count": "Tickets",
       "stats.timeline": "Timeline",
       "stats.title": "Statistics",
@@ -518,7 +518,7 @@
       "stats.sprints_help": "Тикеты и сторипоинты, запланированные по спринтам.",
       "stats.statuses": "Статусы",
       "stats.statuses_help": "Распределение тикетов и сторипоинтов по статусам доски.",
-      "stats.status_bar_help": "Зеленая линия показывает долю тикетов, золотая — долю сторипоинтов.",
+      "stats.status_bar_help": "Верхняя строка сравнивает число тикетов с самым загруженным статусом; нижняя — сторипоинты с общим объёмом проекта.",
       "stats.ticket_count": "Тикеты",
       "stats.timeline": "План",
       "stats.title": "Статистика",
@@ -1348,7 +1348,10 @@
 
   function closePopover() {
     if (activeChip) activeChip.setAttribute("aria-expanded", "false");
-    if (activePopover) activePopover.remove();
+    if (activePopover) {
+      if (typeof activePopover._beforeClose === "function") activePopover._beforeClose();
+      activePopover.remove();
+    }
     activePopover = null;
     activeChip = null;
     document.removeEventListener("pointerdown", onOutsidePointer, true);
@@ -1388,16 +1391,24 @@
 
   function positionPopover(pop, chip) {
     const rect = chip.getBoundingClientRect();
+    const margin = 8;
     pop.style.position = "fixed";
+    pop.style.maxWidth = `${Math.max(240, window.innerWidth - margin * 2)}px`;
+    pop.style.maxHeight = `${Math.max(220, window.innerHeight - margin * 2)}px`;
+    pop.style.overflow = "auto";
     pop.style.top = `${rect.bottom + 6}px`;
     let left = rect.left;
     const width = pop.offsetWidth;
-    if (left + width > window.innerWidth - 8) left = window.innerWidth - 8 - width;
-    if (left < 8) left = 8;
+    if (left + width > window.innerWidth - margin) left = window.innerWidth - margin - width;
+    if (left < margin) left = margin;
     pop.style.left = `${left}px`;
     const height = pop.offsetHeight;
-    if (rect.bottom + 6 + height > window.innerHeight - 8) {
-      pop.style.top = `${Math.max(8, rect.top - 6 - height)}px`;
+    const belowTop = rect.bottom + 6;
+    const aboveTop = rect.top - 6 - height;
+    if (belowTop + height > window.innerHeight - margin && aboveTop >= margin) {
+      pop.style.top = `${aboveTop}px`;
+    } else {
+      pop.style.top = `${Math.min(belowTop, window.innerHeight - margin - Math.min(height, window.innerHeight - margin * 2))}px`;
     }
   }
 
@@ -1435,7 +1446,12 @@
         }));
     } else if (field === "assignee_id") {
       options = [{ value: "", label: translate("ticket.unassigned", currentLang()) || "Unassigned" }];
-      boardData("members", []).forEach((m) => options.push({ value: String(m.id), label: m.name || m.login }));
+      boardData("members", []).forEach((m) => options.push({
+        value: String(m.id),
+        label: m.name || m.login,
+        login: m.login || "",
+        avatar_url: m.avatar_url || "",
+      }));
     }
     options.forEach((opt) => {
       const button = document.createElement("button");
@@ -1455,6 +1471,12 @@
         icon.dataset.icon = opt.icon;
         icon.setAttribute("aria-hidden", "true");
         button.appendChild(icon);
+      } else if (field === "assignee_id") {
+        const avatar = document.createElement("span");
+        avatar.className = "avatar-dot";
+        avatar.setAttribute("aria-hidden", "true");
+        renderAvatar(avatar, opt.avatar_url || "", opt.login || "");
+        button.appendChild(avatar);
       }
       const label = document.createElement("span");
       label.textContent = opt.label;
@@ -1506,19 +1528,13 @@
     const projectKey = document.querySelector(".board")?.dataset.projectKey || "";
     textarea.dataset.mentionInput = "true";
     textarea.dataset.mentionProject = projectKey;
-    const actions = document.createElement("div");
-    actions.className = "popover-actions";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "primary tiny";
-    button.textContent = translate("action.comment", currentLang()) || "Comment";
-    actions.appendChild(button);
     pop.appendChild(textarea);
-    pop.appendChild(actions);
+    let submitted = false;
     const submit = async () => {
+      if (submitted) return;
       const body = textarea.value.trim();
       if (!body) return;
-      button.disabled = true;
+      submitted = true;
       textarea.disabled = true;
       const formData = new FormData();
       formData.append("body", body);
@@ -1530,19 +1546,22 @@
           body: formData,
         });
         if (!response.ok) throw new Error(await response.text());
-        closePopover();
         flashSaved(card);
       } catch (error) {
         window.alert(error.message || "Could not add comment");
-        button.disabled = false;
         textarea.disabled = false;
+        submitted = false;
       } finally {
         card.classList.remove("is-saving");
       }
     };
-    button.addEventListener("click", submit);
+    pop._beforeClose = submit;
     textarea.addEventListener("keydown", (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") submit();
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        submit();
+        closePopover();
+      }
     });
     setupMentionInput(textarea);
   }

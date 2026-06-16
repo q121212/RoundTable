@@ -22,6 +22,7 @@ from .github_integration import exchange_oauth_code, github_oauth_configured, ha
 from .live import project_events, sse_message
 from .mcp_server import handle_mcp
 from .notifications import notification_worker
+from .rate_limit import AUTH_RULE, MCP_RULE, WEBHOOK_RULE, rate_limit_key, rate_limiter
 from .security import (
     SESSION_COOKIE,
     delete_session,
@@ -173,6 +174,19 @@ CONTENT_SECURITY_POLICY = "; ".join(
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    rule = None
+    scope = ""
+    if request.url.path in {"/auth/dev", "/auth/github/start", "/auth/github/callback", "/login"}:
+        rule = AUTH_RULE
+        scope = "auth"
+    elif request.url.path == "/mcp":
+        rule = MCP_RULE
+        scope = "mcp"
+    elif request.url.path in {"/integrations/github/webhook", "/integrations/telegram/webhook"}:
+        rule = WEBHOOK_RULE
+        scope = "webhook"
+    if rule and not rate_limiter.allow(rate_limit_key(request, scope), rule):
+        return JSONResponse({"detail": "Too many requests"}, status_code=status.HTTP_429_TOO_MANY_REQUESTS)
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
