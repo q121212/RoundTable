@@ -1617,7 +1617,11 @@ def update_ticket(
         sort_changed = target_sort_order != ticket["sort_order"]
 
         if not changes and not sort_changed:
-            return get_ticket_by_id_conn(conn, ticket["id"])
+            # Nothing actually changed (e.g. story points re-set to the same
+            # value). Flag it so callers can skip broadcasting a no-op event.
+            unchanged = get_ticket_by_id_conn(conn, ticket["id"])
+            unchanged["_changed"] = False
+            return unchanged
 
         values = {
             "title": ticket["title"],
@@ -1709,7 +1713,9 @@ def update_ticket(
                 old_value="" if ticket["sort_order"] is None else str(ticket["sort_order"]),
                 new_value=str(target_sort_order),
             )
-        return get_ticket_by_id_conn(conn, ticket["id"])
+        result = get_ticket_by_id_conn(conn, ticket["id"])
+        result["_changed"] = True
+        return result
 
 
 def close_ticket(user: Dict[str, Any], ticket_key: str) -> Dict[str, Any]:

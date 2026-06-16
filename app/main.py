@@ -310,6 +310,11 @@ async def publish_ticket_event(
 ) -> Optional[Dict[str, Any]]:
     if not ticket:
         return None
+    # update_ticket marks no-op edits with _changed=False; don't broadcast those
+    # (they would make every connected client play a notification sound for a
+    # change that did not happen). Strip the private flag either way.
+    if ticket.pop("_changed", True) is False:
+        return None
     bundle = get_ticket_bundle(str(ticket["key"]))
     action = bundle["actions"][0] if bundle.get("actions") else None
     await project_events.publish(
