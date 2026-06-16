@@ -1,4 +1,6 @@
 import json
+import logging
+import uuid
 from json import JSONDecodeError
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
@@ -28,6 +30,8 @@ from .store import (
     update_ticket,
 )
 
+
+logger = logging.getLogger("roundtable.mcp")
 
 TicketChangedCallback = Callable[[Dict[str, Any], str], Awaitable[Any]]
 
@@ -121,12 +125,29 @@ async def dispatch_rpc(
         else:
             raise ValueError("Unsupported MCP method: %s" % method)
         return {"jsonrpc": "2.0", "id": request_id, "result": result}
-    except Exception as exc:
+    except (HTTPException, ValueError) as exc:
+        # Expected, user-facing errors (validation, authz, unknown tool/argument).
+        # These messages are the same ones the web UI shows, so they are safe.
+        message = exc.detail if isinstance(exc, HTTPException) else str(exc)
         return {
             "jsonrpc": "2.0",
             "id": request_id,
-            "error": {"code": -32000, "message": str(exc)},
+            "error": {"code": -32000, "message": str(message)},
         }
+    except Exception:
+        # Unexpected errors may carry internal detail (SQL text, KeyError field
+        # names). Log the real exception with a reference and return only the ref.
+        error_ref = uuid.uuid4().hex[:12]
+        logger.exception("MCP method %s failed [ref %s]", method, error_ref)
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {"code": -32000, "message": "Internal error (ref %s)" % error_ref},
+        }
+
+
+def _required_tool_args() -> Dict[str, List[str]]:
+    return {spec["name"]: spec["inputSchema"].get("required", []) for spec in tool_specs()}
 
 
 def tool_specs() -> List[Dict[str, Any]]:
@@ -347,6 +368,15 @@ async def call_tool(
     }
     if name not in tools:
         raise ValueError("Unknown tool: %s" % name)
+    missing = [
+        arg
+        for arg in _required_tool_args().get(name, [])
+        if args.get(arg) is None or args.get(arg) == ""
+    ]
+    if missing:
+        raise ValueError(
+            "Missing required argument(s) for %s: %s" % (name, ", ".join(missing))
+        )
     result = tools[name](user, args)
     if on_ticket_changed:
         event_name = {

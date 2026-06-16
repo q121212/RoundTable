@@ -298,3 +298,49 @@ def test_github_webhook_signature_is_checked(temp_db):
 
     assert denied.status_code == 401
     assert allowed.status_code == 200
+
+
+def test_mcp_internal_error_is_masked(temp_db, monkeypatch):
+    from app import mcp_server
+
+    user = upsert_user("alice")
+    create_project(user, "WEB", "Website")
+    token = create_mcp_token(user, "test")["token"]
+
+    def boom(_user):
+        raise RuntimeError("secret internal detail")
+
+    monkeypatch.setattr(mcp_server, "list_projects", boom)
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_projects"}},
+    )
+
+    message = response.json()["error"]["message"]
+    assert "secret internal detail" not in message
+    assert "Internal error" in message
+    assert "ref" in message
+
+
+def test_mcp_missing_required_argument_is_reported_cleanly(temp_db):
+    user = upsert_user("alice")
+    token = create_mcp_token(user, "test")["token"]
+
+    client = TestClient(app)
+    response = client.post(
+        "/mcp",
+        headers={"Authorization": "Bearer %s" % token},
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "get_ticket", "arguments": {}},
+        },
+    )
+
+    message = response.json()["error"]["message"]
+    assert "Missing required argument" in message
+    assert "ticket_key" in message
