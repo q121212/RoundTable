@@ -1,15 +1,13 @@
 import re
 import sqlite3
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 
 from ..config import settings
 from ..db import (
     PRIORITIES,
-    TICKET_LINK_TYPES,
     TICKET_STATUSES,
     TICKET_TYPES,
     get_conn,
@@ -22,198 +20,40 @@ from ..db import (
 from ..security import hash_token, new_token
 
 
-PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
 TICKET_KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b")
 MENTION_RE = re.compile(r"(?<![\w.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?)")
-GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 NOTIFY_ACTIONS = {"assigned", "status_changed", "commented", "closed", "reopened"}
 GITHUB_REF_TYPES = {"branch", "commit", "pull_request", "tag"}
 SPRINT_STATUSES = {"planned", "active", "closed"}
-STATS_VISIBILITIES = {"viewer", "member", "admin"}
-TICKET_DELETE_POLICIES = {"admin", "member", "viewer"}
 
-
-def validate_project_key(key: str) -> str:
-    normalized = key.strip().upper()
-    if not PROJECT_KEY_RE.match(normalized):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Project key must be 2-10 uppercase letters or digits, starting with a letter.",
-        )
-    return normalized
-
-
-def validate_status(value: str) -> str:
-    if value not in TICKET_STATUSES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket status")
-    return value
-
-
-def normalize_project_statuses(values: List[str]) -> List[str]:
-    seen = set()
-    normalized = []
-    for value in values:
-        status_value = validate_status(str(value))
-        if status_value not in seen:
-            normalized.append(status_value)
-            seen.add(status_value)
-    if not normalized:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one status")
-    return normalized
-
-
-def project_statuses(project: Dict[str, Any]) -> List[str]:
-    configured = normalize_project_statuses(json_loads(project.get("statuses_json"), TICKET_STATUSES))
-    return configured
-
-
-def validate_project_ticket_status(project: Dict[str, Any], value: str) -> str:
-    status_value = validate_status(value)
-    if status_value not in project_statuses(project):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status is not enabled for this project")
-    return status_value
-
-
-def validate_priority(value: str) -> str:
-    if value not in PRIORITIES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid priority")
-    return value
-
-
-def validate_story_points(value: Any) -> int:
-    try:
-        points = int(value or 0)
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Story points must be an integer") from exc
-    if points < 0 or points > 999:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Story points must be between 0 and 999")
-    return points
-
-
-def validate_ticket_type(value: str) -> str:
-    if value not in TICKET_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket type")
-    return value
-
-
-def normalize_project_ticket_types(values: List[str]) -> List[str]:
-    seen = set()
-    normalized = []
-    for value in values:
-        ticket_type = validate_ticket_type(str(value))
-        if ticket_type not in seen:
-            normalized.append(ticket_type)
-            seen.add(ticket_type)
-    if not normalized:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one ticket type")
-    return normalized
-
-
-def project_ticket_types(project: Dict[str, Any]) -> List[str]:
-    return normalize_project_ticket_types(json_loads(project.get("ticket_types_json"), TICKET_TYPES))
-
-
-def normalize_stats_visibility(value: Optional[str]) -> str:
-    clean = (value or "all").strip().lower()
-    if clean == "all":
-        clean = "viewer"
-    if clean not in STATS_VISIBILITIES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid statistics visibility")
-    return clean
-
-
-def project_stats_visibility(project: Dict[str, Any]) -> str:
-    return normalize_stats_visibility(project.get("stats_visibility") or "all")
-
-
-def normalize_ticket_delete_policy(value: Optional[str]) -> str:
-    clean = (value or "admin").strip().lower()
-    if clean not in TICKET_DELETE_POLICIES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket delete policy")
-    return clean
-
-
-def project_ticket_delete_policy(project: Dict[str, Any]) -> str:
-    return normalize_ticket_delete_policy(project.get("ticket_delete_policy") or "admin")
-
-
-def project_ticket_delete_own_only(project: Dict[str, Any]) -> bool:
-    return bool(int(project.get("ticket_delete_own_only") or 0))
-
-
-def validate_project_ticket_type(project: Dict[str, Any], value: str) -> str:
-    ticket_type = validate_ticket_type(value)
-    if ticket_type not in project_ticket_types(project):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket type is not enabled for this project")
-    return ticket_type
-
-
-def validate_ticket_link_type(value: str) -> str:
-    if value not in TICKET_LINK_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid ticket link type")
-    return value
-
-
-def validate_date_string(value: str, label: str) -> str:
-    clean = value.strip()
-    if not clean:
-        return ""
-    try:
-        date.fromisoformat(clean)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="%s must be YYYY-MM-DD" % label) from exc
-    return clean
-
-
-def normalize_github_repo(value: str) -> str:
-    raw = value.strip()
-    if not raw:
-        return ""
-    if raw.startswith("git@github.com:"):
-        raw = raw.removeprefix("git@github.com:")
-    elif "://" in raw:
-        parsed = urlparse(raw)
-        if parsed.netloc.lower() not in {"github.com", "www.github.com"}:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="GitHub repository must be owner/repo or a github.com URL.",
-            )
-        raw = parsed.path.strip("/")
-    raw = raw.removesuffix(".git").strip("/")
-    parts = raw.split("/")
-    if len(parts) >= 2:
-        raw = "%s/%s" % (parts[0], parts[1])
-    if not GITHUB_REPO_RE.match(raw):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub repository must be owner/repo or a github.com URL.",
-        )
-    return raw
-
-
-def normalize_github_installation_id(value: str) -> str:
-    raw = (value or "").strip()
-    if not raw:
-        return ""
-    if not raw.isdigit():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub installation id must be numeric.",
-        )
-    return raw
-
-
-def normalize_github_link_url(value: str) -> str:
-    raw = value.strip()
-    if not raw:
-        return ""
-    parsed = urlparse(raw)
-    if parsed.scheme != "https" or parsed.netloc.lower() not in {"github.com", "www.github.com"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub link URL must be an https://github.com URL.",
-        )
-    return raw
+# Validators, normalizers, and per-project config helpers now live in
+# _validation.py. Re-exported here so app.store stays the single public facade
+# (the `as` aliases mark them as intentional re-exports for linters).
+from ._validation import (  # noqa: E402
+    STATS_VISIBILITIES as STATS_VISIBILITIES,
+    TICKET_DELETE_POLICIES as TICKET_DELETE_POLICIES,
+    normalize_github_installation_id as normalize_github_installation_id,
+    normalize_github_link_url as normalize_github_link_url,
+    normalize_github_repo as normalize_github_repo,
+    normalize_project_statuses as normalize_project_statuses,
+    normalize_project_ticket_types as normalize_project_ticket_types,
+    normalize_stats_visibility as normalize_stats_visibility,
+    normalize_ticket_delete_policy as normalize_ticket_delete_policy,
+    project_stats_visibility as project_stats_visibility,
+    project_statuses as project_statuses,
+    project_ticket_delete_own_only as project_ticket_delete_own_only,
+    project_ticket_delete_policy as project_ticket_delete_policy,
+    project_ticket_types as project_ticket_types,
+    validate_date_string as validate_date_string,
+    validate_priority as validate_priority,
+    validate_project_key as validate_project_key,
+    validate_project_ticket_status as validate_project_ticket_status,
+    validate_project_ticket_type as validate_project_ticket_type,
+    validate_status as validate_status,
+    validate_story_points as validate_story_points,
+    validate_ticket_link_type as validate_ticket_link_type,
+    validate_ticket_type as validate_ticket_type,
+)
 
 
 def upsert_user(
