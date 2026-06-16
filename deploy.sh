@@ -160,6 +160,10 @@ fix_app_ownership() {
   if [ -f "$APP_DIR/.env" ]; then
     sudo chmod 0640 "$APP_DIR/.env"
   fi
+  if [ -d "$APP_DIR/data" ]; then
+    sudo find "$APP_DIR/data" -type d -exec chmod 0750 {} +
+    sudo find "$APP_DIR/data" -type f -name '*.db*' -exec chmod 0640 {} +
+  fi
 }
 
 ensure_app_user
