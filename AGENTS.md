@@ -10,11 +10,17 @@ RoundTable is a local, self-hosted, Jira-like ticket tracker for small teams and
 AI-assisted workflows. Tickets are the source of truth; GitHub is a secondary link.
 See `README.md` for the product tour.
 
+**Architecture & rules** (layers, dependency directions, event/i18n/deploy rules)
+live in [docs/architecture.md](docs/architecture.md) and
+[docs/development_rules.md](docs/development_rules.md). They are enforced by guard
+tests (`tests/test_architecture_boundaries.py`, `tests/test_frontend_contracts.py`,
+`tests/test_ticket_events.py`). Read them before structural changes.
+
 ## Stack & philosophy
 
 - **Backend:** FastAPI (`app/main.py`) + Jinja2 server-rendered templates.
-- **Data:** SQLite via stdlib `sqlite3`. All SQL lives in `app/store.py`; schema in
-  `app/db.py`.
+- **Data:** SQLite via stdlib `sqlite3`. All SQL lives in the `app/store/` package
+  (facade `__init__.py` re-exports focused submodules); schema in `app/db.py`.
 - **Frontend:** plain CSS (`app/static/styles.css`) + vanilla JS (`app/static/app.js`).
   **No build step, no npm, no framework.** HTMX is loaded but board interactions are
   hand-written vanilla JS (pointer-event drag & drop, `fetch` for inline updates).
@@ -26,7 +32,10 @@ See `README.md` for the product tour.
 ```
 app/
   main.py            FastAPI routes (pages + JSON/form API)
-  store.py           data layer — ALL sql goes here
+  store/             data layer — ALL sql here; __init__.py is a facade,
+                     domain split into _validation/_policies/_read_models/
+                     _tickets/_projects/_sprints/_board/_statistics/… (see
+                     docs/architecture.md)
   db.py              schema + init_db(); TICKET_STATUSES, PRIORITIES
   security.py        sessions, CSRF, hashing, webhook signatures
   notifications.py   in-process SQLite outbox loop (email + telegram)
@@ -104,7 +113,7 @@ ruff check .
 python -m compileall app
 ```
 
-Add a test for any behavior change in `app/store.py` or the API. Use the `temp_db`
+Add a test for any behavior change in `app/store/` or the API. Use the `temp_db`
 fixture (`tests/conftest.py`).
 
 ## Deploy
