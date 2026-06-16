@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 
-from .config import settings
-from .db import (
+from ..config import settings
+from ..db import (
     PRIORITIES,
     TICKET_LINK_TYPES,
     TICKET_STATUSES,
@@ -19,7 +19,7 @@ from .db import (
     rows_to_dicts,
     utcnow,
 )
-from .security import hash_token, new_token
+from ..security import hash_token, new_token
 
 
 PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
