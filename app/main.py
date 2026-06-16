@@ -947,6 +947,10 @@ async def notification_settings(request: Request) -> HTMLResponse:
 async def api_notification_preferences(request: Request) -> RedirectResponse:
     user = await validate_csrf_request(request)
     form = await request.form()
+    # Email delivery is intentionally backend-only: the SMTP channel exists in
+    # notifications.py but is not exposed in the UI, which offers Telegram as the
+    # phone-friendly channel. Email stays off here on purpose; do not surface a
+    # toggle without also wiring SMTP config into onboarding.
     update_notification_preferences(
         int(user["id"]),
         email_enabled=False,
@@ -995,6 +999,8 @@ async def api_telegram_unlink_delete(request: Request) -> JSONResponse:
 async def api_notification_preferences_patch(request: Request) -> JSONResponse:
     user = await validate_csrf_request(request)
     payload = await request.json()
+    # Email stays backend-only by design (see api_notification_preferences); the
+    # UI controls only the Telegram channel.
     prefs = update_notification_preferences(
         int(user["id"]),
         False,
