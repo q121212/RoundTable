@@ -109,6 +109,25 @@ def static_version() -> str:
         return "dev"
 
 
+def enforce_secure_startup() -> None:
+    """Refuse to start in a configuration that silently disables authentication.
+
+    Dev login lets anyone sign in as any user (and become admin when no
+    ADMIN_GITHUB_LOGINS are set). Combined with an https BASE_URL that almost
+    always means an accidentally-public deployment, so we fail fast instead of
+    only logging a warning. ALLOW_INSECURE_DEV_LOGIN=true is the explicit,
+    documented override for a genuinely private https preview.
+    """
+    is_https = settings.base_url.lower().startswith("https")
+    if settings.allow_dev_login and is_https and not settings.allow_insecure_dev_login:
+        raise RuntimeError(
+            "Refusing to start: ALLOW_DEV_LOGIN=true with an https BASE_URL (%s) is unsafe "
+            "because dev login is an authentication bypass. Set ALLOW_DEV_LOGIN=false for any "
+            "internet-facing deploy, or set ALLOW_INSECURE_DEV_LOGIN=true to override (not "
+            "recommended)." % settings.base_url
+        )
+
+
 def warn_insecure_config() -> None:
     """Loud warnings for config that is dangerous on a public deployment."""
     is_https = settings.base_url.lower().startswith("https")
@@ -133,6 +152,7 @@ def warn_insecure_config() -> None:
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
+    enforce_secure_startup()
     init_db()
     sync_configured_admin_roles()
     warn_insecure_config()

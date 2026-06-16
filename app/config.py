@@ -31,6 +31,10 @@ class Settings:
     # Secure-by-default: dev login is an auth bypass (any login becomes admin),
     # so it must be opted into explicitly. Local dev keeps it on via .env.
     allow_dev_login: bool = _bool("ALLOW_DEV_LOGIN", False)
+    # Startup refuses to run dev login together with an https BASE_URL (it looks
+    # like production). This escape hatch re-enables that unsafe combination for
+    # the rare case of an https preview that is genuinely private. Leave it off.
+    allow_insecure_dev_login: bool = _bool("ALLOW_INSECURE_DEV_LOGIN", False)
     # Send the session cookie only over HTTPS. Defaults to on when BASE_URL is
     # https (i.e. a real deployment); off for local http dev. Override if needed.
     session_cookie_secure: bool = _bool(
