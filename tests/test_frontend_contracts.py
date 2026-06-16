@@ -117,3 +117,15 @@ def test_board_supports_keyboard_navigation_and_column_collapsing():
     assert ".column-toggle" in styles
     assert ".column-collapsed-note" in styles
     assert ".board-column.is-collapsed .dropzone" in styles
+
+
+def test_mobile_stats_are_compact_and_use_dense_ticket_grid():
+    styles = (ROOT / "app/static/styles.css").read_text()
+
+    assert "@media (max-width: 720px)" in styles
+    assert "@media (max-width: 520px)" in styles
+    assert ".stats-summary-grid" in styles
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in styles
+    assert ".stat-ticket-list" in styles
+    assert ".stat-ticket-row" in styles
+    assert "-webkit-line-clamp: 2;" in styles
