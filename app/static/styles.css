@@ -747,9 +747,7 @@ button,
 .column-collapsed-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .column-collapsed-badge {
@@ -771,13 +769,6 @@ button,
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.35;
-}
-
-.column-collapsed-metrics {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 .board-column.is-collapsed .dropzone .ticket-card,
@@ -1164,7 +1155,6 @@ button,
   border-radius: 8px;
 }
 
-.ticket-link-context,
 .ticket-link-list a,
 .ticket-link-edit-form {
   display: inline-flex;
@@ -1174,27 +1164,28 @@ button,
   min-width: 0;
 }
 
-.ticket-link-summary {
-  color: var(--ink);
-}
-
-.ticket-link-current {
-  align-items: center;
-  display: inline-flex;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ticket-link-relation {
-  color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 760;
-}
-
 .ticket-link-edit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.ticket-link-edit-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ticket-link-type-badge {
+  color: var(--green-dark);
+}
+
+.ticket-link-edit-fields {
   display: grid;
   grid-template-columns: minmax(112px, 0.6fr) minmax(150px, 1fr) auto;
   align-items: start;
+  gap: 8px;
 }
 
 .ticket-link-edit-form label {

@@ -252,17 +252,6 @@
         <div class="column-collapsed-note">
           <div class="column-collapsed-head">
             <span class="column-collapsed-badge" data-i18n="column.collapsed">Collapsed</span>
-            <div class="column-collapsed-metrics" aria-label="Collapsed column totals">
-              <span class="column-metric tooltip-anchor" data-i18n-tooltip="column.ticket_count" data-tooltip="Tickets in this status">
-                <span class="column-metric-icon" data-icon="list-checks" aria-hidden="true"></span>
-                <span data-collapsed-count>{{ columns[status]|length }}</span>
-              </span>
-              <span class="column-metric column-points tooltip-anchor" data-i18n-tooltip="column.story_points" data-tooltip="Story points in this status">
-                <span class="column-metric-icon" data-icon="gauge" aria-hidden="true"></span>
-                <span data-collapsed-points>{{ columns[status]|sum(attribute="story_points") }}</span>
-                <span data-i18n="story_points.short">SP</span>
-              </span>
-            </div>
           </div>
           <p class="column-collapsed-copy" data-i18n="column.collapsed_hint">Tickets are hidden here. Expand the column to review them, or drop a card here to move it.</p>
         </div>

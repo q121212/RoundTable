@@ -2165,14 +2165,10 @@
       const ticketCount = column.querySelectorAll(".ticket-card").length;
       const counter = column.querySelector(".column-count");
       if (counter) counter.textContent = ticketCount;
-      const collapsedCounter = column.querySelector("[data-collapsed-count]");
-      if (collapsedCounter) collapsedCounter.textContent = ticketCount;
       const points = Array.from(column.querySelectorAll('.ticket-card .chip-edit[data-edit="story_points"]'))
         .reduce((sum, chip) => sum + (Number.parseInt(chip.dataset.value || "0", 10) || 0), 0);
       const pointsEl = column.querySelector("[data-column-points]");
       if (pointsEl) pointsEl.textContent = String(points);
-      const collapsedPointsEl = column.querySelector("[data-collapsed-points]");
-      if (collapsedPointsEl) collapsedPointsEl.textContent = String(points);
     });
   }
 
