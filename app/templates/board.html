@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ project.key }} board - RoundTable{% endblock %}
+{% block skip_links %}
+  <a href="#project-tools" data-i18n="nav.skip_tools">Skip to project tools</a>
+  <a href="#quick-create" data-i18n="nav.skip_create">Skip to ticket create</a>
+  <a href="#board" data-i18n="nav.skip_board">Skip to board</a>
+{% endblock %}
 {% block content %}
 {% set can_manage_project = project_role == "admin" %}
 <section class="page-head board-head">
@@ -9,7 +14,7 @@
   </div>
   <div class="head-actions board-head-actions">
     {% if can_manage_project or can_view_stats %}
-      <details class="board-tools-menu">
+      <details class="board-tools-menu" id="project-tools">
         <summary data-icon="sliders-horizontal" data-i18n="projects.tools">Project tools</summary>
         <div class="board-admin-links">
           {% if can_view_stats %}
@@ -79,7 +84,7 @@
 </section>
 
 <div class="board-toolbar board-ticket-toolbar">
-  <details class="ticket-create board-create">
+  <details class="ticket-create board-create" id="quick-create">
     <summary data-icon="plus" data-i18n="ticket.new">New ticket</summary>
     <div class="panel board-create-panel">
     <div class="section-heading">
@@ -222,14 +227,15 @@
   {% endfor %}
 </div>
 
-<section class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-ticket-types='{{ ticket_types | tojson }}' data-sprints='{{ sprints | tojson }}' data-members='{{ members | tojson }}'>
+<section id="board" class="board board-count-{{ statuses|length }} {% if statuses|length <= 4 %}board-single-row{% endif %}" data-csrf="{{ user.csrf_token }}" data-project-key="{{ project.key }}" data-events-url="/events/projects/{{ project.key }}" data-statuses='{{ statuses | tojson }}' data-priorities='{{ priorities | tojson }}' data-ticket-types='{{ ticket_types | tojson }}' data-sprints='{{ sprints | tojson }}' data-members='{{ members | tojson }}'>
   {% for status in statuses %}
     <div class="board-column" data-status="{{ status }}">
       <header class="column-head">
-        <h2>
+        <button class="column-toggle" type="button" data-column-toggle data-status="{{ status }}" aria-expanded="true" aria-controls="column-zone-{{ loop.index0 }}" data-i18n-aria="column.collapse" aria-label="Collapse column">
           <span class="status-dot status-{{ status|lower|replace(' ', '-') }}-dot" aria-hidden="true"></span>
           <span data-i18n="status.{{ status }}">{{ status }}</span>
-        </h2>
+          <span class="column-toggle-icon" data-column-toggle-icon data-icon="chevron-up" aria-hidden="true"></span>
+        </button>
         <div class="column-metrics" aria-label="Column totals">
           <span class="column-metric tooltip-anchor" data-i18n-tooltip="column.ticket_count" data-tooltip="Tickets in this status">
             <span class="column-metric-icon" data-icon="list-checks" aria-hidden="true"></span>
@@ -242,7 +248,7 @@
           </span>
         </div>
       </header>
-      <div class="dropzone" data-status="{{ status }}">
+      <div class="dropzone" id="column-zone-{{ loop.index0 }}" data-status="{{ status }}">
         {% for ticket in columns[status] %}
           <article class="ticket-card priority-{{ ticket.priority|lower }} status-{{ ticket.status|lower|replace(' ', '-') }} type-{{ ticket.ticket_type|lower }}" data-ticket-key="{{ ticket.key }}" data-description="{{ ticket.description }}">
             <div class="ticket-card-top">

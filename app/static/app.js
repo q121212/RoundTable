@@ -3,6 +3,7 @@
   const STORAGE_LANG = "roundtable.lang";
   const STORAGE_THEME = "roundtable.theme";
   const STORAGE_BOARD_URL = "roundtable.lastBoardUrl";
+  const STORAGE_COLLAPSED_COLUMNS_PREFIX = "roundtable.collapsedColumns.";
   const STORAGE_SOUND_MODE = "roundtable.soundMode";
   const STORAGE_SOUND_THEME = "roundtable.soundTheme";
   const messages = {
@@ -43,6 +44,8 @@
       "footer.tagline": "A round table for your tickets.",
       "column.story_points": "Story points in this status",
       "column.ticket_count": "Tickets in this status",
+      "column.collapse": "Collapse column",
+      "column.expand": "Expand column",
       "github.create_project_first": "Create a project first.",
       "github.how_copy": "Paste owner/repo or a GitHub URL. That is enough for webhook-based linking from branches, commits, and PRs.",
       "github.how_title": "How to connect GitHub",
@@ -107,6 +110,10 @@
       "nav.menu": "Menu",
       "nav.notifications": "Notifications",
       "nav.projects": "Projects",
+      "nav.skip_board": "Skip to board",
+      "nav.skip_content": "Skip to content",
+      "nav.skip_create": "Skip to ticket create",
+      "nav.skip_tools": "Skip to project tools",
       "nav.settings": "Settings",
       "notifications.channels": "Channels",
       "notifications.eyebrow": "Personal settings",
@@ -168,6 +175,12 @@
       "projects.ticket_types_selected": "Ticket types used by this project",
       "projects.title": "Projects",
       "projects.tools": "Project tools",
+      "keyboard.move_down": "Move ticket down",
+      "keyboard.move_left": "Move ticket to previous status",
+      "keyboard.move_right": "Move ticket to next status",
+      "keyboard.move_up": "Move ticket up",
+      "keyboard.ticket_moved": "Moved {ticket} to {status}",
+      "keyboard.ticket_sorted": "Moved {ticket} within {status}",
       "sound.copy": "Short local sounds for board events. Different event types use different cues.",
       "sound.events_copy": "New tickets, comments, assignments, status changes, sprint changes, Done/Closed, and ticket links.",
       "sound.events_title": "Events with sound",
@@ -361,6 +374,8 @@
       "footer.tagline": "Круглый стол для ваших тикетов.",
       "column.story_points": "Сторипоинты в этом статусе",
       "column.ticket_count": "Тикетов в этом статусе",
+      "column.collapse": "Свернуть колонку",
+      "column.expand": "Развернуть колонку",
       "github.create_project_first": "Сначала создайте проект.",
       "github.how_copy": "Вставьте owner/repo или ссылку GitHub. Этого достаточно, чтобы webhook связывал ветки, коммиты и PR с тикетами.",
       "github.how_title": "Как подключить GitHub",
@@ -425,6 +440,10 @@
       "nav.menu": "Меню",
       "nav.notifications": "Уведомления",
       "nav.projects": "Проекты",
+      "nav.skip_board": "К доске",
+      "nav.skip_content": "К содержимому",
+      "nav.skip_create": "К созданию тикета",
+      "nav.skip_tools": "К инструментам проекта",
       "nav.settings": "Настройки",
       "notifications.channels": "Каналы",
       "notifications.eyebrow": "Личные настройки",
@@ -486,6 +505,12 @@
       "projects.ticket_types_selected": "Типы тикетов этого проекта",
       "projects.title": "Проекты",
       "projects.tools": "Инструменты проекта",
+      "keyboard.move_down": "Переместить тикет вниз",
+      "keyboard.move_left": "Переместить тикет в предыдущий статус",
+      "keyboard.move_right": "Переместить тикет в следующий статус",
+      "keyboard.move_up": "Переместить тикет вверх",
+      "keyboard.ticket_moved": "Тикет {ticket} перемещен в {status}",
+      "keyboard.ticket_sorted": "Тикет {ticket} переставлен внутри {status}",
       "sound.copy": "Короткие локальные звуки для событий доски. Для разных типов событий используются разные сигналы.",
       "sound.events_copy": "Новые тикеты, комментарии, назначения, смена статуса, смена спринта, Done/Closed и связи тикетов.",
       "sound.events_title": "Какие события звучат",
@@ -656,6 +681,12 @@
     return (messages[lang] && messages[lang][key]) || messages.en[key] || "";
   }
 
+  function translateTemplate(key, replacements = {}, lang = currentLang()) {
+    return Object.entries(replacements).reduce((text, [name, value]) => {
+      return text.replaceAll(`{${name}}`, String(value));
+    }, translate(key, lang));
+  }
+
   function applyLanguage(lang) {
     localStorage.setItem(STORAGE_LANG, lang);
     document.documentElement.lang = lang;
@@ -684,6 +715,7 @@
     setupSprintProgress();
     updateSprintFilterLabels();
     refreshColumnCounts();
+    updateColumnToggleLabels();
     renderIcons();
   }
 
@@ -731,6 +763,39 @@
         "aria-hidden": "true",
       },
     });
+  }
+
+  function announce(message) {
+    const live = document.querySelector("[data-live-region]");
+    if (!live || !message) return;
+    live.textContent = "";
+    window.setTimeout(() => {
+      live.textContent = message;
+    }, 20);
+  }
+
+  function getMenuOptions(container, selector) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll(selector)).filter((element) => {
+      return !element.disabled && element.getAttribute("aria-hidden") !== "true" && element.offsetParent !== null;
+    });
+  }
+
+  function focusMenuOption(container, selector, nextIndex) {
+    const options = getMenuOptions(container, selector);
+    if (!options.length) return false;
+    const index = Math.max(0, Math.min(nextIndex, options.length - 1));
+    options[index].focus();
+    return true;
+  }
+
+  function moveMenuFocus(container, selector, current, delta) {
+    const options = getMenuOptions(container, selector);
+    if (!options.length) return false;
+    const currentIndex = Math.max(0, options.indexOf(current));
+    const nextIndex = (currentIndex + delta + options.length) % options.length;
+    options[nextIndex].focus();
+    return true;
   }
 
   function ticketTypeIcon(type) {
@@ -960,10 +1025,205 @@
     });
   }
 
-  function setupBoardDnD() {
-    document.querySelectorAll(".ticket-card").forEach((card) => {
-      card.addEventListener("pointerdown", startTicketDrag);
+  function collapsedColumnsKey() {
+    const projectKey = document.querySelector(".board")?.dataset.projectKey || "";
+    return `${STORAGE_COLLAPSED_COLUMNS_PREFIX}${projectKey}`;
+  }
+
+  function collapsedColumns() {
+    try {
+      return JSON.parse(localStorage.getItem(collapsedColumnsKey()) || "[]");
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveCollapsedColumns(statuses) {
+    localStorage.setItem(collapsedColumnsKey(), JSON.stringify(statuses));
+  }
+
+  function updateColumnToggleLabels() {
+    document.querySelectorAll(".board-column").forEach((column) => {
+      const toggle = column.querySelector("[data-column-toggle]");
+      if (!toggle) return;
+      const collapsed = column.classList.contains("is-collapsed");
+      const label = translate(collapsed ? "column.expand" : "column.collapse", currentLang());
+      if (label) toggle.setAttribute("aria-label", label);
     });
+  }
+
+  function setColumnCollapsed(column, collapsed, persist = true) {
+    if (!column) return;
+    column.classList.toggle("is-collapsed", collapsed);
+    const toggle = column.querySelector("[data-column-toggle]");
+    const icon = column.querySelector("[data-column-toggle-icon]");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      const label = translate(collapsed ? "column.expand" : "column.collapse", currentLang());
+      if (label) toggle.setAttribute("aria-label", label);
+    }
+    if (icon) icon.dataset.icon = collapsed ? "chevron-down" : "chevron-up";
+    if (persist) {
+      const stored = new Set(collapsedColumns());
+      const status = column.dataset.status || "";
+      if (collapsed) stored.add(status);
+      else stored.delete(status);
+      saveCollapsedColumns(Array.from(stored));
+    }
+    renderIcons();
+  }
+
+  function setupColumnCollapsing() {
+    const collapsed = new Set(collapsedColumns());
+    document.querySelectorAll(".board-column").forEach((column) => {
+      const toggle = column.querySelector("[data-column-toggle]");
+      if (!toggle) return;
+      setColumnCollapsed(column, collapsed.has(column.dataset.status || ""), false);
+      toggle.addEventListener("click", () => {
+        setColumnCollapsed(column, !column.classList.contains("is-collapsed"));
+      });
+    });
+  }
+
+  function setupBoardDnD() {
+    document.querySelectorAll(".board").forEach((board) => {
+      board.addEventListener("pointerdown", startTicketDrag);
+      board.addEventListener("keydown", onBoardKeyboardInteraction);
+    });
+  }
+
+  function onBoardKeyboardInteraction(event) {
+    const handle = event.target.closest(".drag-handle");
+    if (handle) {
+      handleTicketKeyboardMove(event, handle);
+      return;
+    }
+    const chip = event.target.closest(".chip-edit");
+    if (!chip || !event.currentTarget.contains(chip)) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openPopover(chip, { focus: event.key === "ArrowUp" ? "last" : "first" });
+    }
+  }
+
+  function currentStatusSequence() {
+    return boardData("statuses", []);
+  }
+
+  function lastTicketKey(zone, excludeCard = null) {
+    const cards = Array.from(zone.querySelectorAll(".ticket-card")).filter((card) => card !== excludeCard);
+    return cards.length ? cards[cards.length - 1].dataset.ticketKey || "" : "";
+  }
+
+  function applyKeyboardCardPosition(card, zone, afterKey) {
+    if (!zone) return;
+    if (!afterKey) {
+      zone.insertBefore(card, zone.querySelector(".ticket-card"));
+      return;
+    }
+    const previous = zone.querySelector(`.ticket-card[data-ticket-key="${cssEscape(afterKey)}"]`);
+    if (previous && previous.nextSibling) {
+      zone.insertBefore(card, previous.nextSibling);
+    } else {
+      zone.appendChild(card);
+    }
+  }
+
+  async function commitKeyboardMove(card, zone, status, afterKey, previousZone, previousAfterKey, message) {
+    card.classList.add("is-saving");
+    applyKeyboardCardPosition(card, zone, afterKey);
+    refreshColumnCounts();
+    try {
+      const ticket = await patchTicket(card.dataset.ticketKey, { status, position_after_key: afterKey });
+      applyTicketUpdate(card, ticket);
+      const handle = card.querySelector(".drag-handle");
+      if (handle) handle.focus();
+      announce(message);
+    } catch (error) {
+      restoreCardPosition(card, previousZone, previousAfterKey);
+      refreshColumnCounts();
+      window.alert(error.message || "Could not move ticket");
+    } finally {
+      card.classList.remove("is-saving");
+    }
+  }
+
+  function revealStatusColumn(status) {
+    const tabs = document.querySelectorAll("[data-status-filter]");
+    const active = document.querySelector("[data-status-filter].active")?.dataset.statusFilter || "all";
+    if (!tabs.length || active === "all" || active === status) return;
+    applyStatusFilter(status);
+  }
+
+  function handleTicketKeyboardMove(event, handle) {
+    const card = handle.closest(".ticket-card");
+    const zone = card?.closest(".dropzone");
+    const column = card?.closest(".board-column");
+    if (!card || !zone || !column) return;
+    const status = zone.dataset.status || "";
+    const statuses = currentStatusSequence();
+    const currentIndex = statuses.indexOf(status);
+    const previousZone = zone;
+    const previousAfterKey = ticketKeyBefore(card);
+
+    const commitStatusMove = (targetStatus) => {
+      const nextZone = document.querySelector(`.dropzone[data-status="${cssEscape(targetStatus)}"]`);
+      if (!nextZone) return;
+      event.preventDefault();
+      const afterKey = lastTicketKey(nextZone);
+      revealStatusColumn(targetStatus);
+      commitKeyboardMove(
+        card,
+        nextZone,
+        targetStatus,
+        afterKey,
+        previousZone,
+        previousAfterKey,
+        translateTemplate("keyboard.ticket_moved", {
+          ticket: card.dataset.ticketKey || "",
+          status: translate(`status.${targetStatus}`, currentLang()) || targetStatus,
+        })
+      );
+    };
+
+    if (event.key === "ArrowLeft" && currentIndex > 0) {
+      commitStatusMove(statuses[currentIndex - 1]);
+      return;
+    }
+    if (event.key === "ArrowRight" && currentIndex < statuses.length - 1) {
+      commitStatusMove(statuses[currentIndex + 1]);
+      return;
+    }
+
+    const cards = Array.from(zone.querySelectorAll(".ticket-card"));
+    const index = cards.indexOf(card);
+    let afterKey = null;
+    if (event.key === "ArrowUp" && index > 0) {
+      event.preventDefault();
+      afterKey = ticketKeyBefore(cards[index - 1]);
+    } else if (event.key === "ArrowDown" && index < cards.length - 1) {
+      event.preventDefault();
+      afterKey = cards[index + 1].dataset.ticketKey || "";
+    } else if (event.key === "Home" && index > 0) {
+      event.preventDefault();
+      afterKey = "";
+    } else if (event.key === "End" && index < cards.length - 1) {
+      event.preventDefault();
+      afterKey = lastTicketKey(zone, card);
+    }
+    if (afterKey === null) return;
+    commitKeyboardMove(
+      card,
+      zone,
+      status,
+      afterKey,
+      previousZone,
+      previousAfterKey,
+      translateTemplate("keyboard.ticket_sorted", {
+        ticket: card.dataset.ticketKey || "",
+        status: translate(`status.${status}`, currentLang()) || status,
+      })
+    );
   }
 
   function startTicketDrag(event) {
@@ -975,13 +1235,13 @@
     ) {
       return;
     }
-    const card = event.currentTarget.closest(".ticket-card");
+    const card = event.target.closest(".ticket-card");
     if (!card) return;
     event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    card.setPointerCapture(event.pointerId);
     dragState = {
       card,
-      handle: event.currentTarget,
+      handle: card,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -1315,7 +1575,7 @@
     board.dataset[key] = JSON.stringify(value);
   }
 
-  function openPopover(chip) {
+  function openPopover(chip, options = {}) {
     closePopover();
     const card = chip.closest(".ticket-card");
     const field = chip.dataset.edit;
@@ -1343,13 +1603,15 @@
       document.addEventListener("keydown", onPopoverKey, true);
       window.addEventListener("scroll", onPopoverScroll, true);
       window.addEventListener("resize", onPopoverResize);
-      const focusable = pop.querySelector("textarea, .popover-option");
+      const targets = getMenuOptions(pop, "textarea, input, button, .popover-option");
+      const focusable = options.focus === "last" ? targets[targets.length - 1] : targets[0];
       if (focusable) focusable.focus();
     }, 0);
   }
 
-  function closePopover() {
+  function closePopover(options = {}) {
     if (activeChip) activeChip.setAttribute("aria-expanded", "false");
+    const chip = activeChip;
     if (activePopover) {
       if (typeof activePopover._beforeClose === "function") activePopover._beforeClose();
       activePopover.remove();
@@ -1360,6 +1622,7 @@
     document.removeEventListener("keydown", onPopoverKey, true);
     window.removeEventListener("scroll", onPopoverScroll, true);
     window.removeEventListener("resize", onPopoverResize);
+    if (options.restoreFocus && chip) chip.focus();
   }
 
   // Mobile keyboards and touch-dragging can scroll the viewport while a popover
@@ -1388,7 +1651,26 @@
   }
 
   function onPopoverKey(event) {
-    if (event.key === "Escape") closePopover();
+    if (!activePopover) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePopover({ restoreFocus: true });
+      return;
+    }
+    if (!event.target.closest(".popover-option")) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveMenuFocus(activePopover, ".popover-option", event.target, 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveMenuFocus(activePopover, ".popover-option", event.target, -1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      focusMenuOption(activePopover, ".popover-option", 0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      focusMenuOption(activePopover, ".popover-option", getMenuOptions(activePopover, ".popover-option").length - 1);
+    }
   }
 
   function positionPopover(pop, chip) {
@@ -2237,19 +2519,28 @@
         picker.classList.remove("is-open");
         if (toggle) toggle.setAttribute("aria-expanded", "false");
       };
+      const open = (focus = "current") => {
+        picker.classList.add("is-open");
+        if (toggle) toggle.setAttribute("aria-expanded", "true");
+        const options = getMenuOptions(menu, choiceSelector);
+        if (!options.length) return;
+        if (focus === "first") options[0].focus();
+        else if (focus === "last") options[options.length - 1].focus();
+        else {
+          const currentOption = menu && menu.querySelector(`${choiceSelector}.is-selected`);
+          if (currentOption) currentOption.focus();
+        }
+      };
       if (toggle) {
         toggle.addEventListener("click", (event) => {
           event.stopPropagation();
-          const isOpen = picker.classList.toggle("is-open");
-          toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+          if (picker.classList.contains("is-open")) close();
+          else open();
         });
         toggle.addEventListener("keydown", (event) => {
-          if (event.key !== "ArrowDown" && event.key !== "Enter" && event.key !== " ") return;
+          if (!["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) return;
           event.preventDefault();
-          picker.classList.add("is-open");
-          toggle.setAttribute("aria-expanded", "true");
-          const current = menu && menu.querySelector(`${choiceSelector}.is-selected`);
-          if (current) current.focus();
+          open(event.key === "ArrowUp" ? "last" : "current");
         });
       }
       picker.querySelectorAll(valueSelector).forEach((button) => {
@@ -2262,6 +2553,18 @@
             event.preventDefault();
             close();
             if (toggle) toggle.focus();
+          } else if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+            event.preventDefault();
+            moveMenuFocus(menu, choiceSelector, button, 1);
+          } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+            event.preventDefault();
+            moveMenuFocus(menu, choiceSelector, button, -1);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            focusMenuOption(menu, choiceSelector, 0);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            focusMenuOption(menu, choiceSelector, getMenuOptions(menu, choiceSelector).length - 1);
           }
         });
       });
@@ -2731,11 +3034,26 @@
       const current = picker.querySelector("[data-assignee-current]");
       const input = picker.closest("form")?.querySelector('input[name="assignee_id"]');
       if (!current || !input) return;
-      current.addEventListener("click", () => {
+      const close = () => picker.classList.remove("is-open");
+      const open = (focus = "current") => {
         document.querySelectorAll(".assignee-picker.is-open").forEach((openPicker) => {
           if (openPicker !== picker) openPicker.classList.remove("is-open");
         });
-        picker.classList.toggle("is-open");
+        picker.classList.add("is-open");
+        const options = getMenuOptions(picker, ".assignee-option");
+        if (!options.length) return;
+        if (focus === "first") options[0].focus();
+        else if (focus === "last") options[options.length - 1].focus();
+        else (picker.querySelector(".assignee-option.is-current") || options[0]).focus();
+      };
+      current.addEventListener("click", () => {
+        if (picker.classList.contains("is-open")) close();
+        else open();
+      });
+      current.addEventListener("keydown", (event) => {
+        if (!["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        open(event.key === "ArrowUp" ? "last" : "current");
       });
       picker.querySelectorAll(".assignee-option").forEach((option) => {
         option.addEventListener("click", () => {
@@ -2753,7 +3071,26 @@
               label.textContent = translate("ticket.unassigned", currentLang()) || "Unassigned";
             }
           }
-          picker.classList.remove("is-open");
+          close();
+        });
+        option.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            close();
+            current.focus();
+          } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            moveMenuFocus(picker, ".assignee-option", option, 1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            moveMenuFocus(picker, ".assignee-option", option, -1);
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            focusMenuOption(picker, ".assignee-option", 0);
+          } else if (event.key === "End") {
+            event.preventDefault();
+            focusMenuOption(picker, ".assignee-option", getMenuOptions(picker, ".assignee-option").length - 1);
+          }
         });
       });
     });
@@ -2783,17 +3120,36 @@
     });
   }
 
+  function applyStatusFilter(status) {
+    const tabs = document.querySelectorAll("[data-status-filter]");
+    tabs.forEach((item) => item.classList.toggle("active", item.dataset.statusFilter === status));
+    document.querySelectorAll(".board-column").forEach((column) => {
+      const show = status === "all" || column.dataset.status === status;
+      column.classList.toggle("mobile-hidden", !show);
+    });
+  }
+
   function setupMobileStatusTabs() {
     const tabs = document.querySelectorAll("[data-status-filter]");
     if (!tabs.length) return;
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
-        const status = tab.dataset.statusFilter;
-        tabs.forEach((item) => item.classList.toggle("active", item === tab));
-        document.querySelectorAll(".board-column").forEach((column) => {
-          const show = status === "all" || column.dataset.status === status;
-          column.classList.toggle("mobile-hidden", !show);
-        });
+        applyStatusFilter(tab.dataset.statusFilter);
+      });
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const items = Array.from(tabs);
+        const index = items.indexOf(tab);
+        let target = tab;
+        if (event.key === "ArrowLeft") target = items[Math.max(0, index - 1)];
+        else if (event.key === "ArrowRight") target = items[Math.min(items.length - 1, index + 1)];
+        else if (event.key === "Home") target = items[0];
+        else if (event.key === "End") target = items[items.length - 1];
+        if (target) {
+          target.focus();
+          applyStatusFilter(target.dataset.statusFilter);
+        }
       });
     });
   }
@@ -2832,6 +3188,18 @@
           open();
         }
       });
+      toggle.addEventListener("keydown", (event) => {
+        if (!["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        open();
+        window.setTimeout(() => {
+          if (event.key === "ArrowUp") {
+            focusMenuOption(menu, ".sprint-filter-option", getMenuOptions(menu, ".sprint-filter-option").length - 1);
+          } else if (event.key === "ArrowDown") {
+            focusMenuOption(menu, ".sprint-filter-option", 0);
+          }
+        }, 0);
+      });
       const updateCreateButton = () => {
         if (createButton) createButton.disabled = !search.value.trim();
       };
@@ -2840,6 +3208,11 @@
         updateCreateButton();
       });
       search.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          focusMenuOption(menu, ".sprint-filter-option", 0);
+          return;
+        }
         if (event.key !== "Enter" || !createButton || createButton.disabled) return;
         event.preventDefault();
         createButton.click();
@@ -2863,7 +3236,27 @@
         });
       }
       combo.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") close();
+        if (event.key === "Escape") {
+          close();
+          toggle.focus();
+        }
+      });
+      menu.addEventListener("keydown", (event) => {
+        const option = event.target.closest(".sprint-filter-option");
+        if (!option) return;
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          moveMenuFocus(menu, ".sprint-filter-option", option, 1);
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          moveMenuFocus(menu, ".sprint-filter-option", option, -1);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          focusMenuOption(menu, ".sprint-filter-option", 0);
+        } else if (event.key === "End") {
+          event.preventDefault();
+          focusMenuOption(menu, ".sprint-filter-option", getMenuOptions(menu, ".sprint-filter-option").length - 1);
+        }
       });
     });
 
@@ -3079,6 +3472,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     setupLastBoardLinks();
     setupPreferences();
+    setupColumnCollapsing();
     setupBoardDnD();
     setupChipEditors();
     setupBoardTitleEditors();

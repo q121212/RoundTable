@@ -8,9 +8,13 @@ def test_board_counts_use_dedicated_counter_not_status_dot():
     script = (ROOT / "app/static/app.js").read_text()
     styles = (ROOT / "app/static/styles.css").read_text()
     template = (ROOT / "app/templates/board.html").read_text()
+    base_template = (ROOT / "app/templates/base.html").read_text()
 
     assert 'class="column-count"' in template
     assert 'data-column-points' in template
+    assert 'id="main-content"' in base_template
+    assert 'class="skip-links"' in base_template
+    assert 'data-i18n="nav.skip_board"' in template
     assert 'querySelector(".column-count")' in script
     assert 'querySelector("[data-column-points]")' in script
     assert 'querySelector(".column-head span")' not in script
@@ -90,3 +94,21 @@ def test_live_ticket_delete_removes_card_and_refreshes_counts():
     assert 'payload.event === "ticket_deleted"' in live_events
     assert "card.remove();" in live_events
     assert "refreshColumnCounts();" in live_events
+
+
+def test_board_supports_keyboard_navigation_and_column_collapsing():
+    script = (ROOT / "app/static/app.js").read_text()
+    template = (ROOT / "app/templates/board.html").read_text()
+    styles = (ROOT / "app/static/styles.css").read_text()
+
+    assert 'data-column-toggle' in template
+    assert 'aria-controls="column-zone-' in template
+    assert "function setupColumnCollapsing()" in script
+    assert "function onBoardKeyboardInteraction(event)" in script
+    assert "function handleTicketKeyboardMove(event, handle)" in script
+    assert "function applyStatusFilter(status)" in script
+    assert 'translateTemplate("keyboard.ticket_moved"' in script
+    assert 'translateTemplate("keyboard.ticket_sorted"' in script
+    assert ".skip-links" in styles
+    assert ".column-toggle" in styles
+    assert ".board-column.is-collapsed .dropzone" in styles

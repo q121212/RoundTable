@@ -9,7 +9,11 @@
     <script defer src="/static/vendor/lucide.min.js"></script>
     <script defer src="/static/app.js?v={{ static_version }}"></script>
   </head>
-  <body data-current-project-url="{{ current_project_url }}" {% if user %}data-user-id="{{ user.id }}"{% endif %}>
+  <body id="top" data-current-project-url="{{ current_project_url }}" {% if user %}data-user-id="{{ user.id }}"{% endif %}>
+    <nav class="skip-links" aria-label="Skip links">
+      <a href="#main-content" data-i18n="nav.skip_content">Skip to content</a>
+      {% block skip_links %}{% endblock %}
+    </nav>
     <header class="topbar">
       <a class="brand" href="/" data-home-link><img class="brand-mark" src="/static/favicon.svg" alt="" width="22" height="22">RoundTable</a>
       <nav class="topnav">
@@ -36,7 +40,7 @@
         </div>
       </nav>
     </header>
-    <main class="page">
+    <main class="page" id="main-content" tabindex="-1">
       {% block content %}{% endblock %}
     </main>
     <footer class="site-footer">
@@ -46,5 +50,6 @@
       </a>
       <span class="muted" data-i18n="footer.tagline">A round table for your tickets.</span>
     </footer>
+    <div class="sr-only" aria-live="polite" data-live-region></div>
   </body>
 </html>
