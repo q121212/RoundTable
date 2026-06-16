@@ -318,6 +318,24 @@ async def publish_ticket_event(
     return action
 
 
+@app.get("/healthz")
+async def healthz() -> JSONResponse:
+    # Liveness: the process is up and serving. Deliberately does not touch the
+    # database so a slow/locked DB cannot make the process look dead.
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/readyz")
+async def readyz() -> JSONResponse:
+    # Readiness: the app can actually serve requests that need the database.
+    try:
+        with get_conn() as conn:
+            conn.execute("SELECT 1")
+    except Exception:
+        return JSONResponse({"status": "unavailable"}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return JSONResponse({"status": "ready"})
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login(request: Request) -> HTMLResponse:
     if page_user(request):

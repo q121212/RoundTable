@@ -18,7 +18,7 @@
 #   DEPLOY_PATH        app dir on server        (default: /srv/RoundTable)
 #   DEPLOY_BRANCH      git branch to deploy     (default: main)
 #   DEPLOY_SERVICE     systemd unit name        (default: roundtable)
-#   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8380/login)
+#   DEPLOY_HEALTH_URL  url checked after restart(default: http://127.0.0.1:8380/readyz)
 #   DEPLOY_PYTHON      Python 3.10+ on server   (default: python3)
 #   DEPLOY_MODE        auto | git | rsync       (default: auto)
 #   DEPLOY_PUBLIC      true requires safe public .env settings
@@ -53,7 +53,7 @@ HOST="${DEPLOY_HOST:-}"
 APP_DIR="${DEPLOY_PATH:-/srv/RoundTable}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 SERVICE="${DEPLOY_SERVICE:-roundtable}"
-HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8380/login}"
+HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:8380/readyz}"
 PY="${DEPLOY_PYTHON:-python3}"
 MODE="${DEPLOY_MODE:-auto}"
 PUBLIC="${DEPLOY_PUBLIC:-false}"
