@@ -57,7 +57,7 @@
   <div class="panel">
     <h2>Telegram</h2>
     {% if telegram_link %}
-      <p>Linked to chat <code>{{ telegram_link.chat_id }}</code></p>
+      <p><span data-i18n="notifications.telegram_linked">Linked to chat</span> <code>{{ telegram_link.chat_id }}</code></p>
       <form method="post" action="/api/me/telegram/unlink">
         <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
         <button class="danger" type="submit" data-icon="unlink" data-i18n="notifications.telegram_unlink">Unlink Telegram</button>

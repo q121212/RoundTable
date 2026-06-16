@@ -8,6 +8,12 @@
   const STORAGE_SOUND_THEME = "roundtable.soundTheme";
   const messages = {
     en: {
+      "github.webhook_url": "Webhook URL:",
+      "notifications.telegram_linked": "Linked to chat",
+      "role.admin": "Admin",
+      "role.member": "Member",
+      "role.viewer": "Viewer",
+      "sprint.goal_placeholder": "What should this sprint achieve?",
       "action.close": "Close",
       "action.comment": "Comment",
       "action.create": "Create",
@@ -340,6 +346,12 @@
       "type.Task": "Task",
     },
     ru: {
+      "github.webhook_url": "URL вебхука:",
+      "notifications.telegram_linked": "Привязан к чату",
+      "role.admin": "Администратор",
+      "role.member": "Участник",
+      "role.viewer": "Наблюдатель",
+      "sprint.goal_placeholder": "Какова цель этого спринта?",
       "action.close": "Закрыть",
       "action.comment": "Комментировать",
       "action.create": "Создать",

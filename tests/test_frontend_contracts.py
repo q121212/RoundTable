@@ -21,6 +21,32 @@ def test_board_counts_use_dedicated_counter_not_status_dot():
     assert ".column-head span," not in styles
 
 
+def test_user_facing_strings_are_translated_in_both_languages():
+    import re
+
+    script = (ROOT / "app/static/app.js").read_text()
+    settings = (ROOT / "app/templates/project_settings.html").read_text()
+    github = (ROOT / "app/templates/integrations_github.html").read_text()
+    notifications = (ROOT / "app/templates/settings_notifications.html").read_text()
+
+    # Previously-untranslated captions now carry data-i18n keys.
+    assert '<option value="member" data-i18n="role.member"' in settings
+    assert '<option value="viewer" data-i18n="role.viewer"' in settings
+    assert '<option value="admin" data-i18n="role.admin"' in settings
+    assert 'data-i18n="github.webhook_url"' in github
+    assert 'data-i18n="notifications.telegram_linked"' in notifications
+
+    # Every key must exist in both en and ru (a missing ru key silently falls
+    # back to English in a Russian UI).
+    en_block = script[script.index("en: {"):script.index("ru: {")]
+    ru_block = script[script.index("ru: {"):]
+    en_keys = set(re.findall(r'"([^"]+)"\s*:', en_block))
+    ru_keys = set(re.findall(r'"([^"]+)"\s*:', ru_block))
+    for key in ["role.member", "role.viewer", "role.admin", "github.webhook_url",
+                "notifications.telegram_linked", "sprint.goal_placeholder"]:
+        assert key in en_keys and key in ru_keys, "missing translation: %s" % key
+
+
 def test_mention_menu_selection_does_not_close_board_popover():
     script = (ROOT / "app/static/app.js").read_text()
 

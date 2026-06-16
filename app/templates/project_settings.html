@@ -185,9 +185,9 @@
             <button class="help-dot" type="button" data-i18n-tooltip="help.role" data-tooltip="member can edit, viewer can only read, admin can manage project access.">?</button>
           </span>
           <select name="role">
-            <option value="member">member</option>
-            <option value="viewer">viewer</option>
-            <option value="admin">admin</option>
+            <option value="member" data-i18n="role.member">member</option>
+            <option value="viewer" data-i18n="role.viewer">viewer</option>
+            <option value="admin" data-i18n="role.admin">admin</option>
           </select>
         </label>
         <button class="secondary" type="submit" data-icon="user-plus" data-i18n="projects.add_member">Add member</button>
@@ -215,9 +215,9 @@
               <form class="member-role-form" method="post" action="/api/projects/{{ project.key }}/members/{{ member.id }}">
                 <input type="hidden" name="csrf_token" value="{{ user.csrf_token }}">
                 <select name="role" aria-label="Role" {% if is_last_admin %}disabled{% endif %}>
-                  <option value="member" {% if member.project_role == "member" %}selected{% endif %}>member</option>
-                  <option value="viewer" {% if member.project_role == "viewer" %}selected{% endif %}>viewer</option>
-                  <option value="admin" {% if member.project_role == "admin" %}selected{% endif %}>admin</option>
+                  <option value="member" data-i18n="role.member" {% if member.project_role == "member" %}selected{% endif %}>member</option>
+                  <option value="viewer" data-i18n="role.viewer" {% if member.project_role == "viewer" %}selected{% endif %}>viewer</option>
+                  <option value="admin" data-i18n="role.admin" {% if member.project_role == "admin" %}selected{% endif %}>admin</option>
                 </select>
                 {% if is_last_admin %}
                   <span class="field-badge" data-i18n="projects.last_admin_badge">only admin</span>
