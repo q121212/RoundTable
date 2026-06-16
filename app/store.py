@@ -1944,11 +1944,18 @@ def ticket_sort_order_after_conn(
 
 
 def search_tickets(user: Dict[str, Any], query: str = "", project_key: str = "") -> List[Dict[str, Any]]:
-    query_like = "%" + query.strip() + "%"
+    clean_query = query.strip()
+    # Escape LIKE metacharacters so a user typing % or _ matches them literally
+    # instead of turning the search into a wildcard over their whole scope.
+    escaped = clean_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    query_like = "%" + escaped + "%"
     params: List[Any] = []
     where = []
-    if query.strip():
-        where.append("(tickets.key LIKE ? OR tickets.title LIKE ? OR tickets.description LIKE ?)")
+    if clean_query:
+        where.append(
+            "(tickets.key LIKE ? ESCAPE '\\' OR tickets.title LIKE ? ESCAPE '\\' "
+            "OR tickets.description LIKE ? ESCAPE '\\')"
+        )
         params.extend([query_like, query_like, query_like])
     if project_key.strip():
         where.append("projects.key = ?")

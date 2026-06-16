@@ -37,6 +37,20 @@ from app.store import (
 )
 
 
+def test_search_tickets_treats_like_wildcards_literally(temp_db):
+    from app.store import search_tickets
+
+    user = upsert_user("alice", email="alice@example.com")
+    create_project(user, "RT", "RoundTable")
+    create_ticket(user, "RT", "Has 50% coverage")
+    create_ticket(user, "RT", "Plain ticket")
+
+    # A bare "%" must not match every ticket; it is a literal character now.
+    assert [t["title"] for t in search_tickets(user, "%")] == ["Has 50% coverage"]
+    # "_" is likewise literal, not a single-char wildcard.
+    assert search_tickets(user, "Plain_ticket") == []
+
+
 def test_project_prefixed_ticket_sequence(temp_db):
     user = upsert_user("alice", email="alice@example.com")
     create_project(user, "crm", "CRM")
